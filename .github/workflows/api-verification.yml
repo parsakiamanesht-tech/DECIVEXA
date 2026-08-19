@@ -1,0 +1,58 @@
+name: DECIVEXA API Verification
+
+on:
+  push:
+    paths:
+      - 'apps/api/**'
+      - '.github/workflows/api-verification.yml'
+  pull_request:
+    paths:
+      - 'apps/api/**'
+      - '.github/workflows/api-verification.yml'
+
+jobs:
+  verify-api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/api/package.json
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Start application
+        run: |
+          node dist/main.js > /tmp/decivexa-api.log 2>&1 &
+          echo $! > /tmp/decivexa-api.pid
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000/health > /tmp/decivexa-health.json; then
+              cat /tmp/decivexa-health.json
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/decivexa-api.log
+          exit 1
+
+      - name: Stop application
+        if: always()
+        run: |
+          if [ -f /tmp/decivexa-api.pid ]; then
+            kill "$(cat /tmp/decivexa-api.pid)" || true
+          fi
