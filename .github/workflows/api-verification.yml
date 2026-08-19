@@ -24,11 +24,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: apps/api/package.json
 
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
+      - name: Generate lockfile evidence
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Install from generated lockfile
+        run: npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Typecheck
         run: npm run typecheck
@@ -49,6 +50,17 @@ jobs:
           done
           cat /tmp/decivexa-api.log
           exit 1
+
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: decivexa-api-verification-evidence
+          path: |
+            apps/api/package-lock.json
+            /tmp/decivexa-health.json
+            /tmp/decivexa-api.log
+          if-no-files-found: warn
 
       - name: Stop application
         if: always()
