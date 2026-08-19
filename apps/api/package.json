@@ -7,12 +7,15 @@
     "build": "nest build",
     "start:dev": "nest start --watch",
     "start": "node dist/main.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.28",
     "@nestjs/core": "^11.1.28",
     "@nestjs/platform-express": "^11.1.28",
+    "dotenv": "^17.2.1",
     "drizzle-orm": "^0.44.5",
     "pg": "^8.16.3",
     "reflect-metadata": "^0.2.2",
