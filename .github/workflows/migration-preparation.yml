@@ -32,6 +32,27 @@ jobs:
       - name: Generate migration
         run: npm run db:generate
 
+      - name: Validate migration scope
+        run: |
+          set -eu
+          migration_count=$(find src/persistence/migrations -maxdepth 1 -type f -name '*.sql' | wc -l)
+          if [ "$migration_count" -ne 2 ]; then
+            echo "Expected exactly 2 SQL migrations (existing users + new workspace), found $migration_count"
+            find src/persistence/migrations -maxdepth 1 -type f -print
+            exit 1
+          fi
+          latest_migration=$(find src/persistence/migrations -maxdepth 1 -type f -name '*.sql' | sort | tail -n 1)
+          echo "--- latest migration: $latest_migration ---"
+          cat "$latest_migration"
+          grep -q 'CREATE TABLE "decivexa"."workspaces"' "$latest_migration"
+          grep -q '"owner_id" text NOT NULL' "$latest_migration"
+          grep -q 'REFERENCES "decivexa"."users"("id")' "$latest_migration"
+          if grep -q 'CREATE TABLE "decivexa"."users"' "$latest_migration"; then
+            echo 'Latest migration unexpectedly recreates users'
+            exit 1
+          fi
+          echo 'Migration scope validation passed.'
+
       - name: Show generated migration files
         run: |
           echo '--- migration files ---'
