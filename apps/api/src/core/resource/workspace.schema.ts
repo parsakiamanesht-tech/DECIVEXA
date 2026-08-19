@@ -1,4 +1,4 @@
-import { pgSchema, text, timestamp, check } from "drizzle-orm/pg-core";
+import { pgSchema, text, timestamp, check, sql } from "drizzle-orm/pg-core";
 import { users } from "../identity/identity.schema";
 
 const decivexa = pgSchema("decivexa");
@@ -23,7 +23,7 @@ export const workspaces = decivexa.table(
   (table) => [
     check(
       "workspaces_lifecycle_state_check",
-      text("lifecycle_state").in(WORKSPACE_LIFECYCLE_STATES),
+      sql`${table.lifecycleState} in ('active', 'archived')`,
     ),
   ],
 );
