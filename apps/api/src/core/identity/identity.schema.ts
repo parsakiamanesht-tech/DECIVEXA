@@ -1,17 +1,12 @@
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
-import { DECIVEXA_SCHEMA } from "../../persistence/schema";
+import { pgSchema, text, timestamp } from "drizzle-orm/pg-core";
 
-export const users = pgTable(
-  "users",
-  {
-    id: text("id").primaryKey(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-  },
-  (table) => ({
-    schema: DECIVEXA_SCHEMA,
-  }),
-);
+const decivexa = pgSchema("decivexa");
+
+export const users = decivexa.table("users", {
+  id: text("id").primaryKey(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
