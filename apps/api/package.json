@@ -1,0 +1,25 @@
+{
+  "name": "@decivexa/api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "DECIVEXA API verification-oriented implementation skeleton",
+  "scripts": {
+    "build": "nest build",
+    "start:dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.28",
+    "@nestjs/core": "^11.1.28",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.10",
+    "@nestjs/schematics": "^11.0.7",
+    "@nestjs/testing": "^11.1.28",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.2"
+  }
+}
