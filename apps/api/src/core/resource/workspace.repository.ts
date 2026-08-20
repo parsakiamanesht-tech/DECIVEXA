@@ -4,6 +4,19 @@ import { workspaces, type WorkspaceLifecycleState } from "./workspace.schema";
 
 type DatabaseClient = ReturnType<typeof createDatabase>["client"];
 
+export async function findWorkspaceById(
+  db: DatabaseClient,
+  workspaceId: string,
+) {
+  const [workspace] = await db
+    .select()
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .limit(1);
+
+  return workspace;
+}
+
 export async function findWorkspaceForOwner(
   db: DatabaseClient,
   workspaceId: string,
