@@ -51,6 +51,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Workspace access tests
+        run: npm run test
+
       - name: Generate migration
         run: npm run db:generate
 
