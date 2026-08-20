@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
+import { AuthProvider } from "../lib/auth-context";
 
 export const metadata: Metadata = {
   title: "DECIVEXA",
   description: "DECIVEXA Web Foundation",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
