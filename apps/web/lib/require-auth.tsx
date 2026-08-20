@@ -1,12 +1,24 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from './auth-context';
 
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { authenticated } = useAuth();
+  const router = useRouter();
+  const { status } = useAuth();
 
-  if (!authenticated) {
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.replace('/login');
+    }
+  }, [router, status]);
+
+  if (status === 'loading') {
+    return <main>Loading…</main>;
+  }
+
+  if (status === 'unauthenticated') {
     return null;
   }
 
