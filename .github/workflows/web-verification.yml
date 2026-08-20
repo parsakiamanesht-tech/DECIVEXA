@@ -12,7 +12,7 @@ on:
 
 jobs:
   web-verification:
-    name: Web Typecheck and Build
+    name: Web Typecheck, Build and Runtime Verification
     runs-on: ubuntu-latest
 
     defaults:
@@ -33,8 +33,14 @@ jobs:
       - name: Install dependencies
         run: npm install --no-package-lock
 
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
       - name: Typecheck
         run: npm run typecheck
 
       - name: Build
         run: npm run build
+
+      - name: Runtime E2E verification
+        run: npm run test:e2e
