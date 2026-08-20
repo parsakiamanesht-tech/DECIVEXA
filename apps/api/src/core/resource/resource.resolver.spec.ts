@@ -60,7 +60,7 @@ test("returns invalid_reference before invoking a strategy", async () => {
 
   const result = await resolver.resolve({
     resourceType: "workspace",
-    resourceId: "",
+    resourceId: asResourceId(""),
   });
 
   assert.deepEqual(result, { status: "invalid_reference" });
