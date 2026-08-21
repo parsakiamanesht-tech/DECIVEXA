@@ -43,6 +43,55 @@ jobs:
           echo '--- migration SQL ---'
           find src/persistence/migrations -maxdepth 1 -type f -name '*.sql' -print -exec sh -c 'echo "--- $1 ---"; cat "$1"' _ {} \;
 
+      - name: Reconstruction experiment from verified 0001 baseline
+        run: |
+          set -eu
+          rm -rf /tmp/decivexa-reconstruction
+          mkdir -p /tmp/decivexa-reconstruction/schema /tmp/decivexa-reconstruction/migrations/meta
+          cp src/persistence/migrations/0000_*.sql /tmp/decivexa-reconstruction/migrations/
+          cp src/persistence/migrations/0001_*.sql /tmp/decivexa-reconstruction/migrations/
+          cp src/persistence/migrations/meta/0000_snapshot.json /tmp/decivexa-reconstruction/migrations/meta/
+          cp src/persistence/migrations/meta/0001_snapshot.json /tmp/decivexa-reconstruction/migrations/meta/
+          node - <<'NODE'
+          const fs = require('fs');
+          const src = JSON.parse(fs.readFileSync('src/persistence/migrations/meta/_journal.json', 'utf8'));
+          src.entries = src.entries.filter(e => e.idx <= 1);
+          fs.writeFileSync('/tmp/decivexa-reconstruction/migrations/meta/_journal.json', JSON.stringify(src, null, 2) + '\n');
+          NODE
+          cat > /tmp/decivexa-reconstruction/schema/identity.ts <<'EOF'
+          import { pgSchema, text, timestamp } from "drizzle-orm/pg-core";
+          const decivexa = pgSchema("decivexa");
+          export const users = decivexa.table("users", {
+            id: text("id").primaryKey(),
+            email: text("email").notNull(),
+            passwordHash: text("password_hash").notNull(),
+            createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+            updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+          });
+          EOF
+          cat > /tmp/decivexa-reconstruction/schema/workspace.ts <<'EOF'
+          import { pgSchema, text, timestamp } from "drizzle-orm/pg-core";
+          import { users } from "./identity";
+          const decivexa = pgSchema("decivexa");
+          export const workspaces = decivexa.table("workspaces", {
+            id: text("id").primaryKey(),
+            ownerId: text("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+            createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+            updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+          });
+          EOF
+          cat > /tmp/decivexa-reconstruction/drizzle.config.ts <<'EOF'
+          import { defineConfig } from "drizzle-kit";
+          export default defineConfig({
+            schema: "/tmp/decivexa-reconstruction/schema/*.ts",
+            out: "/tmp/decivexa-reconstruction/migrations",
+            dialect: "postgresql",
+          });
+          EOF
+          npx drizzle-kit generate --config=/tmp/decivexa-reconstruction/drizzle.config.ts
+          echo '--- reconstructed migration files ---'
+          find /tmp/decivexa-reconstruction/migrations -maxdepth 2 -type f -print -exec sh -c 'echo "--- $1 ---"; cat "$1"' _ {} \;
+
       - name: Generate migration
         run: npm run db:generate
 
