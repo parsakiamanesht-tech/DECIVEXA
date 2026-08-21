@@ -21,30 +21,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Generate lockfile evidence
-        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
       - name: Install dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Typecheck
         run: npm run typecheck
-      - name: Canonical 0002 lineage and 0003 proof
+      - name: Canonical 0002 snapshot then real 0002 lineage proof
         run: |
           set -eu
-          rm -rf /tmp/decivexa-canonical-lineage
-          mkdir -p /tmp/decivexa-canonical-lineage/schema /tmp/decivexa-canonical-lineage/migrations/meta
-          cp src/persistence/migrations/0000_*.sql /tmp/decivexa-canonical-lineage/migrations/
-          cp src/persistence/migrations/0001_*.sql /tmp/decivexa-canonical-lineage/migrations/
-          cp src/persistence/migrations/0002_authentication_credentials.sql /tmp/decivexa-canonical-lineage/migrations/
-          cp src/persistence/migrations/meta/0000_snapshot.json /tmp/decivexa-canonical-lineage/migrations/meta/
-          cp src/persistence/migrations/meta/0001_snapshot.json /tmp/decivexa-canonical-lineage/migrations/meta/
-          node - <<'NODE'
-          const fs = require('fs');
-          const journal = JSON.parse(fs.readFileSync('src/persistence/migrations/meta/_journal.json', 'utf8'));
-          const e = journal.entries.find(x => x.idx === 2);
-          if (!e) throw new Error('Expected existing migration journal entry idx=2');
-          console.log('Existing 0002 journal entry:', JSON.stringify(e));
-          NODE
-          cat > /tmp/decivexa-canonical-lineage/schema/identity.ts <<'EOF'
+          ROOT=/tmp/decivexa-canonical-lineage
+          STAGE=/tmp/decivexa-auth-stage
+          rm -rf "$ROOT" "$STAGE"
+          mkdir -p "$ROOT/schema" "$ROOT/migrations/meta" "$STAGE/schema"
+
+          # Stage A: generate the canonical snapshot for the state immediately after 0002.
+          cat > "$STAGE/schema/identity.ts" <<'EOF'
           import { pgSchema, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
           const decivexa = pgSchema("decivexa");
           export const users = decivexa.table("users", {
@@ -52,7 +42,52 @@ jobs:
             createdAt: timestamp("created_at", { withTimezone: true }).notNull(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
           }, (table) => ({ emailUnique: uniqueIndex("users_email_unique").on(table.email) }));
           EOF
-          cat > /tmp/decivexa-canonical-lineage/schema/workspace.ts <<'EOF'
+          cat > "$STAGE/schema/workspace.ts" <<'EOF'
+          import { pgSchema, text, timestamp } from "drizzle-orm/pg-core";
+          import { users } from "./identity";
+          const decivexa = pgSchema("decivexa");
+          export const workspaces = decivexa.table("workspaces", {
+            id: text("id").primaryKey(), ownerId: text("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+            createdAt: timestamp("created_at", { withTimezone: true }).notNull(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+          });
+          EOF
+          cat > "$STAGE/drizzle.config.ts" <<'EOF'
+          import { defineConfig } from "drizzle-kit";
+          export default defineConfig({ schema: "./schema/*.ts", out: "./migrations", dialect: "postgresql" });
+          EOF
+          cp src/persistence/migrations/0000_*.sql "$STAGE/"
+          cp src/persistence/migrations/0001_*.sql "$STAGE/"
+          cp src/persistence/migrations/meta/0000_snapshot.json "$STAGE/"
+          cp src/persistence/migrations/meta/0001_snapshot.json "$STAGE/"
+          cp src/persistence/migrations/meta/_journal.json "$STAGE/"
+          cd "$STAGE"
+          NODE_PATH="$GITHUB_WORKSPACE/apps/api/node_modules" node "$GITHUB_WORKSPACE/apps/api/node_modules/drizzle-kit/bin.cjs" generate --config=./drizzle.config.ts
+          CANON_SNAPSHOT="$STAGE/migrations/meta/0002_snapshot.json"
+          test -f "$CANON_SNAPSHOT"
+          echo '--- canonical 0002 snapshot metadata ---'
+          node -e 'const s=require(process.argv[1]); console.log({id:s.id,prevId:s.prevId,version:s.version}); if(s.version!=="7") process.exit(1)' "$CANON_SNAPSHOT"
+
+          # Stage B: verified 0000 + verified 0001 + REAL 0002 SQL + canonical 0002 snapshot.
+          cp src/persistence/migrations/0000_*.sql "$ROOT/migrations/"
+          cp src/persistence/migrations/0001_*.sql "$ROOT/migrations/"
+          cp src/persistence/migrations/0002_authentication_credentials.sql "$ROOT/migrations/"
+          cp src/persistence/migrations/meta/0000_snapshot.json "$ROOT/migrations/meta/"
+          cp src/persistence/migrations/meta/0001_snapshot.json "$ROOT/migrations/meta/"
+          cp "$CANON_SNAPSHOT" "$ROOT/migrations/meta/0002_snapshot.json"
+          cp "$STAGE/migrations/meta/_journal.json" "$ROOT/migrations/meta/_journal.json"
+          node - <<'NODE'
+          const fs=require('fs');
+          const p='/tmp/decivexa-canonical-lineage/migrations/meta/_journal.json';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          const e=j.entries.find(x=>x.idx===2);
+          if(!e) throw new Error('Canonical stage did not produce journal entry idx=2');
+          e.tag='0002_authentication_credentials';
+          fs.writeFileSync(p, JSON.stringify(j,null,2)+'\n');
+          console.log('Prepared canonical 0002 journal entry:', JSON.stringify(e));
+          NODE
+
+          cp "$STAGE/schema/identity.ts" "$ROOT/schema/identity.ts"
+          cat > "$ROOT/schema/workspace.ts" <<'EOF'
           import { pgSchema, text, timestamp, check } from "drizzle-orm/pg-core";
           import { sql } from "drizzle-orm";
           import { users } from "./identity";
@@ -63,26 +98,29 @@ jobs:
             createdAt: timestamp("created_at", { withTimezone: true }).notNull(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
           }, (table) => [check("workspaces_lifecycle_state_check", sql`${table.lifecycleState} in ('active', 'archived')`)]);
           EOF
-          cat > /tmp/decivexa-canonical-lineage/drizzle.config.ts <<'EOF'
+          cat > "$ROOT/drizzle.config.ts" <<'EOF'
           import { defineConfig } from "drizzle-kit";
           export default defineConfig({ schema: "./schema/*.ts", out: "./migrations", dialect: "postgresql" });
           EOF
-          cd /tmp/decivexa-canonical-lineage
+
+          cd "$ROOT"
           NODE_PATH="$GITHUB_WORKSPACE/apps/api/node_modules" node "$GITHUB_WORKSPACE/apps/api/node_modules/drizzle-kit/bin.cjs" generate --config=./drizzle.config.ts
-          echo '--- generated lineage ---'
-          find migrations -maxdepth 2 -type f -print -exec sh -c 'echo "--- $1 ---"; cat "$1"' _ {} \;
-          latest=$(find migrations -maxdepth 1 -type f -name '*.sql' | sort | tail -n 1)
-          echo "--- latest migration: $latest ---"
-          grep -q 'lifecycle_state' "$latest"
-          grep -q "DEFAULT 'active'" "$latest"
-          grep -q 'workspaces_lifecycle_state_check' "$latest"
-          grep -q "'active', 'archived'" "$latest"
-          if grep -q 'CREATE TABLE' "$latest"; then echo 'FAIL: table recreation detected'; exit 1; fi
-          if grep -q 'users_email_unique' "$latest"; then echo 'FAIL: authentication index change detected'; exit 1; fi
-          if grep -q 'password_hash' "$latest" || grep -q 'ADD COLUMN "email"' "$latest"; then echo 'FAIL: authentication column change detected'; exit 1; fi
-          if grep -q 'owner_id' "$latest"; then echo 'FAIL: ownership change detected'; exit 1; fi
-          echo 'PASS: canonical lineage produces lifecycle-only migration.'
-      - name: Repository generate diagnostic
+          echo '--- complete canonical lineage ---'
+          find migrations -maxdepth 2 -type f -print
+          NEXT=$(find migrations -maxdepth 1 -type f -name '*.sql' | sort | tail -n 1)
+          echo "--- generated next migration: $NEXT ---"
+          cat "$NEXT"
+          grep -q 'lifecycle_state' "$NEXT"
+          grep -q "DEFAULT 'active'" "$NEXT"
+          grep -q 'workspaces_lifecycle_state_check' "$NEXT"
+          grep -q "'active', 'archived'" "$NEXT"
+          if grep -q 'CREATE TABLE' "$NEXT"; then echo 'FAIL: table recreation'; exit 1; fi
+          if grep -q 'users_email_unique' "$NEXT"; then echo 'FAIL: authentication index recreated'; exit 1; fi
+          if grep -q 'password_hash' "$NEXT" || grep -q 'ADD COLUMN "email"' "$NEXT"; then echo 'FAIL: authentication columns recreated'; exit 1; fi
+          if grep -q 'owner_id' "$NEXT"; then echo 'FAIL: ownership recreated'; exit 1; fi
+          echo 'PASS: canonical 0002 snapshot + REAL 0002 SQL produces lifecycle-only next migration.'
+
+      - name: Repository generate diagnostic only
         run: |
           set +e
           npm run db:generate
@@ -90,6 +128,7 @@ jobs:
           set -e
           echo "Repository generate exit status: $status"
           exit 0
+
       - name: Upload canonical lineage evidence
         if: always()
         uses: actions/upload-artifact@v4
