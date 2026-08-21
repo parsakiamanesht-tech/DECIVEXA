@@ -8,7 +8,7 @@
     "start:dev": "nest start --watch",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && node --test dist/core/resource/workspace.access.spec.js dist/core/resource/resource.resolver.spec.js dist/core/resource/resource.identity.spec.js dist/foundation/application-domain-boundaries.spec.js dist/foundation/resource-persistence-boundaries.spec.js",
+    "test": "npm run build && node --test dist/core/resource/workspace.access.spec.js dist/core/resource/resource.resolver.spec.js dist/core/resource/resource.identity.spec.js dist/foundation/application-domain-boundaries.spec.js dist/foundation/resource-persistence-boundaries.spec.js dist/foundation/composition-wiring.spec.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
