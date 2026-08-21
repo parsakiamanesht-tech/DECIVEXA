@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import type { RequestContext } from "../../context/request-context";
-import type { PersonalStateAvailability, PersonalStateProvenance } from "../../core/personal-state/personal-state.model";
+import type { PersonalState, PersonalStateAvailability, PersonalStateProvenance } from "../../core/personal-state/personal-state.model";
 import { PERSONAL_STATE_REPOSITORY } from "../../core/personal-state/personal-state.repository.token";
 import type { PersonalStatePatch, PersonalStateRepository } from "../../core/personal-state/personal-state.repository";
 import { failure, success, type Result } from "../../shared/result/result";
@@ -31,13 +31,14 @@ function validate(input: PersonalStateInput): PersonalStateInput {
 export class PersonalStateUseCase {
   constructor(@Inject(PERSONAL_STATE_REPOSITORY) private readonly repository: PersonalStateRepository) {}
 
-  async get(context: RequestContext): Promise<Result<Awaited<ReturnType<PersonalStateRepository["findByUserId"]>> extends infer T ? T : never>> {
-    const state = await this.repository.findByUserId(context.userId ?? "");
-    if (!state) return failure(new PersonalStateNotFoundError("Personal state not initialized")) as never;
-    return success(state) as never;
+  async get(context: RequestContext): Promise<Result<PersonalState>> {
+    if (!context.userId) return failure(new PersonalStateValidationError("Authenticated user required"));
+    const state = await this.repository.findByUserId(context.userId);
+    if (!state) return failure(new PersonalStateNotFoundError("Personal state not initialized"));
+    return success(state);
   }
 
-  async initialize(input: PersonalStateInput, context: RequestContext): Promise<Result<unknown>> {
+  async initialize(input: PersonalStateInput, context: RequestContext): Promise<Result<PersonalState>> {
     if (!context.userId) return failure(new PersonalStateValidationError("Authenticated user required"));
     try {
       const existing = await this.repository.findByUserId(context.userId);
@@ -56,7 +57,7 @@ export class PersonalStateUseCase {
     }
   }
 
-  async update(input: PersonalStateInput & { revision: number }, context: RequestContext): Promise<Result<unknown>> {
+  async update(input: PersonalStateInput & { revision: number }, context: RequestContext): Promise<Result<PersonalState>> {
     if (!context.userId) return failure(new PersonalStateValidationError("Authenticated user required"));
     if (!Number.isInteger(input.revision) || input.revision < 1) return failure(new PersonalStateValidationError("Invalid revision"));
     try {
