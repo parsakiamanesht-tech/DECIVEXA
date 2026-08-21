@@ -1,13 +1,14 @@
 # TD-08 — Final Technology Decision Baseline
 
 ## Status
-APPROVAL-READY — FOUNDER APPROVAL REQUIRED
+FOUNDER APPROVED
 
 ## Governing Architecture
 - Architecture Baseline: `DECIVEXA-ARCH-FREEZE-001`
 - Architecture Version: `1.0.0`
 - Technology Gate: `TD-08`
-- This baseline does not grant implementation authorization until Founder approval is explicitly recorded.
+- Founder approval is explicitly recorded below.
+- This approval does not itself grant implementation authorization; TD-09 remains the required Implementation Readiness & Build Authorization Gate.
 
 ## Purpose
 This document consolidates the technology decisions that are sufficiently justified by the TD-08 evidence review and revision cycle. Technology remains subordinate to the frozen DECIVEXA architecture.
@@ -16,110 +17,64 @@ This document consolidates the technology decisions that are sufficiently justif
 
 ### 1. Web Application
 **Decision:** Next.js 16.x + TypeScript.
-
-**Status:** APPROVAL-READY.
-
+**Status:** APPROVED.
 **Rule:** Framework-specific UI/application concerns must not own domain truth. Production patch versions are pinned by the implementation lockfile and changed only through compatibility review.
 
 ### 2. Mobile Application
 **Decision:** Flutter as the future mobile client, using platform-independent domain/API contracts.
-
-**Status:** APPROVAL-READY / IMPLEMENTATION DEFERRED.
-
+**Status:** APPROVED / IMPLEMENTATION DEFERRED.
 Mobile implementation begins only after web/core contracts are executable and mobile offline/resource requirements are verified.
 
 ### 3. Backend
 **Decision:** NestJS 11.x + TypeScript on Node.js.
-
-**Status:** APPROVAL-READY.
-
+**Status:** APPROVED.
 NestJS is an application/runtime mechanism and must not redefine the frozen domain architecture. Production patch versions are lockfile-pinned.
 
 ### 4. Authoritative Database
 **Decision:** PostgreSQL 18.x stable production line.
-
-**Status:** APPROVAL-READY.
-
-PostgreSQL is authoritative for persistent domain state. Current supported minor release should be used during implementation; the PostgreSQL project currently lists 18.4 as the supported 18.x minor release. PostgreSQL major versions receive five years of support. Evidence: official PostgreSQL versioning policy.
+**Status:** APPROVED.
+PostgreSQL is authoritative for persistent domain state. Current supported minor release should be used during implementation; the PostgreSQL project currently lists 18.4 as the supported 18.x minor release. PostgreSQL major versions receive five years of support.
 
 ### 5. Cache / Ephemeral Infrastructure
 **Decision:** Redis, strictly non-authoritative.
-
-**Status:** APPROVAL-READY.
-
+**Status:** APPROVED.
 Permitted uses include cache, rate limiting, transient coordination and queue infrastructure. Loss of Redis must never imply loss of authoritative user data.
 
 ### 6. Background Jobs / Queue
 **Decision:** Redis-backed queue infrastructure such as BullMQ, behind an internal job abstraction.
-
-**Status:** APPROVAL-READY.
-
-Mandatory semantics:
-- at-least-once assumption under failure/redelivery;
-- durable domain idempotency keys;
-- idempotent handlers;
-- database-side deduplication/invariants for critical mutations;
-- retry budgets;
-- dead-letter handling;
-- cancellation;
-- observability;
-- resource-aware scheduling.
+**Status:** APPROVED.
+Mandatory semantics: at-least-once assumption under failure/redelivery; durable domain idempotency keys; idempotent handlers; database-side deduplication/invariants for critical mutations; retry budgets; dead-letter handling; cancellation; observability; resource-aware scheduling.
 
 ### 7. Search / Retrieval
 **Decision:** PostgreSQL-first retrieval foundation, including full-text capabilities and vector-extension capability where justified.
-
-**Status:** APPROVAL-READY / EXPANSION DEFERRED.
-
+**Status:** APPROVED / EXPANSION DEFERRED.
 A dedicated search/vector platform requires measured evidence that PostgreSQL cannot satisfy latency, relevance, scale, indexing workload, authorization filtering, reliability or cost requirements. Such expansion requires a new TDR and Founder approval when material.
 
 ### 8. DECIVEXA AI
 **Decision:** Provider-neutral `DECIVEXA AI Gateway`.
-
-**Status:** APPROVAL-READY.
-
+**Status:** APPROVED.
 External AI providers are subordinate providers, not DECIVEXA's system of record or authoritative decision authority.
-
-Gateway requirements:
-- provider-neutral contract;
-- consent and policy evaluation;
-- data-classification-aware routing;
-- minimization/redaction;
-- provider allowlists;
-- timeout/cancellation;
-- retry and budget controls;
-- provenance/model/version recording;
-- safe degradation;
-- no silent sensitive-data provider switching;
-- no direct authoritative domain mutation by providers.
+Gateway requirements: provider-neutral contract; consent and policy evaluation; data-classification-aware routing; minimization/redaction; provider allowlists; timeout/cancellation; retry and budget controls; provenance/model/version recording; safe degradation; no silent sensitive-data provider switching; no direct authoritative domain mutation by providers.
 
 ### 9. Agent Runtime
 **Decision:** Application-controlled Agent Runtime contract.
-
-**Status:** APPROVAL-READY / ADVANCED DURABLE ORCHESTRATION DEFERRED.
-
+**Status:** APPROVED / ADVANCED DURABLE ORCHESTRATION DEFERRED.
 Every agent execution requires scope, permissions, authorization, resource/time budget, cancellation, audit/provenance, deterministic validation and safe failure behavior.
 
 ### 10. Secrets / Key Management
 **Decision:** Managed cloud secret and KMS infrastructure in production.
-
-**Status:** APPROVAL-READY / VENDOR DEFERRED.
-
+**Status:** APPROVED / VENDOR DEFERRED.
 Requirements: no secrets in Git, environment separation, least privilege, rotation, auditable access, encryption at rest/in transit, recovery procedures and practical portability.
 
 ### 11. Observability / RUM
 **Decision:** OpenTelemetry-compatible telemetry contract with backend selected through cloud evaluation.
-
-**Status:** APPROVAL-READY / BACKEND VENDOR DEFERRED.
-
+**Status:** APPROVED / BACKEND VENDOR DEFERRED.
 Required measurements include UI responsiveness, API latency, AI latency, queue latency, errors/crashes, resource consumption, network quality, continuity/degradation events and privacy-safe RUM. Sensitive user content must not enter telemetry by default.
 
 ### 12. Cloud / Deployment
 **Decision:** No final cloud vendor is selected in TD-08.
-
 **Status:** DEFERRED BY DESIGN.
-
 Cloud selection is a separate scorecard decision based on data residency, privacy/data ownership, managed PostgreSQL, cache/queue, KMS, backup/DR, observability, reliability, portability/exit strategy, operational burden, total cost, AI connectivity, continuity and security verification.
-
 No cloud may be selected merely because it offers convenient AI services.
 
 ## Consolidated Baseline
@@ -171,13 +126,22 @@ These are deliberate deferrals, not omissions.
 
 ## Gate Result
 
-**TD-08: APPROVAL-READY — FOUNDER APPROVAL REQUIRED.**
+**TD-08: APPROVED BY FOUNDER.**
 
 No implementation authorization is granted by this document.
 
+## Founder Approval Record
+
+**Founder / Originator / Owner:** Parsa Kiamanesh  
+**Approval status:** APPROVED  
+**Approval date:** 2026-08-21  
+**Approval reference:** Explicit Founder approval recorded in project governance conversation for `TD-08 — Final Technology Decision Baseline` under `DECIVEXA-ARCH-FREEZE-001 v1.0.0`.
+
+The Founder has explicitly approved the TD-08 technology baseline. This approval authorizes progression to **TD-09 — Implementation Readiness & Build Authorization**. It does not authorize arbitrary implementation, cloud/vendor selection outside the deferred decision process, or material deviation from the frozen architecture.
+
 ## Next Gate
 
-After explicit Founder approval, proceed to **TD-09 — Implementation Readiness & Build Authorization**. TD-09 must verify that the selected technology baseline can be translated into executable contracts, repository structure, CI/CD, environment strategy, migrations, testing, security verification and Cloud deployment planning without altering `DECIVEXA-ARCH-FREEZE-001`.
+Proceed to **TD-09 — Implementation Readiness & Build Authorization**. TD-09 must verify that the approved technology baseline can be translated into executable contracts, repository structure, CI/CD, environment strategy, migrations, testing, security verification and Cloud deployment planning without altering `DECIVEXA-ARCH-FREEZE-001`.
 
 ## Evidence References
 
