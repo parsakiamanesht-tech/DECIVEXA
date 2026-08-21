@@ -83,12 +83,13 @@ jobs:
           cat > /tmp/decivexa-reconstruction/drizzle.config.ts <<'EOF'
           import { defineConfig } from "drizzle-kit";
           export default defineConfig({
-            schema: "/tmp/decivexa-reconstruction/schema/*.ts",
-            out: "/tmp/decivexa-reconstruction/migrations",
+            schema: "./schema/*.ts",
+            out: "./migrations",
             dialect: "postgresql",
           });
           EOF
-          npx drizzle-kit generate --config=/tmp/decivexa-reconstruction/drizzle.config.ts
+          cd /tmp/decivexa-reconstruction
+          NODE_PATH="$GITHUB_WORKSPACE/apps/api/node_modules" node "$GITHUB_WORKSPACE/apps/api/node_modules/drizzle-kit/bin.cjs" generate --config=./drizzle.config.ts
           echo '--- reconstructed migration files ---'
           find /tmp/decivexa-reconstruction/migrations -maxdepth 2 -type f -print -exec sh -c 'echo "--- $1 ---"; cat "$1"' _ {} \;
 
