@@ -1,10 +1,10 @@
 # CORE-FOUNDATION-07 — Implementation Status
 
-Status: Implementation in progress on `feat/core-foundation-07-authentication`.
+Status: Implementation remediation in progress on `feat/core-foundation-07-authentication`.
 
 Baseline: `acb693a2b51f5fb508dad150050523ef2f270885`.
 
-Implemented so far:
+Implemented and remediated so far:
 - credential fields and migration
 - password hashing/verification
 - signed access tokens with expiry
@@ -13,7 +13,11 @@ Implemented so far:
 - authenticated identity propagation into RequestContext
 - web login/registration integration
 - API and web verification coverage
+- application ports for password and access-token capabilities
+- application-layer error taxonomy for authentication failures
+- negative API verification for duplicate registration, wrong password, missing token, and tampered token
+- explicit application boundary coverage for authentication use cases
 
 No changes have been made to `main` during implementation.
 
-Next gate: PR CI and runtime verification. Merge is not authorized by this status file.
+Merge remains unauthorized. Next gate: rerun PR CI, then perform final scope, architecture, security, migration, and runtime verification.
