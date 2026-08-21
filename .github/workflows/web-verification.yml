@@ -1,0 +1,46 @@
+name: Web Foundation Verification
+
+on:
+  push:
+    branches:
+      - main
+      - feat/web-restore-foundation
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/web-verification.yml'
+
+jobs:
+  web-verification:
+    name: Web Typecheck, Build and Runtime Verification
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: apps/web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apps/web/package.json
+
+      - name: Install dependencies
+        run: npm install --no-package-lock
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Runtime E2E verification
+        run: npm run test:e2e
