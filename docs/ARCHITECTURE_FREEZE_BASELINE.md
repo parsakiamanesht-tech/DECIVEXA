@@ -2,9 +2,10 @@
 
 **Baseline ID:** DECIVEXA-ARCH-FREEZE-001  
 **Version:** 1.0.0  
-**Status:** FROZEN — FOUNDER APPROVAL REQUIRED BEFORE IMPLEMENTATION  
+**Status:** FROZEN — FOUNDER APPROVED  
 **Authority:** Founder-controlled  
-**Effective date:** 2026-08-19
+**Effective date:** 2026-08-19  
+**Founder approval date:** 2026-08-21
 
 ## Purpose
 
@@ -69,12 +70,12 @@ This baseline identifier and version must be referenced by downstream implementa
 ## Founder Approval Record
 
 **Founder / Originator / Owner:** Parsa Kiamanesh  
-**Approval status:** PENDING EXPLICIT FOUNDER APPROVAL  
-**Approval date:** —  
-**Approval reference:** —
+**Approval status:** APPROVED  
+**Approval date:** 2026-08-21  
+**Approval reference:** Explicit Founder approval recorded in project governance conversation for `DECIVEXA-ARCH-FREEZE-001` v1.0.0.
 
-Until the approval fields above are completed by the Founder, this document is a registered baseline candidate and does not authorize implementation.
+The Founder has explicitly approved this baseline. This approval authorizes progression to the **Technology Decision Gate / Implementation Authorization**; it does not authorize arbitrary implementation or material deviation from the frozen architecture.
 
 ## Next Gate
 
-After explicit Founder approval, proceed to **Technology Decision Gate / Implementation Authorization**. Do not treat this record as authorization to begin coding by itself.
+Proceed to **Technology Decision Gate / Implementation Authorization**. All material technology and implementation decisions remain subject to explicit Founder approval and must demonstrate compliance with this frozen baseline.
