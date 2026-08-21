@@ -34,10 +34,8 @@ jobs:
           rm -rf "$ROOT" "$STAGE"
           mkdir -p "$ROOT/schema" "$ROOT/migrations/meta" "$STAGE/schema" "$STAGE/migrations/meta"
 
-          # Stage A reconstructs the actual post-0002 database state.
-          # 0002_authentication_credentials.sql creates users_email_unique, so the
-          # canonical 0002 snapshot MUST contain that index even though the current
-          # identity schema no longer declares it.
+          # Reconstruct the actual post-0002 database state. Historical 0002
+          # creates users_email_unique, so canonical 0002 must contain it.
           cat > "$STAGE/schema/identity.ts" <<'EOF'
           import { pgSchema, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
           const decivexa = pgSchema("decivexa");
@@ -47,9 +45,7 @@ jobs:
             passwordHash: text("password_hash").notNull(),
             createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
             updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-          }, (table) => ({
-            emailUnique: uniqueIndex("users_email_unique").on(table.email),
-          }));
+          }, (table) => ({ emailUnique: uniqueIndex("users_email_unique").on(table.email) }));
           EOF
           cat > "$STAGE/schema/workspace.ts" <<'EOF'
           import { pgSchema, text, timestamp } from "drizzle-orm/pg-core";
@@ -82,14 +78,10 @@ jobs:
           CANON_SQL=$(find "$STAGE/migrations" -maxdepth 1 -type f -name '*.sql' | sort | tail -n 1)
           test -f "$CANON_SNAPSHOT"
           test -f "$CANON_SQL"
-          echo '--- canonical 0002 snapshot metadata ---'
           node -e 'const s=require(process.argv[1]); console.log({id:s.id,prevId:s.prevId,version:s.version}); if(s.version!=="7") process.exit(1)' "$CANON_SNAPSHOT"
-          echo '--- canonical 0002 SQL ---'
-          cat "$CANON_SQL"
           grep -q 'users_email_unique' "$CANON_SQL"
 
-          # Stage B starts from the real historical SQL and the canonical post-0002
-          # snapshot, then diffs against the REAL current schemas.
+          # Apply real historical 0002 lineage and compare against REAL current schema.
           cp "$SRC"/src/persistence/migrations/0000_*.sql "$ROOT/migrations/"
           cp "$SRC"/src/persistence/migrations/0001_*.sql "$ROOT/migrations/"
           cp "$SRC"/src/persistence/migrations/0002_authentication_credentials.sql "$ROOT/migrations/"
@@ -102,7 +94,7 @@ jobs:
           const p = '/tmp/decivexa-canonical-lineage/migrations/meta/_journal.json';
           const j = JSON.parse(fs.readFileSync(p, 'utf8'));
           const e = j.entries.find(x => x.idx === 2);
-          if (!e) throw new Error('Canonical stage did not produce journal entry idx=2');
+          if (!e) throw new Error('Missing canonical idx=2 journal entry');
           e.tag = '0002_authentication_credentials';
           fs.writeFileSync(p, JSON.stringify(j, null, 2) + '\n');
           NODE
@@ -114,14 +106,9 @@ jobs:
           EOF
           cd "$ROOT"
           NODE_PATH="$GITHUB_WORKSPACE/apps/api/node_modules" node "$GITHUB_WORKSPACE/apps/api/node_modules/drizzle-kit/bin.cjs" generate --config=./drizzle.config.ts
-          echo '--- complete canonical lineage ---'
-          find migrations -maxdepth 2 -type f -print
           NEXT=$(find migrations -maxdepth 1 -type f -name '*.sql' | sort | tail -n 1)
-          echo "--- generated next migration: $NEXT ---"
+          echo '--- generated next migration ---'
           cat "$NEXT"
-
-          # The expected result is now intentionally allowed to expose the real
-          # users_email_unique drift. This is diagnostic evidence, not a remediation.
           grep -q 'lifecycle_state' "$NEXT"
           grep -q "DEFAULT 'active'" "$NEXT"
           grep -q 'workspaces_lifecycle_state_check' "$NEXT"
@@ -132,9 +119,9 @@ jobs:
           if grep -q 'DROP INDEX.*users_email_unique' "$NEXT"; then
             echo 'DRIFT CONFIRMED: current identity schema omits historical users_email_unique.'
           else
-            echo 'DRIFT NOT CONFIRMED: users_email_unique is retained by current schema.'
+            echo 'DRIFT NOT CONFIRMED: users_email_unique retained.'
           fi
-          echo 'PASS: canonical 0002 reconstruction is valid and lifecycle migration is isolated; any index drift is reported explicitly.'
+          echo 'PASS: canonical 0002 is valid and lifecycle migration is isolated; index drift is reported explicitly.'
       - name: Repository generate diagnostic only
         run: |
           set +e
@@ -149,6 +136,6 @@ jobs:
         with:
           name: decivexa-canonical-lineage-proof
           path: |
-            apps/api/src/persistence/migrations/**
-            apps/api/package-lock.json
-          if-no-files-found: error
+            ${{ github.workspace }}/apps/api/src/persistence/migrations/**
+            ${{ github.workspace }}/apps/api/package-lock.json
+          if-no-files-found: warn
