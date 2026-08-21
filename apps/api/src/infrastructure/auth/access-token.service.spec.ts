@@ -13,3 +13,16 @@ test("AccessTokenService issues and verifies tokens", () => {
   assert.equal(claims?.email, "user@example.com");
   assert.equal(service.verify(`${token}tampered`), undefined);
 });
+
+test("AccessTokenService rejects expired tokens", () => {
+  const service = new AccessTokenService();
+  const token = service.issue({ userId: "user-1", email: "user@example.com" });
+  const originalNow = Date.now;
+
+  try {
+    Date.now = () => originalNow() + 60 * 60 * 1000 + 1000;
+    assert.equal(service.verify(token), undefined);
+  } finally {
+    Date.now = originalNow;
+  }
+});
