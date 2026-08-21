@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import type { RequestContext } from "../../context/request-context";
-import type { PersonalState, PersonalStateAvailability, PersonalStateProvenance } from "../../core/personal-state/personal-state.model";
+import type { PersonalState, PersonalStateAvailability } from "../../core/personal-state/personal-state.model";
 import { PERSONAL_STATE_REPOSITORY } from "../../core/personal-state/personal-state.repository.token";
 import type { PersonalStatePatch, PersonalStateRepository } from "../../core/personal-state/personal-state.repository";
 import { failure, success, type Result } from "../../shared/result/result";
@@ -10,7 +10,6 @@ export type PersonalStateInput = Readonly<{
   timezone?: string | null;
   locale?: string | null;
   availability?: PersonalStateAvailability | null;
-  provenance?: PersonalStateProvenance;
 }>;
 
 export class PersonalStateValidationError extends Error {}
@@ -49,7 +48,7 @@ export class PersonalStateUseCase {
         timezone: value.timezone?.trim() ?? null,
         locale: value.locale?.trim() ?? null,
         availability: value.availability ?? null,
-        provenance: value.provenance ?? "declared",
+        provenance: "declared",
         now: new Date(),
       }));
     } catch (error) {
@@ -66,7 +65,6 @@ export class PersonalStateUseCase {
         timezone: value.timezone,
         locale: value.locale,
         availability: value.availability,
-        provenance: value.provenance,
       };
       const updated = await this.repository.updateForUser(context.userId, input.revision, patch, new Date());
       if (!updated) return failure(new PersonalStateConflictError("Revision conflict or state not initialized"));
