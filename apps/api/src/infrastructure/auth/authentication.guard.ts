@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { createRequestContext, type RequestContext } from "../../context/request-context";
-import { AccessTokenService } from "./access-token.service";
+import { ACCESS_TOKEN_SERVICE, type AccessTokenServicePort } from "../../application/auth/access-token.service.port";
 
 type AuthenticatedRequest = {
   headers: Record<string, string | string[] | undefined>;
@@ -10,7 +10,7 @@ type AuthenticatedRequest = {
 
 @Injectable()
 export class AuthenticationGuard implements CanActivate {
-  constructor(private readonly tokens: AccessTokenService) {}
+  constructor(private readonly tokens: AccessTokenServicePort) {}
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
