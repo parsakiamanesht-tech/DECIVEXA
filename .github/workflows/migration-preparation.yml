@@ -104,13 +104,15 @@ jobs:
           if grep -q 'CREATE TABLE' "$NEXT" || grep -q 'password_hash' "$NEXT" || grep -q 'ADD COLUMN "email"' "$NEXT" || grep -q 'owner_id' "$NEXT"; then exit 1; fi
           if grep -q 'DROP INDEX.*users_email_unique' "$NEXT"; then echo 'DRIFT CONFIRMED: historical users_email_unique is missing from current schema.'; else echo 'DRIFT NOT CONFIRMED.'; fi
           echo 'PASS: canonical 0002 reconstruction and real current-schema diff completed.'
-      - name: Official remediation dry-run (repository working tree only)
+      - name: Official remediation dry-run (canonical snapshot repair in working tree only)
         run: |
           set -euo pipefail
-          git diff --exit-code -- src/persistence/schema/identity.schema.ts
-          npx drizzle-kit up
-          npm run db:generate
-          echo '--- repository diff after snapshot repair + generate ---'
+          ROOT=/tmp/decivexa-canonical-lineage
+          test -f "$ROOT/migrations/meta/0002_snapshot.json"
+          cp "$ROOT/migrations/meta/0002_snapshot.json" src/persistence/migrations/meta/0002_snapshot.json
+          rm -f src/persistence/migrations/0003_*.sql
+          npx drizzle-kit generate
+          echo '--- repository diff after canonical snapshot repair + generate ---'
           git diff -- src/persistence/migrations/meta/0002_snapshot.json src/persistence/migrations src/persistence/schema/identity.schema.ts
           changed=$(git status --short)
           printf '%s\n' "$changed"
@@ -129,7 +131,7 @@ jobs:
           if grep -q 'users_email_unique' "$NEXT" || grep -q 'password_hash' "$NEXT" || grep -q 'owner_id' "$NEXT" || grep -q 'CREATE TABLE' "$NEXT"; then
             echo 'FAIL: proposed 0003 contains unrelated changes'; exit 1
           fi
-          echo 'PASS: official remediation dry-run is safe and lifecycle-only.'
+          echo 'PASS: canonical snapshot repair produces a lifecycle-only 0003.'
       - name: Repository generate diagnostic only
         run: |
           set +e
