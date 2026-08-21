@@ -1,11 +1,12 @@
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
+import type { PasswordServicePort } from "../../application/auth/password.service.port";
 
 const scrypt = promisify(scryptCallback);
 const KEY_LENGTH = 64;
 const SALT_LENGTH = 16;
 
-export class PasswordService {
+export class PasswordService implements PasswordServicePort {
   async hash(password: string): Promise<string> {
     const salt = randomBytes(SALT_LENGTH);
     const derived = (await scrypt(password, salt, KEY_LENGTH)) as Buffer;
