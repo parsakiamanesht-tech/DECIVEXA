@@ -36,6 +36,6 @@ import { PasswordService } from "./password.service";
       inject: [DatabaseService],
     },
   ],
-  exports: [AuthenticationGuard, AccessTokenService],
+  exports: [AuthenticationGuard, AccessTokenService, ACCESS_TOKEN_SERVICE],
 })
 export class AuthModule {}
