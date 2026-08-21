@@ -30,11 +30,10 @@ test('application use case receives explicit request context', async () => {
 });
 
 test('result contract represents success and failure without coupling to infrastructure', () => {
+  const error = new Error('failed');
+
   assert.deepEqual(success('ok'), { ok: true, value: 'ok' });
-  assert.deepEqual(failure({ code: 'TEST_FAILURE', message: 'failed' }), {
-    ok: false,
-    error: { code: 'TEST_FAILURE', message: 'failed' },
-  });
+  assert.deepEqual(failure(error), { ok: false, error });
 });
 
 test('domain and application boundary errors preserve their contracts', () => {
