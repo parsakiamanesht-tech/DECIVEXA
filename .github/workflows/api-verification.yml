@@ -33,6 +33,7 @@ jobs:
         working-directory: apps/api
     env:
       DATABASE_URL: postgresql://decivexa:decivexa@127.0.0.1:5432/decivexa
+      AUTH_TOKEN_SECRET: decivexa-ci-auth-token-secret-0123456789
     steps:
       - name: Checkout
         uses: actions/checkout@v4
