@@ -13,7 +13,7 @@
         "created_at": {"name":"created_at","type":"timestamp with time zone","primaryKey":false,"notNull":true},
         "updated_at": {"name":"updated_at","type":"timestamp with time zone","primaryKey":false,"notNull":true}
       },
-      "indexes": {"users_email_unique":{"name":"users_email_unique","columns":["email"],"isUnique":true,"concurrently":false,"method":"btree","where":null,"with":{}}},
+      "indexes": {"users_email_unique":{"name":"users_email_unique","columns":["email"],"isUnique":true,"concurrently":false,"method":"btree","with":{}}},
       "foreignKeys": {}, "compositePrimaryKeys": {}, "uniqueConstraints": {}, "policies": {}, "checkConstraints": {}, "isRLSEnabled": false
     },
     "decivexa.workspaces": {
@@ -36,12 +36,12 @@
         "timezone":{"name":"timezone","type":"text","primaryKey":false,"notNull":false},
         "locale":{"name":"locale","type":"text","primaryKey":false,"notNull":false},
         "availability":{"name":"availability","type":"text","primaryKey":false,"notNull":false},
-        "provenance":{"name":"provenance","type":"text","primaryKey":false,"notNull":true,"default":"'declared'"},
+        "provenance":{"name":"provenance","type":"text","primaryKey":true,"notNull":true,"default":"'declared'"},
         "revision":{"name":"revision","type":"integer","primaryKey":false,"notNull":true,"default":1},
         "created_at":{"name":"created_at","type":"timestamp with time zone","primaryKey":false,"notNull":true},
         "updated_at":{"name":"updated_at","type":"timestamp with time zone","primaryKey":false,"notNull":true}
       },
-      "indexes":{"personal_states_user_id_unique":{"name":"personal_states_user_id_unique","columns":["user_id"],"isUnique":true,"concurrently":false,"method":"btree","where":null,"with":{}}},
+      "indexes":{"personal_states_user_id_unique":{"name":"personal_states_user_id_unique","columns":["user_id"],"isUnique":true,"concurrently":false,"method":"btree","with":{}}},
       "foreignKeys":{"personal_states_user_id_users_id_fk":{"name":"personal_states_user_id_users_id_fk","tableFrom":"personal_states","tableTo":"users","schemaTo":"decivexa","columnsFrom":["user_id"],"columnsTo":["id"],"onDelete":"restrict","onUpdate":"no action"}},
       "compositePrimaryKeys":{},"uniqueConstraints":{},
       "policies":{},
