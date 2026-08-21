@@ -1,85 +1,150 @@
 # TD-09 — Readiness Remediation Plan
 
-**Status:** INCREMENT 002 BUILD AUTHORIZED — GLOBAL GATE REMAINS CONTROLLED  
+**Status:** CLOSED — INCREMENT 002 VERIFIED AND MERGED  
 **Governing Architecture:** `DECIVEXA-ARCH-FREEZE-001 / v1.0.0`  
 **Technology Baseline:** `TD-08`  
-**Purpose:** Record the evidence closure and explicit Founder Build Authorization for the narrowly scoped Implementation Increment 002.
+**Purpose:** Final audited closure record for TD-09 Increment 002.
 
-## 1. Governance Position
+## 1. Final Closure Decision
 
-This authorization applies **only** to `IMPLEMENTATION_INCREMENT_002_CONTRACT.md` and its approved branch/PR scope. It does not authorize unrelated implementation, architecture changes, technology changes, cloud selection, production deployment, or future increments.
+Increment 002 was explicitly authorized by Founder approval, implemented within the approved contract, reviewed for scope, merged as PR #13, and successfully verified on `main` after merge.
 
-## 2. Increment 002 Scope
+**Final result:** `TD-09 — Increment 002 CLOSED / VERIFIED`
 
-Increment 002 is limited to verification-infrastructure/foundation-readiness alignment:
+This closure applies only to Increment 002. It does not authorize any future increment or material project change.
 
-- align API verification to PostgreSQL 18.x;
+## 2. Approved Increment
+
+`docs/IMPLEMENTATION_INCREMENT_002_CONTRACT.md`
+
+Scope:
+- align API verification with PostgreSQL 18.x;
 - correct and verify the PostgreSQL 18.x assertion;
-- preserve the existing API verification sequence and authentication verification;
+- preserve the existing verification sequence and authentication verification;
 - produce auditable CI evidence.
 
-Explicit non-goals remain: AI Gateway, Agent Runtime, Memory, Personal Intelligence, dedicated search/vector infrastructure, cloud/vendor selection, mobile, production deployment and unrelated application feature expansion.
+Explicit non-goals remained AI Gateway, Agent Runtime, Memory, Personal Intelligence, dedicated search/vector infrastructure, cloud/vendor selection, mobile, production deployment and unrelated application feature expansion.
 
-## 3. Evidence Closure
+## 3. Pre-Merge Evidence
 
-### R1 — Scope
-**PASS** — Increment 002 contract explicitly defines scope, non-goals, acceptance criteria and rollback expectations.
+API Verification #184:
+- Run: `32491698755`
+- Commit: `9a46ba07ac33df7ef2b86779442478706d1c8b2b`
+- Result: **SUCCESS**
+- PostgreSQL 18.x verification: PASS
+- migrations: PASS
+- typecheck/tests: PASS
+- build/startup: PASS
+- registration/login/authenticated context: PASS
+- negative authentication checks: PASS
 
-### R2 — PostgreSQL 18.x Alignment
-**PASS** — API Verification Run `32491698755` on commit `9a46ba07ac33df7ef2b86779442478706d1c8b2b` completed successfully. PostgreSQL 18.x startup/version assertion, migrations, tests, build, application startup, registration, login, authenticated context and negative authentication checks all passed.
+Evidence artifact:
+`decivexa-api-verification-evidence`
 
-### R3 — Migration Recovery / Rollback
-**PASS FOR INCREMENT 002** — No production schema or production data is changed by this increment. The operational rollback for the increment is reverting the CI workflow/configuration change. Full migration recovery controls remain mandatory for any future database-affecting increment.
+## 4. Merge Record
 
-### R4 — Backup / Restore
-**NOT APPLICABLE TO INCREMENT 002** — The increment does not introduce production persistence changes or authorize production deployment. This is a scoped determination, not a claim that production backup/restore is implemented. Future persistence-critical increments must reopen R4.
+PR: `#13`
 
-### R5 — Security / Privacy
-**PASS** — No new user-data capability, external provider, secret class or authorization boundary is introduced. Existing authentication negative checks passed in the verified CI run.
+Merge commit:
+`ca3c3bd878ca9c2ba6c187f73dd4314a7fa86f13`
 
-### R6 — CI / Runtime Evidence
-**PASS** — Full API Verification #184 succeeded and uploaded `decivexa-api-verification-evidence` with digest `sha256:592e63d578a4dffabe23c67c55d20b739fb78ac257e83b19438501a0e0a38a1e`.
+The PR was reviewed for exact Increment 002 scope before merge. No application/domain/architecture scope expansion was introduced.
 
-### R7 — Architecture / Technology Compliance
-**PASS** — Increment remains within `DECIVEXA-ARCH-FREEZE-001` and TD-08. No deferred technology or architectural capability was introduced.
+## 5. Post-Merge Verification — Final Evidence
 
-## 4. Founder Build Authorization
+Post-Merge API Verification #185:
 
-**Founder:** Parsa Kiamanesh  
-**Decision:** APPROVED  
-**Approval date:** 2026-08-21  
-**Authorization:** Build/implementation of **Increment 002 only** is explicitly authorized.
+- Run: `32492226157`
+- Branch: `main`
+- Head SHA: `ca3c3bd878ca9c2ba6c187f73dd4314a7fa86f13`
+- Result: **SUCCESS**
 
-This authorization is bounded by the exact contract in `docs/IMPLEMENTATION_INCREMENT_002_CONTRACT.md`. Any material deviation must stop execution and return to Founder Gate.
+This is the authoritative post-merge verification because the workflow run head SHA exactly matches the Merge Commit on `main`.
 
-## 5. Merge Rule
+Verified sequence:
+- PostgreSQL 18.x startup/version assertion;
+- dependency installation;
+- typecheck;
+- workspace tests;
+- migration generation;
+- migration application;
+- database connectivity;
+- build;
+- application startup/health;
+- registration;
+- login;
+- authenticated context;
+- negative authentication checks;
+- evidence artifact upload;
+- cleanup.
 
-Build Authorization is **not** Merge Authorization.
+Post-merge artifact:
+`decivexa-api-verification-evidence`
 
-PR #13 remains subject to final PR review, required CI checks, branch protection and repository merge policy. No merge is implied by this authorization.
+Post-merge artifact digest:
+`sha256:92ffedb1ed16b52d9fc329eac8f0f766d4735b7729d9225993f63b2bcac80a71`
 
-## 6. Future-Increment Controls
+## 6. R3 — Migration Recovery / Rollback
 
-The following remain closed unless separately evidenced and authorized:
+**Status:** PASS FOR INCREMENT 002 / OPEN FOR FUTURE DB-AFFECTING INCREMENTS
 
-- AI Gateway implementation;
-- Agent Runtime implementation;
+Increment 002 changed verification infrastructure only and did not alter production schema or production data. The operational rollback for this increment is reverting the CI workflow/configuration change.
+
+Any future database-affecting increment must provide applicable migration recovery/rollback evidence before authorization.
+
+## 7. R4 — Backup / Restore
+
+**Status:** NOT APPLICABLE TO INCREMENT 002 / OPEN FOR FUTURE PERSISTENCE-CRITICAL INCREMENTS
+
+Increment 002 introduced no production persistence change and no production deployment. This scoped determination is not a claim that production backup/restore has been implemented.
+
+Future persistence-critical or production-data increments must reopen R4 and provide applicable backup/restore evidence before authorization.
+
+## 8. Final Evidence Matrix
+
+| Criterion | Result |
+|---|---|
+| Increment 002 scope | 🟢 PASS |
+| Founder authorization | 🟢 PASS |
+| PostgreSQL 18.x alignment | 🟢 PASS |
+| Pre-merge CI #184 | 🟢 PASS |
+| PR #13 scope review | 🟢 PASS |
+| PR #13 merge | 🟢 COMPLETE |
+| Post-merge CI #185 | 🟢 PASS |
+| `main` verification | 🟢 PASS |
+| Migration verification | 🟢 PASS |
+| Runtime/authentication verification | 🟢 PASS |
+| Negative security checks | 🟢 PASS |
+| Evidence artifact | 🟢 PASS |
+| Architecture/TD-08 compliance | 🟢 PASS |
+
+## 9. Governance Boundary After Closure
+
+Closure of Increment 002 does **not** grant authorization for:
+
+- AI Gateway;
+- Agent Runtime;
 - Memory / Personal Intelligence persistence;
 - dedicated search/vector infrastructure;
 - cloud/vendor selection;
 - mobile infrastructure;
 - production deployment;
-- persistence-critical schema changes without migration recovery evidence;
-- production-data changes without applicable backup/restore evidence.
+- persistence-critical schema changes without recovery evidence;
+- production-data changes without applicable backup/restore evidence;
+- any other material scope, architecture, security, technology or product change.
 
-## 7. Gate Result
+Each future material increment requires its own Founder-controlled gate.
 
-**TD-09 — Increment 002 Build Authorization: 🟢 AUTHORIZED**
+## 10. Final Gate
 
-**Global / future implementation authorization: 🔴 NOT GRANTED**
+**TD-09 — Increment 002: 🟢 CLOSED / VERIFIED**
 
-The next operational step is to perform the final PR #13 review and verify that the PR diff remains exactly within the authorized Increment 002 contract before any merge decision.
+**`main` after merge: 🟢 VERIFIED**
 
-## 8. Audit Rule
+**Future implementation authorization: 🔴 NOT GRANTED**
 
-CI success is evidence for the tested commit only. Founder authorization is bounded to the approved increment only. Neither constitutes permission to expand scope or bypass subsequent Founder Gates.
+**Next action:** no implementation begins automatically. A future increment must first be defined, reviewed against the architecture freeze and technology baseline, and explicitly approved by the Founder before execution.
+
+## 11. Audit Rule
+
+CI success is evidence for the exact tested commit. The authoritative post-merge evidence is Run #185 because its head SHA equals the Merge Commit. Founder authorization is bounded to Increment 002 and does not constitute authorization for future scope.
