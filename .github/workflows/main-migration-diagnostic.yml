@@ -1,62 +1,73 @@
-name: DECIVEXA Main Migration Diagnostic
+name: DECIVEXA Snapshot Repair Diagnostic
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - main
+      - 'diagnostic/snapshot-index-shape'
 
 permissions:
   contents: read
 
 jobs:
-  migration-diagnostic:
+  snapshot-repair-diagnostic:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
     steps:
-      - name: Checkout main
+      - name: Checkout tested commit
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
-      - name: Verify checkout is main HEAD
+      - name: Verify tested commit and main base
+        working-directory: .
         run: |
           set -euo pipefail
-          expected="$(git rev-parse origin/main)"
-          actual="$(git rev-parse HEAD)"
-          echo "origin/main=$expected"
-          echo "HEAD=$actual"
-          test "$actual" = "$expected"
+          git fetch origin main --quiet
+          base="$(git merge-base HEAD origin/main)"
+          main="$(git rev-parse origin/main)"
+          head="$(git rev-parse HEAD)"
+          echo "origin/main=$main"
+          echo "HEAD=$head"
+          echo "merge-base=$base"
+          test "$base" = "$main"
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
+
+      - name: Report resolved Drizzle versions
+        run: |
+          set -euo pipefail
+          npx drizzle-kit --version
+          npm ls drizzle-kit drizzle-orm --depth=0
 
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Generate migration diagnostic in isolated temp directory
+      - name: Validate snapshots and generate in isolated workspace
         run: |
           set -euo pipefail
           tmpdir="$(mktemp -d)"
           trap 'rm -rf "$tmpdir"' EXIT
-          cp -R apps/api/src/persistence "$tmpdir/persistence"
-          cp drizzle.config.ts "$tmpdir/drizzle.config.ts"
-          cp package.json "$tmpdir/package.json"
-          if [ -f package-lock.json ]; then cp package-lock.json "$tmpdir/package-lock.json"; fi
-          echo "Diagnostic workspace: $tmpdir"
-          cd "$tmpdir"
-          npx drizzle-kit generate --config=drizzle.config.ts
+          cp -a . "$tmpdir/apps-api"
+          cd "$tmpdir/apps-api"
+          echo "Diagnostic workspace: $PWD"
+          npx drizzle-kit generate
           echo "--- generated migration files ---"
-          find . -maxdepth 5 -type f | sort | sed -n '1,200p'
+          find src/persistence/migrations -maxdepth 2 -type f | sort | sed -n '1,200p'
 
-      - name: Verify repository working tree is unchanged
+      - name: Verify only the two intended snapshot files differ from main
+        working-directory: .
         run: |
           set -euo pipefail
-          git status --short
-          test -z "$(git status --porcelain)"
+          changed="$(git diff --name-only origin/main...HEAD | sort)"
+          printf '%s\n' "$changed"
+          test "$changed" = $'apps/api/src/persistence/migrations/meta/0002_snapshot.json\napps/api/src/persistence/migrations/meta/0003_snapshot.json'
