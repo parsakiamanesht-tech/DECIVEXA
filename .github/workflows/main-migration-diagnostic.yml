@@ -1,0 +1,62 @@
+name: DECIVEXA Main Migration Diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  migration-diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify checkout is main HEAD
+        run: |
+          set -euo pipefail
+          expected="$(git rev-parse origin/main)"
+          actual="$(git rev-parse HEAD)"
+          echo "origin/main=$expected"
+          echo "HEAD=$actual"
+          test "$actual" = "$expected"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Generate migration diagnostic in isolated temp directory
+        run: |
+          set -euo pipefail
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
+          cp -R apps/api/src/persistence "$tmpdir/persistence"
+          cp drizzle.config.ts "$tmpdir/drizzle.config.ts"
+          cp package.json "$tmpdir/package.json"
+          if [ -f package-lock.json ]; then cp package-lock.json "$tmpdir/package-lock.json"; fi
+          echo "Diagnostic workspace: $tmpdir"
+          cd "$tmpdir"
+          npx drizzle-kit generate --config=drizzle.config.ts
+          echo "--- generated migration files ---"
+          find . -maxdepth 5 -type f | sort | sed -n '1,200p'
+
+      - name: Verify repository working tree is unchanged
+        run: |
+          set -euo pipefail
+          git status --short
+          test -z "$(git status --porcelain)"
