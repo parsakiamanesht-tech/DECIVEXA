@@ -59,7 +59,7 @@ jobs:
         working-directory: apps/api
       - name: Start application
         run: |
-          DATABASE_URL=postgresql://decivexa:decivexa@localhost:5432/decivexa npm start > /tmp/decivexa-api.log 2>&1 &
+          DATABASE_URL=postgresql://decivexa:decivexa@localhost:5432/decivexa AUTH_TOKEN_SECRET="ci-only-decivexa-auth-secret-32chars" npm start > /tmp/decivexa-api.log 2>&1 &
           for i in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:3000/health > /tmp/decivexa-health.json; then
               exit 0
