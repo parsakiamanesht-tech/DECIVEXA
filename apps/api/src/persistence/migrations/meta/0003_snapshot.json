@@ -47,7 +47,8 @@
       "policies":{},
       "checkConstraints":{
         "personal_states_availability_check":{"name":"personal_states_availability_check","value":"availability is null or availability in ('available','limited','unavailable')"},
-        "personal_states_provenance_check":{"name":"personal_states_provenance_check","value":"provenance in ('declared','observed')"}
+        "personal_states_provenance_check":{"name":"personal_states_provenance_check","value":"provenance in ('declared','observed')"},
+        "personal_states_revision_check":{"name":"personal_states_revision_check","value":"revision is null or revision >= 1"}
       },
       "isRLSEnabled":false
     }
