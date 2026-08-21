@@ -1,9 +1,22 @@
 # CORE-FOUNDATION-07 — Implementation Authorization
 
-Status: Founder-approved for implementation on `feat/core-foundation-07-authentication` only.
+Status: **CLOSED / VERIFIED / MERGED**.
 
-Baseline: `acb693a2b51f5fb508dad150050523ef2f270885`
+Authorization record for the CORE-FOUNDATION-07 Identity & Authentication Boundary implementation.
 
-Scope: Identity & Authentication Boundary.
+Implementation was performed on `feat/core-foundation-07-authentication` from the verified baseline and was subsequently validated by the required API and Web CI gates.
 
-Implementation must preserve `main` as the verified baseline until a reviewed PR is merged and direct `main` CI succeeds.
+Final implementation commit: `6764f23ec5cf81bb3ccaf7b486412660f8dd9c57`.
+
+Merge commit: `3a4d184cd55180c16694311ab9497fad2052be68`.
+
+Verification:
+- API Verification #179: PASS
+- Web Foundation Verification #76: PASS
+- Runtime registration/login/authenticated-context verification: PASS
+
+Founder merge approval: **GRANTED**.
+
+Gate result: **AUTHORIZED IMPLEMENTATION COMPLETED AND MERGED**.
+
+This record does not authorize any new scope. The next feature/gate requires its own explicit authorization before implementation.
