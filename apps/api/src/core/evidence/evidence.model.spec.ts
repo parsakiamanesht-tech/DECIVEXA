@@ -1,7 +1,10 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
 import type { Evidence, EvidenceVersion } from "./evidence.model";
 
-describe("Evidence domain contract", () => {
-  it("keeps logical evidence identity separate from version identity", () => {
+test("Evidence domain contract", async (t) => {
+  await t.test("keeps logical evidence identity separate from version identity", () => {
     const evidence: Evidence = {
       id: "evidence-1",
       userId: "user-1",
@@ -22,11 +25,11 @@ describe("Evidence domain contract", () => {
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     };
 
-    expect(version.evidenceId).toBe(evidence.id);
-    expect(version.id).not.toBe(evidence.id);
+    assert.equal(version.evidenceId, evidence.id);
+    assert.notEqual(version.id, evidence.id);
   });
 
-  it("allows unknown confidence without manufacturing a value", () => {
+  await t.test("allows unknown confidence without manufacturing a value", () => {
     const version: EvidenceVersion = {
       id: "evidence-version-2",
       evidenceId: "evidence-2",
@@ -40,6 +43,6 @@ describe("Evidence domain contract", () => {
       createdAt: new Date("2026-01-01T00:01:00.000Z"),
     };
 
-    expect(version.confidence).toBeNull();
+    assert.equal(version.confidence, null);
   });
 });
