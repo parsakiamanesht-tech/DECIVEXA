@@ -111,8 +111,16 @@ jobs:
           test -f "$ROOT/migrations/meta/0002_snapshot.json"
           cp "$ROOT/migrations/meta/0002_snapshot.json" src/persistence/migrations/meta/0002_snapshot.json
           rm -f src/persistence/migrations/0003_*.sql
+          rm -f src/persistence/migrations/meta/0003_snapshot.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const p = 'src/persistence/migrations/meta/_journal.json';
+          const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+          j.entries = j.entries.filter(e => e.idx <= 2);
+          fs.writeFileSync(p, JSON.stringify(j, null, 2) + '\n');
+          NODE
           npx drizzle-kit generate
-          echo '--- repository diff after canonical snapshot repair + generate ---'
+          echo '--- repository diff after canonical snapshot repair + lineage rebuild + generate ---'
           git diff -- src/persistence/migrations/meta/0002_snapshot.json src/persistence/migrations src/persistence/schema/identity.schema.ts
           changed=$(git status --short)
           printf '%s\n' "$changed"
