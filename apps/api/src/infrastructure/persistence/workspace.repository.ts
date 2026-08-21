@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
-import type { DatabaseClient } from "../../../persistence/database";
-import { workspaces } from "../../../persistence/schema/workspace.schema";
-import type { Workspace, WorkspaceLifecycleState } from "../../../core/resource/workspace.model";
-import type { WorkspaceRepository } from "../../../core/resource/workspace.repository";
+import type { DatabaseClient } from "../../persistence/database";
+import { workspaces } from "../../persistence/schema/workspace.schema";
+import type { Workspace, WorkspaceLifecycleState } from "../../core/resource/workspace.model";
+import type { WorkspaceRepository } from "../../core/resource/workspace.repository";
 
 function toDomainWorkspace(row: typeof workspaces.$inferSelect): Workspace {
   return {
