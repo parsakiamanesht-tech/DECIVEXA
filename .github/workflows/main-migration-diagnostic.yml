@@ -74,6 +74,43 @@ jobs:
           else
             echo "No generated SQL migration file found."
           fi
+          echo "--- GENERATED SNAPSHOT CHECK CONSTRAINT EVIDENCE ---"
+          snapshot="$(find src/persistence/migrations/meta -maxdepth 1 -type f -name '*_snapshot.json' | sort | tail -n 1)"
+          if [ -n "$snapshot" ]; then
+            node - "$snapshot" <<'NODE'
+const fs = require('fs');
+const path = process.argv[2];
+const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+const table = data.tables?.['decivexa.personal_states'];
+console.log(`snapshot=${path}`);
+if (!table) {
+  console.log('personal_states table not found in generated snapshot');
+  process.exit(0);
+}
+console.log(JSON.stringify({
+  checkConstraints: table.checkConstraints ?? {}
+}, null, 2));
+NODE
+          else
+            echo "No generated snapshot file found."
+          fi
+          echo "--- END GENERATED SNAPSHOT CHECK CONSTRAINT EVIDENCE ---"
+          echo "--- COMMITTED 0003 SNAPSHOT CHECK CONSTRAINT EVIDENCE ---"
+          node - src/persistence/migrations/meta/0003_snapshot.json <<'NODE'
+const fs = require('fs');
+const path = process.argv[2];
+const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+const table = data.tables?.['decivexa.personal_states'];
+console.log(`snapshot=${path}`);
+if (!table) {
+  console.log('personal_states table not found in committed snapshot');
+  process.exit(0);
+}
+console.log(JSON.stringify({
+  checkConstraints: table.checkConstraints ?? {}
+}, null, 2));
+NODE
+          echo "--- END COMMITTED 0003 SNAPSHOT CHECK CONSTRAINT EVIDENCE ---"
 
       - name: Verify intended repair files only
         if: ${{ github.event_name != 'pull_request' }}
@@ -87,6 +124,6 @@ jobs:
       - name: Report diagnostic result
         run: |
           echo "SNAPSHOT REPAIR DIAGNOSTIC COMPLETE"
-          echo "The generated SQL above is the authoritative evidence for the next migration decision."
+          echo "The generated SQL and snapshot constraint evidence above are authoritative evidence for the next migration decision."
 
 # Diagnostic-only trigger preservation comment: this workflow intentionally runs on the repair branch.
