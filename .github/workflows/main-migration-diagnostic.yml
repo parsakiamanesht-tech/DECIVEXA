@@ -1,8 +1,11 @@
-name: DECIVEXA Main Migration Diagnostic
+name: DECIVEXA Snapshot Repair Diagnostic
 
 on:
   workflow_dispatch:
   push:
+    branches:
+      - diagnostic/snapshot-index-shape
+  pull_request:
     branches:
       - main
 
@@ -10,53 +13,89 @@ permissions:
   contents: read
 
 jobs:
-  migration-diagnostic:
+  snapshot-repair-diagnostic:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
     steps:
-      - name: Checkout main
+      - name: Checkout tested commit
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
 
-      - name: Verify checkout is main HEAD
+      - name: Verify tested commit and main base
+        working-directory: .
         run: |
           set -euo pipefail
-          expected="$(git rev-parse origin/main)"
-          actual="$(git rev-parse HEAD)"
-          echo "origin/main=$expected"
-          echo "HEAD=$actual"
-          test "$actual" = "$expected"
+          git fetch origin main --quiet
+          base="$(git merge-base HEAD origin/main)"
+          main="$(git rev-parse origin/main)"
+          head="$(git rev-parse HEAD)"
+          echo "origin/main=$main"
+          echo "HEAD=$head"
+          echo "merge-base=$base"
+          test "$base" = "$main"
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
+
+      - name: Report resolved Drizzle versions
+        run: |
+          set -euo pipefail
+          npx drizzle-kit --version
+          npm ls drizzle-kit drizzle-orm --depth=0
 
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Generate migration diagnostic in isolated temp directory
+      - name: Validate snapshots and generate in isolated workspace
         run: |
           set -euo pipefail
           tmpdir="$(mktemp -d)"
           trap 'rm -rf "$tmpdir"' EXIT
-          cp -R apps/api/src/persistence "$tmpdir/persistence"
-          cp drizzle.config.ts "$tmpdir/drizzle.config.ts"
-          cp package.json "$tmpdir/package.json"
-          if [ -f package-lock.json ]; then cp package-lock.json "$tmpdir/package-lock.json"; fi
-          echo "Diagnostic workspace: $tmpdir"
-          cd "$tmpdir"
-          npx drizzle-kit generate --config=drizzle.config.ts
+          cp -a . "$tmpdir/apps-api"
+          cd "$tmpdir/apps-api"
+          echo "Diagnostic workspace: $PWD"
+          npx drizzle-kit generate
           echo "--- generated migration files ---"
-          find . -maxdepth 5 -type f | sort | sed -n '1,200p'
+          find src/persistence/migrations -maxdepth 1 -type f -name '*.sql' -print | sort
+          generated="$(find src/persistence/migrations -maxdepth 1 -type f -name '*.sql' | sort | tail -n 1)"
+          if [ -n "$generated" ]; then
+            echo "--- GENERATED SQL: $generated ---"
+            cat "$generated"
+            echo "--- END GENERATED SQL ---"
+          else
+            echo "No generated SQL migration file found."
+          fi
+          echo "--- GENERATED SNAPSHOT CHECK CONSTRAINT EVIDENCE ---"
+          snapshot="$(find src/persistence/migrations/meta -maxdepth 1 -type f -name '*_snapshot.json' | sort | tail -n 1)"
+          if [ -n "$snapshot" ]; then
+            node -e 'const fs=require("fs"); const path=process.argv[1]; const data=JSON.parse(fs.readFileSync(path,"utf8")); const table=data.tables?.["decivexa.personal_states"]; console.log(`snapshot=${path}`); if(!table){console.log("personal_states table not found in generated snapshot"); process.exit(0);} console.log(JSON.stringify({checkConstraints:table.checkConstraints??{}},null,2));' "$snapshot"
+          else
+            echo "No generated snapshot file found."
+          fi
+          echo "--- END GENERATED SNAPSHOT CHECK CONSTRAINT EVIDENCE ---"
+          echo "--- COMMITTED 0003 SNAPSHOT CHECK CONSTRAINT EVIDENCE ---"
+          node -e 'const fs=require("fs"); const path=process.argv[1]; const data=JSON.parse(fs.readFileSync(path,"utf8")); const table=data.tables?.["decivexa.personal_states"]; console.log(`snapshot=${path}`); if(!table){console.log("personal_states table not found in committed snapshot"); process.exit(0);} console.log(JSON.stringify({checkConstraints:table.checkConstraints??{}},null,2));' src/persistence/migrations/meta/0003_snapshot.json
+          echo "--- END COMMITTED 0003 SNAPSHOT CHECK CONSTRAINT EVIDENCE ---"
 
-      - name: Verify repository working tree is unchanged
+      - name: Report repository drift scope
+        working-directory: .
         run: |
           set -euo pipefail
-          git status --short
-          test -z "$(git status --porcelain)"
+          git diff --name-only origin/main...HEAD | sort | grep -v '^\.github/workflows/main-migration-diagnostic\.yml$' || true
+          echo "Workflow files are excluded from migration-repair scope; this step is informational only."
+
+      - name: Report diagnostic result
+        run: |
+          echo "SNAPSHOT REPAIR DIAGNOSTIC COMPLETE"
+          echo "The generated SQL and snapshot constraint evidence above are authoritative evidence for the next migration decision."
+
+# Diagnostic-only trigger preservation comment: this workflow intentionally runs on the repair branch.

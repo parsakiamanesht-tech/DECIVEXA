@@ -41,7 +41,7 @@
         "created_at":{"name":"created_at","type":"timestamp with time zone","primaryKey":false,"notNull":true},
         "updated_at":{"name":"updated_at","type":"timestamp with time zone","primaryKey":false,"notNull":true}
       },
-      "indexes":{"personal_states_user_id_unique":{"name":"personal_states_user_id_unique","columns":["user_id"],"isUnique":true,"concurrently":false,"method":"btree","where":null,"with":{}}},
+      "indexes":{"personal_states_user_id_unique":{"name":"personal_states_user_id_unique","columns":[{"expression":"user_id","isExpression":false,"asc":true,"nulls":"last"}],"isUnique":true,"concurrently":false,"method":"btree","with":{}}},
       "foreignKeys":{"personal_states_user_id_users_id_fk":{"name":"personal_states_user_id_users_id_fk","tableFrom":"personal_states","tableTo":"users","schemaTo":"decivexa","columnsFrom":["user_id"],"columnsTo":["id"],"onDelete":"restrict","onUpdate":"no action"}},
       "compositePrimaryKeys":{},"uniqueConstraints":{},
       "policies":{},
