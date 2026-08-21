@@ -42,6 +42,14 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Report installed Drizzle versions
+        run: |
+          set -euo pipefail
+          echo "--- drizzle-kit version ---"
+          npx drizzle-kit --version
+          echo "--- npm dependency tree ---"
+          npm ls drizzle-kit drizzle-orm --depth=0
+
       - name: Typecheck
         run: npm run typecheck
 
