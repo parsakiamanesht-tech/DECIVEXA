@@ -1,4 +1,13 @@
-import { pgSchema, integer, text, timestamp, uniqueIndex, check } from "drizzle-orm/pg-core";
+import {
+  pgSchema,
+  integer,
+  real,
+  text,
+  timestamp,
+  uniqueIndex,
+  check,
+  foreignKey,
+} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { users } from "./identity.schema";
 
@@ -26,15 +35,16 @@ export const evidence = decivexa.table(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
   },
+  (table) => [
+    uniqueIndex("evidence_id_user_id_unique").on(table.id, table.userId),
+  ],
 );
 
 export const evidenceVersions = decivexa.table(
   "evidence_versions",
   {
     id: text("id").primaryKey(),
-    evidenceId: text("evidence_id")
-      .notNull()
-      .references(() => evidence.id, { onDelete: "restrict" }),
+    evidenceId: text("evidence_id").notNull(),
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
@@ -46,7 +56,7 @@ export const evidenceVersions = decivexa.table(
       .default("active"),
     observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
     acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
-    confidence: integer("confidence"),
+    confidence: real("confidence"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   },
   (table) => [
@@ -54,6 +64,11 @@ export const evidenceVersions = decivexa.table(
       table.evidenceId,
       table.version,
     ),
+    foreignKey({
+      columns: [table.evidenceId, table.userId],
+      foreignColumns: [evidence.id, evidence.userId],
+      name: "evidence_versions_evidence_owner_fk",
+    }).onDelete("restrict"),
     check(
       "evidence_versions_version_check",
       sql`${table.version} >= 1`,
@@ -65,10 +80,6 @@ export const evidenceVersions = decivexa.table(
     check(
       "evidence_versions_lifecycle_check",
       sql`${table.lifecycle} in ('active','superseded','corrected','revoked','disputed')`,
-    ),
-    check(
-      "evidence_versions_confidence_check",
-      sql`${table.confidence} is null or (${table.confidence} >= 0 and ${table.confidence} <= 100)`,
     ),
   ],
 );
