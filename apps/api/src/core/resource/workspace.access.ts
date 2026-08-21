@@ -1,4 +1,4 @@
-import type { Workspace } from "./workspace.schema";
+import type { Workspace } from "./workspace.model";
 
 export type WorkspaceAccessAction = "read" | "write";
 

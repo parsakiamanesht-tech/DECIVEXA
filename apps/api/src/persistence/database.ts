@@ -9,3 +9,5 @@ export const createDatabase = (connectionString: string) => {
     pool,
   };
 };
+
+export type DatabaseClient = ReturnType<typeof createDatabase>["client"];
