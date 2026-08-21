@@ -28,15 +28,14 @@ jobs:
         run: npm run typecheck
       - name: Canonical 0002 reconstruction and real drift proof
         run: |
-          set -eu
+          set -euo pipefail
           ROOT=/tmp/decivexa-canonical-lineage
           STAGE=/tmp/decivexa-auth-stage
           rm -rf "$ROOT" "$STAGE"
           mkdir -p "$ROOT/schema" "$ROOT/migrations/meta" "$STAGE/schema" "$STAGE/migrations/meta"
 
-          # Reconstruct the actual post-0002 database state. Historical 0002
-          # creates users_email_unique, so canonical 0002 must contain it.
-          cat > "$STAGE/schema/identity.ts" <<'EOF'
+          # Stage A: reproduce the post-0002 state that the historical SQL created.
+          cat > "$STAGE/schema/identity.schema.ts" <<'EOF'
           import { pgSchema, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
           const decivexa = pgSchema("decivexa");
           export const users = decivexa.table("users", {
@@ -45,11 +44,13 @@ jobs:
             passwordHash: text("password_hash").notNull(),
             createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
             updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-          }, (table) => ({ emailUnique: uniqueIndex("users_email_unique").on(table.email) }));
+          }, (table) => ({
+            emailUnique: uniqueIndex("users_email_unique").on(table.email),
+          }));
           EOF
-          cat > "$STAGE/schema/workspace.ts" <<'EOF'
+          cat > "$STAGE/schema/workspace.schema.ts" <<'EOF'
           import { pgSchema, text, timestamp } from "drizzle-orm/pg-core";
-          import { users } from "./identity";
+          import { users } from "./identity.schema";
           const decivexa = pgSchema("decivexa");
           export const workspaces = decivexa.table("workspaces", {
             id: text("id").primaryKey(),
@@ -81,7 +82,7 @@ jobs:
           node -e 'const s=require(process.argv[1]); console.log({id:s.id,prevId:s.prevId,version:s.version}); if(s.version!=="7") process.exit(1)' "$CANON_SNAPSHOT"
           grep -q 'users_email_unique' "$CANON_SQL"
 
-          # Apply real historical 0002 lineage and compare against REAL current schema.
+          # Stage B: use the real historical SQL + canonical 0002 state + REAL current schemas.
           cp "$SRC"/src/persistence/migrations/0000_*.sql "$ROOT/migrations/"
           cp "$SRC"/src/persistence/migrations/0001_*.sql "$ROOT/migrations/"
           cp "$SRC"/src/persistence/migrations/0002_authentication_credentials.sql "$ROOT/migrations/"
@@ -98,17 +99,23 @@ jobs:
           e.tag = '0002_authentication_credentials';
           fs.writeFileSync(p, JSON.stringify(j, null, 2) + '\n');
           NODE
-          cp "$SRC"/src/persistence/schema/identity.schema.ts "$ROOT/schema/identity.ts"
-          cp "$SRC"/src/persistence/schema/workspace.schema.ts "$ROOT/schema/workspace.ts"
+          # Preserve the real import relationship: workspace.schema.ts imports ./identity.schema.
+          cp "$SRC"/src/persistence/schema/identity.schema.ts "$ROOT/schema/identity.schema.ts"
+          cp "$SRC"/src/persistence/schema/workspace.schema.ts "$ROOT/schema/workspace.schema.ts"
           cat > "$ROOT/drizzle.config.ts" <<'EOF'
           import { defineConfig } from "drizzle-kit";
           export default defineConfig({ schema: "./schema/*.ts", out: "./migrations", dialect: "postgresql" });
           EOF
           cd "$ROOT"
+          # Fail immediately if Drizzle itself cannot load/parse the REAL schema.
           NODE_PATH="$GITHUB_WORKSPACE/apps/api/node_modules" node "$GITHUB_WORKSPACE/apps/api/node_modules/drizzle-kit/bin.cjs" generate --config=./drizzle.config.ts
           NEXT=$(find migrations -maxdepth 1 -type f -name '*.sql' | sort | tail -n 1)
+          test -n "$NEXT"
           echo '--- generated next migration ---'
           cat "$NEXT"
+
+          # Verify that the generated migration is genuinely 0003 lifecycle-only,
+          # except for explicitly reported index drift.
           grep -q 'lifecycle_state' "$NEXT"
           grep -q "DEFAULT 'active'" "$NEXT"
           grep -q 'workspaces_lifecycle_state_check' "$NEXT"
@@ -121,7 +128,7 @@ jobs:
           else
             echo 'DRIFT NOT CONFIRMED: users_email_unique retained.'
           fi
-          echo 'PASS: canonical 0002 is valid and lifecycle migration is isolated; index drift is reported explicitly.'
+          echo 'PASS: canonical 0002 reconstruction and real current-schema diff completed.'
       - name: Repository generate diagnostic only
         run: |
           set +e
