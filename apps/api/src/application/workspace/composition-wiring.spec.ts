@@ -10,7 +10,7 @@ import { GetWorkspaceForOwnerUseCase } from "./get-workspace-for-owner.use-case"
 
 test("resolves the application use case through the real repository binding", async () => {
   const moduleRef = await Test.createTestingModule({
-    imports: [ApplicationModule, PersistenceModule],
+    imports: [ApplicationModule.register([PersistenceModule])],
   })
     .overrideProvider(DatabaseService)
     .useValue({ client: {} })
