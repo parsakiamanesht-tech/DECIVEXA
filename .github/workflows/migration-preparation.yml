@@ -34,15 +34,18 @@ jobs:
           rm -rf "$ROOT" "$STAGE"
           mkdir -p "$ROOT/schema" "$ROOT/migrations/meta" "$STAGE/schema" "$STAGE/migrations/meta"
 
-          # Stage A: valid Drizzle lineage containing only 0000 and 0001.
-          # All repository paths are absolute because this step changes directory.
+          # Stage A: reconstruct the pre-authentication lineage using the REAL current identity schema.
+          # Important: identity.schema.ts has NO users_email_unique index. The index exists only because historical 0002 SQL created it.
           cat > "$STAGE/schema/identity.ts" <<'EOF'
-          import { pgSchema, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+          import { pgSchema, text, timestamp } from "drizzle-orm/pg-core";
           const decivexa = pgSchema("decivexa");
           export const users = decivexa.table("users", {
-            id: text("id").primaryKey(), email: text("email").notNull(), passwordHash: text("password_hash").notNull(),
-            createdAt: timestamp("created_at", { withTimezone: true }).notNull(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-          }, (table) => ({ emailUnique: uniqueIndex("users_email_unique").on(table.email) }));
+            id: text("id").primaryKey(),
+            email: text("email").notNull(),
+            passwordHash: text("password_hash").notNull(),
+            createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+            updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+          });
           EOF
           cat > "$STAGE/schema/workspace.ts" <<'EOF'
           import { pgSchema, text, timestamp } from "drizzle-orm/pg-core";
@@ -76,8 +79,9 @@ jobs:
           node -e 'const s=require(process.argv[1]); console.log({id:s.id,prevId:s.prevId,version:s.version}); if(s.version!=="7") process.exit(1)' "$CANON_SNAPSHOT"
           echo '--- canonical 0002 SQL ---'
           cat "$STAGE"/migrations/0002_*.sql
+          if grep -q 'users_email_unique' "$STAGE"/migrations/0002_*.sql; then echo 'FAIL: canonical Stage A unexpectedly recreated historical users_email_unique'; exit 1; fi
 
-          # Stage B: real historical SQL + canonical 0002 snapshot + current schema.
+          # Stage B: REAL historical 0002 SQL + canonical 0002 snapshot + REAL current schema.
           cp "$SRC"/src/persistence/migrations/0000_*.sql "$ROOT/migrations/"
           cp "$SRC"/src/persistence/migrations/0001_*.sql "$ROOT/migrations/"
           cp "$SRC"/src/persistence/migrations/0002_authentication_credentials.sql "$ROOT/migrations/"
@@ -95,6 +99,7 @@ jobs:
           fs.writeFileSync(p, JSON.stringify(j, null, 2) + '\n');
           console.log('Prepared canonical 0002 journal entry:', JSON.stringify(e));
           NODE
+          cp "$SRC"/src/persistence/schema/identity.schema.ts "$ROOT/schema/identity.ts"
           cp "$STAGE/schema/identity.ts" "$ROOT/schema/identity.ts"
           cat > "$ROOT/schema/workspace.ts" <<'EOF'
           import { pgSchema, text, timestamp, check } from "drizzle-orm/pg-core";
@@ -123,10 +128,10 @@ jobs:
           grep -q 'workspaces_lifecycle_state_check' "$NEXT"
           grep -q "'active', 'archived'" "$NEXT"
           if grep -q 'CREATE TABLE' "$NEXT"; then echo 'FAIL: table recreation'; exit 1; fi
-          if grep -q 'users_email_unique' "$NEXT"; then echo 'FAIL: authentication index recreated'; exit 1; fi
+          if grep -q 'users_email_unique' "$NEXT"; then echo 'FAIL: authentication index recreated/dropped'; exit 1; fi
           if grep -q 'password_hash' "$NEXT" || grep -q 'ADD COLUMN "email"' "$NEXT"; then echo 'FAIL: authentication columns recreated'; exit 1; fi
           if grep -q 'owner_id' "$NEXT"; then echo 'FAIL: ownership recreated'; exit 1; fi
-          echo 'PASS: canonical 0002 snapshot + REAL 0002 SQL produces lifecycle-only next migration.'
+          echo 'PASS: canonical 0002 snapshot + REAL 0002 SQL + REAL identity schema produces lifecycle-only next migration.'
       - name: Repository generate diagnostic only
         run: |
           set +e
