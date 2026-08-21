@@ -27,70 +27,62 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Typecheck
         run: npm run typecheck
-      - name: Upgrade Drizzle snapshot metadata
-        run: npx drizzle-kit up
-      - name: Full canonical 0003 proof with exact current schema semantics
+      - name: Canonical 0002 lineage and 0003 proof
         run: |
           set -eu
-          rm -rf /tmp/decivexa-canonical-proof
-          mkdir -p /tmp/decivexa-canonical-proof/schema /tmp/decivexa-canonical-proof/migrations/meta
-          cp src/persistence/migrations/0000_*.sql /tmp/decivexa-canonical-proof/migrations/
-          cp src/persistence/migrations/0001_*.sql /tmp/decivexa-canonical-proof/migrations/
-          cp src/persistence/migrations/meta/0000_snapshot.json /tmp/decivexa-canonical-proof/migrations/meta/
-          cp src/persistence/migrations/meta/0001_snapshot.json /tmp/decivexa-canonical-proof/migrations/meta/
+          rm -rf /tmp/decivexa-canonical-lineage
+          mkdir -p /tmp/decivexa-canonical-lineage/schema /tmp/decivexa-canonical-lineage/migrations/meta
+          cp src/persistence/migrations/0000_*.sql /tmp/decivexa-canonical-lineage/migrations/
+          cp src/persistence/migrations/0001_*.sql /tmp/decivexa-canonical-lineage/migrations/
+          cp src/persistence/migrations/0002_authentication_credentials.sql /tmp/decivexa-canonical-lineage/migrations/
+          cp src/persistence/migrations/meta/0000_snapshot.json /tmp/decivexa-canonical-lineage/migrations/meta/
+          cp src/persistence/migrations/meta/0001_snapshot.json /tmp/decivexa-canonical-lineage/migrations/meta/
           node - <<'NODE'
           const fs = require('fs');
-          const src = JSON.parse(fs.readFileSync('src/persistence/migrations/meta/_journal.json', 'utf8'));
-          src.entries = src.entries.filter(e => e.idx <= 1);
-          fs.writeFileSync('/tmp/decivexa-canonical-proof/migrations/meta/_journal.json', JSON.stringify(src, null, 2) + '\n');
+          const journal = JSON.parse(fs.readFileSync('src/persistence/migrations/meta/_journal.json', 'utf8'));
+          const e = journal.entries.find(x => x.idx === 2);
+          if (!e) throw new Error('Expected existing migration journal entry idx=2');
+          console.log('Existing 0002 journal entry:', JSON.stringify(e));
           NODE
-          cat > /tmp/decivexa-canonical-proof/schema/identity.ts <<'EOF'
+          cat > /tmp/decivexa-canonical-lineage/schema/identity.ts <<'EOF'
           import { pgSchema, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
           const decivexa = pgSchema("decivexa");
           export const users = decivexa.table("users", {
-            id: text("id").primaryKey(),
-            email: text("email").notNull(),
-            passwordHash: text("password_hash").notNull(),
-            createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-            updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-          }, (table) => ({
-            emailUnique: uniqueIndex("users_email_unique").on(table.email),
-          }));
+            id: text("id").primaryKey(), email: text("email").notNull(), passwordHash: text("password_hash").notNull(),
+            createdAt: timestamp("created_at", { withTimezone: true }).notNull(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+          }, (table) => ({ emailUnique: uniqueIndex("users_email_unique").on(table.email) }));
           EOF
-          cat > /tmp/decivexa-canonical-proof/schema/workspace.ts <<'EOF'
+          cat > /tmp/decivexa-canonical-lineage/schema/workspace.ts <<'EOF'
           import { pgSchema, text, timestamp, check } from "drizzle-orm/pg-core";
           import { sql } from "drizzle-orm";
           import { users } from "./identity";
           const decivexa = pgSchema("decivexa");
           export const workspaces = decivexa.table("workspaces", {
-            id: text("id").primaryKey(),
-            ownerId: text("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+            id: text("id").primaryKey(), ownerId: text("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
             lifecycleState: text("lifecycle_state").notNull().default("active"),
-            createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-            updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-          }, (table) => [
-            check("workspaces_lifecycle_state_check", sql`${table.lifecycleState} in ('active', 'archived')`),
-          ]);
+            createdAt: timestamp("created_at", { withTimezone: true }).notNull(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+          }, (table) => [check("workspaces_lifecycle_state_check", sql`${table.lifecycleState} in ('active', 'archived')`)]);
           EOF
-          cat > /tmp/decivexa-canonical-proof/drizzle.config.ts <<'EOF'
+          cat > /tmp/decivexa-canonical-lineage/drizzle.config.ts <<'EOF'
           import { defineConfig } from "drizzle-kit";
           export default defineConfig({ schema: "./schema/*.ts", out: "./migrations", dialect: "postgresql" });
           EOF
-          cd /tmp/decivexa-canonical-proof
+          cd /tmp/decivexa-canonical-lineage
           NODE_PATH="$GITHUB_WORKSPACE/apps/api/node_modules" node "$GITHUB_WORKSPACE/apps/api/node_modules/drizzle-kit/bin.cjs" generate --config=./drizzle.config.ts
-          echo '--- generated canonical SQL ---'
-          find migrations -maxdepth 1 -type f -name '*.sql' -print -exec sh -c 'echo "--- $1 ---"; cat "$1"' _ {} \;
+          echo '--- generated lineage ---'
+          find migrations -maxdepth 2 -type f -print -exec sh -c 'echo "--- $1 ---"; cat "$1"' _ {} \;
           latest=$(find migrations -maxdepth 1 -type f -name '*.sql' | sort | tail -n 1)
-          echo "--- latest canonical migration: $latest ---"
+          echo "--- latest migration: $latest ---"
           grep -q 'lifecycle_state' "$latest"
           grep -q "DEFAULT 'active'" "$latest"
           grep -q 'workspaces_lifecycle_state_check' "$latest"
           grep -q "'active', 'archived'" "$latest"
-          if grep -q 'CREATE TABLE' "$latest"; then echo 'FAIL: latest migration recreates a table'; exit 1; fi
-          if grep -q 'users_email_unique' "$latest"; then echo 'FAIL: latest migration unexpectedly changes authentication'; exit 1; fi
-          if grep -q 'owner_id' "$latest"; then echo 'FAIL: latest migration unexpectedly changes workspace ownership'; exit 1; fi
-          echo 'Canonical 0003 proof passed: latest migration is lifecycle-only.'
-      - name: Generate migration against repository state (diagnostic only)
+          if grep -q 'CREATE TABLE' "$latest"; then echo 'FAIL: table recreation detected'; exit 1; fi
+          if grep -q 'users_email_unique' "$latest"; then echo 'FAIL: authentication index change detected'; exit 1; fi
+          if grep -q 'password_hash' "$latest" || grep -q 'ADD COLUMN "email"' "$latest"; then echo 'FAIL: authentication column change detected'; exit 1; fi
+          if grep -q 'owner_id' "$latest"; then echo 'FAIL: ownership change detected'; exit 1; fi
+          echo 'PASS: canonical lineage produces lifecycle-only migration.'
+      - name: Repository generate diagnostic
         run: |
           set +e
           npm run db:generate
@@ -98,11 +90,11 @@ jobs:
           set -e
           echo "Repository generate exit status: $status"
           exit 0
-      - name: Upload canonical proof evidence
+      - name: Upload canonical lineage evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: decivexa-canonical-0003-proof
+          name: decivexa-canonical-lineage-proof
           path: |
             apps/api/src/persistence/migrations/**
             apps/api/package-lock.json
