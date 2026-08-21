@@ -62,7 +62,15 @@ jobs:
           echo "Diagnostic workspace: $PWD"
           npx drizzle-kit generate
           echo "--- generated migration files ---"
-          find src/persistence/migrations -maxdepth 2 -type f | sort | sed -n '1,200p'
+          find src/persistence/migrations -maxdepth 1 -type f -name '*.sql' -print | sort
+          generated="$(find src/persistence/migrations -maxdepth 1 -type f -name '*.sql' | sort | tail -n 1)"
+          if [ -n "$generated" ]; then
+            echo "--- GENERATED SQL: $generated ---"
+            cat "$generated"
+            echo "--- END GENERATED SQL ---"
+          else
+            echo "No generated SQL migration file found."
+          fi
 
       - name: Verify only the two intended snapshot files differ from main
         working-directory: .
