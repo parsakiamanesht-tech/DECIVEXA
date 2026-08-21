@@ -2,6 +2,9 @@ name: DECIVEXA Migration Preparation
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - fix/migration-snapshot-upgrade
 
 jobs:
   generate-migration:
@@ -28,6 +31,17 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Upgrade Drizzle snapshot metadata
+        run: npx drizzle-kit up
+
+      - name: Inspect snapshot metadata after upgrade
+        run: |
+          set -eu
+          echo '--- migration metadata ---'
+          find src/persistence/migrations/meta -maxdepth 1 -type f -print -exec sh -c 'echo "--- $1 ---"; cat "$1"' _ {} \;
+          echo '--- migration SQL ---'
+          find src/persistence/migrations -maxdepth 1 -type f -name '*.sql' -print -exec sh -c 'echo "--- $1 ---"; cat "$1"' _ {} \;
 
       - name: Generate migration
         run: npm run db:generate
