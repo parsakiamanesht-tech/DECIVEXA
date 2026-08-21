@@ -79,3 +79,5 @@ jobs:
           changed="$(git diff --name-only origin/main...HEAD | sort)"
           printf '%s\n' "$changed"
           test "$changed" = $'apps/api/src/persistence/migrations/meta/0002_snapshot.json\napps/api/src/persistence/migrations/meta/0003_snapshot.json'
+
+# Diagnostic-only trigger preservation comment: this workflow intentionally runs on the repair branch.
