@@ -31,9 +31,10 @@ jobs:
           ROOT=/tmp/decivexa-canonical-lineage
           STAGE=/tmp/decivexa-auth-stage
           rm -rf "$ROOT" "$STAGE"
-          mkdir -p "$ROOT/schema" "$ROOT/migrations/meta" "$STAGE/schema"
+          mkdir -p "$ROOT/schema" "$ROOT/migrations/meta" "$STAGE/schema" "$STAGE/migrations/meta"
 
-          # Stage A: generate the canonical snapshot for the state immediately after 0002.
+          # Stage A: valid Drizzle lineage containing only 0000 and 0001.
+          # Diff the authentication schema against that verified 0001 state to obtain canonical 0002.
           cat > "$STAGE/schema/identity.ts" <<'EOF'
           import { pgSchema, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
           const decivexa = pgSchema("decivexa");
@@ -55,37 +56,44 @@ jobs:
           import { defineConfig } from "drizzle-kit";
           export default defineConfig({ schema: "./schema/*.ts", out: "./migrations", dialect: "postgresql" });
           EOF
-          cp src/persistence/migrations/0000_*.sql "$STAGE/"
-          cp src/persistence/migrations/0001_*.sql "$STAGE/"
-          cp src/persistence/migrations/meta/0000_snapshot.json "$STAGE/"
-          cp src/persistence/migrations/meta/0001_snapshot.json "$STAGE/"
-          cp src/persistence/migrations/meta/_journal.json "$STAGE/"
+          cp src/persistence/migrations/0000_*.sql "$STAGE/migrations/"
+          cp src/persistence/migrations/0001_*.sql "$STAGE/migrations/"
+          cp src/persistence/migrations/meta/0000_snapshot.json "$STAGE/migrations/meta/"
+          cp src/persistence/migrations/meta/0001_snapshot.json "$STAGE/migrations/meta/"
+          node - <<'NODE'
+          const fs = require('fs');
+          const src = JSON.parse(fs.readFileSync('src/persistence/migrations/meta/_journal.json', 'utf8'));
+          src.entries = src.entries.filter(e => e.idx <= 1);
+          fs.writeFileSync('/tmp/decivexa-auth-stage/migrations/meta/_journal.json', JSON.stringify(src, null, 2) + '\n');
+          NODE
           cd "$STAGE"
           NODE_PATH="$GITHUB_WORKSPACE/apps/api/node_modules" node "$GITHUB_WORKSPACE/apps/api/node_modules/drizzle-kit/bin.cjs" generate --config=./drizzle.config.ts
           CANON_SNAPSHOT="$STAGE/migrations/meta/0002_snapshot.json"
           test -f "$CANON_SNAPSHOT"
+          test -f "$STAGE"/migrations/0002_*.sql
           echo '--- canonical 0002 snapshot metadata ---'
           node -e 'const s=require(process.argv[1]); console.log({id:s.id,prevId:s.prevId,version:s.version}); if(s.version!=="7") process.exit(1)' "$CANON_SNAPSHOT"
+          echo '--- canonical 0002 SQL ---'
+          cat "$STAGE"/migrations/0002_*.sql
 
-          # Stage B: verified 0000 + verified 0001 + REAL 0002 SQL + canonical 0002 snapshot.
+          # Stage B: real historical SQL + canonical 0002 snapshot + current schema.
           cp src/persistence/migrations/0000_*.sql "$ROOT/migrations/"
           cp src/persistence/migrations/0001_*.sql "$ROOT/migrations/"
           cp src/persistence/migrations/0002_authentication_credentials.sql "$ROOT/migrations/"
           cp src/persistence/migrations/meta/0000_snapshot.json "$ROOT/migrations/meta/"
           cp src/persistence/migrations/meta/0001_snapshot.json "$ROOT/migrations/meta/"
           cp "$CANON_SNAPSHOT" "$ROOT/migrations/meta/0002_snapshot.json"
-          cp "$STAGE/migrations/meta/_journal.json" "$ROOT/migrations/meta/_journal.json"
+          cp "$STAGE/migrations/meta/_journal.json" "$ROOT/migrations/meta/"
           node - <<'NODE'
-          const fs=require('fs');
-          const p='/tmp/decivexa-canonical-lineage/migrations/meta/_journal.json';
-          const j=JSON.parse(fs.readFileSync(p,'utf8'));
-          const e=j.entries.find(x=>x.idx===2);
-          if(!e) throw new Error('Canonical stage did not produce journal entry idx=2');
-          e.tag='0002_authentication_credentials';
-          fs.writeFileSync(p, JSON.stringify(j,null,2)+'\n');
+          const fs = require('fs');
+          const p = '/tmp/decivexa-canonical-lineage/migrations/meta/_journal.json';
+          const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+          const e = j.entries.find(x => x.idx === 2);
+          if (!e) throw new Error('Canonical stage did not produce journal entry idx=2');
+          e.tag = '0002_authentication_credentials';
+          fs.writeFileSync(p, JSON.stringify(j, null, 2) + '\n');
           console.log('Prepared canonical 0002 journal entry:', JSON.stringify(e));
           NODE
-
           cp "$STAGE/schema/identity.ts" "$ROOT/schema/identity.ts"
           cat > "$ROOT/schema/workspace.ts" <<'EOF'
           import { pgSchema, text, timestamp, check } from "drizzle-orm/pg-core";
@@ -102,7 +110,6 @@ jobs:
           import { defineConfig } from "drizzle-kit";
           export default defineConfig({ schema: "./schema/*.ts", out: "./migrations", dialect: "postgresql" });
           EOF
-
           cd "$ROOT"
           NODE_PATH="$GITHUB_WORKSPACE/apps/api/node_modules" node "$GITHUB_WORKSPACE/apps/api/node_modules/drizzle-kit/bin.cjs" generate --config=./drizzle.config.ts
           echo '--- complete canonical lineage ---'
@@ -119,7 +126,6 @@ jobs:
           if grep -q 'password_hash' "$NEXT" || grep -q 'ADD COLUMN "email"' "$NEXT"; then echo 'FAIL: authentication columns recreated'; exit 1; fi
           if grep -q 'owner_id' "$NEXT"; then echo 'FAIL: ownership recreated'; exit 1; fi
           echo 'PASS: canonical 0002 snapshot + REAL 0002 SQL produces lifecycle-only next migration.'
-
       - name: Repository generate diagnostic only
         run: |
           set +e
@@ -128,13 +134,12 @@ jobs:
           set -e
           echo "Repository generate exit status: $status"
           exit 0
-
       - name: Upload canonical lineage evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: decivexa-canonical-lineage-proof
           path: |
-            src/persistence/migrations/**
-            package-lock.json
+            apps/api/src/persistence/migrations/**
+            apps/api/package-lock.json
           if-no-files-found: error
