@@ -15,7 +15,7 @@
         "updated_at": {"name":"updated_at","type":"timestamp with time zone","primaryKey":false,"notNull":true}
       },
       "indexes": {
-        "users_email_unique": {"name":"users_email_unique","columns":["email"],"isUnique":true,"concurrently":false,"method":"btree","where":null,"with":{}}
+        "users_email_unique": {"name":"users_email_unique","columns":[{"expression":"email","isExpression":false,"asc":true}],"isUnique":true,"concurrently":false,"method":"btree","with":{}}
       },
       "foreignKeys": {}, "compositePrimaryKeys": {}, "uniqueConstraints": {}, "policies": {}, "checkConstraints": {}, "isRLSEnabled": false
     },
