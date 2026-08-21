@@ -1,20 +1,14 @@
 import { assertWorkspaceAccess } from "./workspace.access";
 import { archiveWorkspace, restoreWorkspace } from "./workspace.lifecycle";
-import {
-  findWorkspaceForOwner,
-  transitionWorkspaceForOwner,
-} from "./workspace.repository";
-import type { WorkspaceLifecycleState } from "./workspace.schema";
-import { createDatabase } from "../../persistence/database";
-
-type DatabaseClient = ReturnType<typeof createDatabase>["client"];
+import type { WorkspaceRepository } from "./workspace.repository";
+import type { WorkspaceLifecycleState } from "./workspace.model";
 
 export async function getWorkspaceForActor(
-  db: DatabaseClient,
+  repository: WorkspaceRepository,
   actorId: string,
   workspaceId: string,
 ) {
-  const workspace = await findWorkspaceForOwner(db, workspaceId, actorId);
+  const workspace = await repository.findForOwner(workspaceId, actorId);
 
   if (!workspace) {
     throw new Error("Workspace access denied");
@@ -25,11 +19,11 @@ export async function getWorkspaceForActor(
 }
 
 export async function archiveWorkspaceForActor(
-  db: DatabaseClient,
+  repository: WorkspaceRepository,
   actorId: string,
   workspaceId: string,
 ) {
-  const workspace = await findWorkspaceForOwner(db, workspaceId, actorId);
+  const workspace = await repository.findForOwner(workspaceId, actorId);
 
   if (!workspace) {
     throw new Error("Workspace access denied");
@@ -38,8 +32,7 @@ export async function archiveWorkspaceForActor(
   assertWorkspaceAccess(actorId, workspace, "write");
   const nextState = archiveWorkspace(workspace.lifecycleState);
 
-  return transitionWorkspaceForOwner(
-    db,
+  return repository.transitionForOwner(
     workspaceId,
     actorId,
     workspace.lifecycleState,
@@ -48,11 +41,11 @@ export async function archiveWorkspaceForActor(
 }
 
 export async function restoreWorkspaceForActor(
-  db: DatabaseClient,
+  repository: WorkspaceRepository,
   actorId: string,
   workspaceId: string,
 ) {
-  const workspace = await findWorkspaceForOwner(db, workspaceId, actorId);
+  const workspace = await repository.findForOwner(workspaceId, actorId);
 
   if (!workspace) {
     throw new Error("Workspace access denied");
@@ -61,8 +54,7 @@ export async function restoreWorkspaceForActor(
   assertWorkspaceAccess(actorId, workspace, "write");
   const nextState = restoreWorkspace(workspace.lifecycleState);
 
-  return transitionWorkspaceForOwner(
-    db,
+  return repository.transitionForOwner(
     workspaceId,
     actorId,
     workspace.lifecycleState,

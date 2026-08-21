@@ -1,4 +1,4 @@
-import type { WorkspaceLifecycleState } from "./workspace.schema";
+import type { WorkspaceLifecycleState } from "./workspace.model";
 
 export function archiveWorkspace(state: WorkspaceLifecycleState): "archived" {
   if (state !== "active") {

@@ -1,6 +1,6 @@
 import { pgSchema, text, timestamp, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { users } from "../identity/identity.schema";
+import { users } from "./identity.schema";
 
 const decivexa = pgSchema("decivexa");
 

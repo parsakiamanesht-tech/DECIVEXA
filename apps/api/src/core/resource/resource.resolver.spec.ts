@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { asResourceId } from "./resource.identity";
-import { createResourceReference } from "./resource.reference";
+import { createResourceReference, type ResourceReference } from "./resource.reference";
 import { ResourceResolver } from "./resource.resolver";
 
 test("resolves a supported resource", async () => {
@@ -58,10 +58,12 @@ test("returns invalid_reference before invoking a strategy", async () => {
     },
   });
 
-  const result = await resolver.resolve({
+  const invalidReference: ResourceReference = {
     resourceType: "workspace",
-    resourceId: asResourceId(""),
-  });
+    resourceId: "" as ResourceReference["resourceId"],
+  };
+
+  const result = await resolver.resolve(invalidReference);
 
   assert.deepEqual(result, { status: "invalid_reference" });
   assert.equal(called, false);

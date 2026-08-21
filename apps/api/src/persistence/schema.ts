@@ -1,5 +1,5 @@
-import { users } from "../core/identity/identity.schema";
-import { workspaces } from "../core/resource/workspace.schema";
+import { users } from "./schema/identity.schema";
+import { workspaces } from "./schema/workspace.schema";
 
 export const DECIVEXA_SCHEMA = "decivexa" as const;
 
