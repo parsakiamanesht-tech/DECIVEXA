@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Workspace } from "../../core/resource/workspace.model";
 import type { WorkspaceRepository } from "../../core/resource/workspace.repository";
+import type { ApplicationUseCase } from "../application-use-case";
 import { createRequestContext } from "../../context/request-context";
-import { GetWorkspaceForOwnerUseCase } from "./get-workspace-for-owner.use-case";
+import { GetWorkspaceForOwnerUseCase, type GetWorkspaceForOwnerInput } from "./get-workspace-for-owner.use-case";
 import { WorkspaceNotFoundError } from "./errors/workspace-not-found.error";
 
 const workspace: Workspace = {
@@ -23,6 +24,18 @@ function createRepository(
     transitionForOwner: async () => undefined,
   };
 }
+
+function asApplicationUseCase(
+  useCase: GetWorkspaceForOwnerUseCase,
+): ApplicationUseCase<GetWorkspaceForOwnerInput, Workspace> {
+  return useCase;
+}
+
+test("implements the public ApplicationUseCase contract", () => {
+  const repository = createRepository(async () => workspace);
+  const useCase = asApplicationUseCase(new GetWorkspaceForOwnerUseCase(repository));
+  assert.ok(useCase);
+});
 
 test("returns a successful Result for the owner-scoped workspace", async () => {
   let received: [string, string] | undefined;
