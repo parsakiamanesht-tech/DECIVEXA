@@ -1,19 +1,20 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { RequestContext } from "../../context/request-context";
+import { AuthorizationError } from "../../shared/errors/authorization-error";
 import { failure, success, type Result } from "../../shared/result/result";
 import { USER_CREDENTIALS_REPOSITORY, type UserCredentialsRepository } from "./user-credentials.repository";
-import { AccessTokenService } from "../../infrastructure/auth/access-token.service";
-import { PasswordService } from "../../infrastructure/auth/password.service";
+import { ACCESS_TOKEN_SERVICE, type AccessTokenServicePort } from "./access-token.service.port";
+import { PASSWORD_SERVICE, type PasswordServicePort } from "./password.service.port";
 import type { AuthenticatedIdentity, AuthenticateUserInput } from "./authentication.contract";
 
-const INVALID_CREDENTIALS = new Error("Invalid credentials");
+const INVALID_CREDENTIALS = new AuthorizationError("Invalid credentials");
 
 @Injectable()
 export class AuthenticateUserUseCase {
   constructor(
     @Inject(USER_CREDENTIALS_REPOSITORY) private readonly users: UserCredentialsRepository,
-    private readonly passwords: PasswordService,
-    private readonly tokens: AccessTokenService,
+    @Inject(PASSWORD_SERVICE) private readonly passwords: PasswordServicePort,
+    @Inject(ACCESS_TOKEN_SERVICE) private readonly tokens: AccessTokenServicePort,
   ) {}
 
   async execute(
