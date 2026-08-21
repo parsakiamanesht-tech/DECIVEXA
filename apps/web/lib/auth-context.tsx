@@ -1,14 +1,17 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { clearAccessToken, getAccessToken, setAccessToken } from "./api";
+import { apiFetch, clearAccessToken, getAccessToken, setAccessToken } from "./api";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
+
+type AuthResponse = { userId: string; email: string; accessToken: string };
 
 type AuthContextValue = {
   status: AuthStatus;
   token: string | null;
-  setToken: (token: string) => void;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string) => Promise<void>;
   logout: () => void;
 };
 
@@ -20,17 +23,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const storedToken = getAccessToken();
-    setTokenState(storedToken);
-    setStatus(storedToken ? "authenticated" : "unauthenticated");
+    if (!storedToken) {
+      setStatus("unauthenticated");
+      return;
+    }
+
+    apiFetch<{ userId: string }>("/auth/me")
+      .then(() => {
+        setTokenState(storedToken);
+        setStatus("authenticated");
+      })
+      .catch(() => {
+        clearAccessToken();
+        setTokenState(null);
+        setStatus("unauthenticated");
+      });
   }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
       token,
-      setToken(nextToken) {
-        setAccessToken(nextToken);
-        setTokenState(nextToken);
+      async login(email, password) {
+        const response = await apiFetch<AuthResponse>("/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email, password }),
+        });
+        setAccessToken(response.accessToken);
+        setTokenState(response.accessToken);
+        setStatus("authenticated");
+      },
+      async register(email, password) {
+        const response = await apiFetch<AuthResponse>("/auth/register", {
+          method: "POST",
+          body: JSON.stringify({ email, password }),
+        });
+        setAccessToken(response.accessToken);
+        setTokenState(response.accessToken);
         setStatus("authenticated");
       },
       logout() {
@@ -47,8 +76,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used inside AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used inside AuthProvider");
   return context;
 }

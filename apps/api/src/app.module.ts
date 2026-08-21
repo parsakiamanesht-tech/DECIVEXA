@@ -3,9 +3,10 @@ import { HealthController } from './health/health.controller';
 import { PersistenceService } from './persistence/persistence.service';
 import { ApplicationModule } from './application/application.module';
 import { PersistenceModule } from './infrastructure/persistence/persistence.module';
+import { AuthModule } from './infrastructure/auth/auth.module';
 
 @Module({
-  imports: [ApplicationModule.register([PersistenceModule])],
+  imports: [ApplicationModule.register([PersistenceModule]), AuthModule],
   controllers: [HealthController],
   providers: [PersistenceService],
   exports: [PersistenceService],

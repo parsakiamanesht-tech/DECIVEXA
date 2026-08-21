@@ -33,6 +33,7 @@ jobs:
         working-directory: apps/api
     env:
       DATABASE_URL: postgresql://decivexa:decivexa@127.0.0.1:5432/decivexa
+      AUTH_TOKEN_SECRET: decivexa-ci-auth-token-secret-0123456789
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -81,6 +82,36 @@ jobs:
           cat /tmp/decivexa-api.log
           exit 1
 
+      - name: Verify registration, login and authenticated context
+        run: |
+          set -euo pipefail
+          EMAIL="ci-${GITHUB_RUN_ID}@example.com"
+          PASSWORD="CorrectHorseBatteryStaple123!"
+          REGISTER=$(curl --fail --silent --show-error -X POST http://127.0.0.1:3000/auth/register -H 'Content-Type: application/json' -d "{\"email\":\"${EMAIL}\",\"password\":\"${PASSWORD}\"}")
+          echo "$REGISTER"
+          TOKEN=$(node -e 'const body=JSON.parse(process.argv[1]); if(!body.accessToken) process.exit(1); process.stdout.write(body.accessToken)' "$REGISTER")
+
+          LOGIN=$(curl --fail --silent --show-error -X POST http://127.0.0.1:3000/auth/login -H 'Content-Type: application/json' -d "{\"email\":\"${EMAIL}\",\"password\":\"${PASSWORD}\"}")
+          echo "$LOGIN"
+          LOGIN_TOKEN=$(node -e 'const body=JSON.parse(process.argv[1]); if(!body.accessToken) process.exit(1); process.stdout.write(body.accessToken)' "$LOGIN")
+          test -n "$LOGIN_TOKEN"
+
+          ME=$(curl --fail --silent --show-error http://127.0.0.1:3000/auth/me -H "Authorization: Bearer ${TOKEN}")
+          echo "$ME"
+          node -e 'const body=JSON.parse(process.argv[1]); if(!body.userId || !body.requestId) process.exit(1)' "$ME"
+
+          DUPLICATE_STATUS=$(curl --silent --output /tmp/decivexa-duplicate.json --write-out '%{http_code}' -X POST http://127.0.0.1:3000/auth/register -H 'Content-Type: application/json' -d "{\"email\":\"${EMAIL}\",\"password\":\"${PASSWORD}\"}")
+          test "$DUPLICATE_STATUS" = "409"
+
+          WRONG_PASSWORD_STATUS=$(curl --silent --output /tmp/decivexa-wrong-password.json --write-out '%{http_code}' -X POST http://127.0.0.1:3000/auth/login -H 'Content-Type: application/json' -d "{\"email\":\"${EMAIL}\",\"password\":\"wrong-password\"}")
+          test "$WRONG_PASSWORD_STATUS" = "401"
+
+          MISSING_TOKEN_STATUS=$(curl --silent --output /tmp/decivexa-missing-token.json --write-out '%{http_code}' http://127.0.0.1:3000/auth/me)
+          test "$MISSING_TOKEN_STATUS" = "401"
+
+          TAMPERED_TOKEN_STATUS=$(curl --silent --output /tmp/decivexa-tampered-token.json --write-out '%{http_code}' http://127.0.0.1:3000/auth/me -H "Authorization: Bearer ${TOKEN}tampered")
+          test "$TAMPERED_TOKEN_STATUS" = "401"
+
       - name: Upload verification evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -91,6 +122,10 @@ jobs:
             apps/api/src/persistence/migrations/**
             /tmp/decivexa-health.json
             /tmp/decivexa-api.log
+            /tmp/decivexa-duplicate.json
+            /tmp/decivexa-wrong-password.json
+            /tmp/decivexa-missing-token.json
+            /tmp/decivexa-tampered-token.json
           if-no-files-found: warn
 
       - name: Stop application

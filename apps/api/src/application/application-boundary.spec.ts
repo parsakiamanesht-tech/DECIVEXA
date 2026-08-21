@@ -7,6 +7,8 @@ const applicationFiles = [
   join(__dirname, "application.module.js"),
   join(__dirname, "workspace", "get-workspace-for-owner.use-case.js"),
   join(__dirname, "workspace", "errors", "workspace-not-found.error.js"),
+  join(__dirname, "auth", "authenticate-user.use-case.js"),
+  join(__dirname, "auth", "register-user.use-case.js"),
 ];
 
 const forbiddenImports = [
