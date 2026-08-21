@@ -8,7 +8,7 @@
     "start:dev": "nest start --watch",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && node --test dist/core/resource/workspace.access.spec.js",
+    "test": "npm run build && node --test dist/core/resource/workspace.access.spec.js dist/foundation/application-domain-boundaries.spec.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
