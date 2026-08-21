@@ -1,18 +1,20 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import type { RequestContext } from "../../context/request-context";
+import { ValidationError } from "../../shared/errors/validation-error";
+import { ApplicationError } from "../../shared/errors/application-error";
 import { failure, success, type Result } from "../../shared/result/result";
 import { USER_CREDENTIALS_REPOSITORY, type UserCredentialsRepository } from "./user-credentials.repository";
-import { AccessTokenService } from "../../infrastructure/auth/access-token.service";
-import { PasswordService } from "../../infrastructure/auth/password.service";
+import { ACCESS_TOKEN_SERVICE, type AccessTokenServicePort } from "./access-token.service.port";
+import { PASSWORD_SERVICE, type PasswordServicePort } from "./password.service.port";
 import type { AuthenticatedIdentity } from "./authentication.contract";
 
 @Injectable()
 export class RegisterUserUseCase {
   constructor(
     @Inject(USER_CREDENTIALS_REPOSITORY) private readonly users: UserCredentialsRepository,
-    private readonly passwords: PasswordService,
-    private readonly tokens: AccessTokenService,
+    @Inject(PASSWORD_SERVICE) private readonly passwords: PasswordServicePort,
+    @Inject(ACCESS_TOKEN_SERVICE) private readonly tokens: AccessTokenServicePort,
   ) {}
 
   async execute(
@@ -21,11 +23,11 @@ export class RegisterUserUseCase {
   ): Promise<Result<AuthenticatedIdentity>> {
     const email = input.email.trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(email) || input.password.length < 8) {
-      return failure(new Error("Invalid registration input"));
+      return failure(new ValidationError("Invalid registration input"));
     }
 
     if (await this.users.findByEmail(email)) {
-      return failure(new Error("Email already registered"));
+      return failure(new ApplicationError("EMAIL_ALREADY_REGISTERED", "Email already registered"));
     }
 
     const user = await this.users.create({
