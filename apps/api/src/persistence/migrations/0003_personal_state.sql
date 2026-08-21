@@ -8,9 +8,9 @@ CREATE TABLE "decivexa"."personal_states" (
   "revision" integer DEFAULT 1 NOT NULL,
   "created_at" timestamp with time zone NOT NULL,
   "updated_at" timestamp with time zone NOT NULL,
-  CONSTRAINT "personal_states_availability_check" CHECK ("decivexa"."personal_states"."availability" IS NULL OR "decivexa"."personal_states"."availability" IN ('available','limited','unavailable')),
-  CONSTRAINT "personal_states_provenance_check" CHECK ("decivexa"."personal_states"."provenance" IN ('declared','observed')),
-  CONSTRAINT "personal_states_revision_check" CHECK ("decivexa"."personal_states"."revision" >= 1)
+  CONSTRAINT "personal_states_availability_check" CHECK ("availability" IS NULL OR "availability" IN ('available','limited','unavailable')),
+  CONSTRAINT "personal_states_provenance_check" CHECK ("provenance" IN ('declared','observed')),
+  CONSTRAINT "personal_states_revision_check" CHECK ("revision" >= 1)
 );
 --> statement-breakpoint
 ALTER TABLE "decivexa"."personal_states" ADD CONSTRAINT "personal_states_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "decivexa"."users"("id") ON DELETE restrict ON UPDATE no action;
