@@ -21,8 +21,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install dependencies
-        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install dependencies and create ephemeral lockfile
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Typecheck
         run: npm run typecheck
       - name: Canonical 0002 snapshot then real 0002 lineage proof
@@ -135,6 +135,6 @@ jobs:
         with:
           name: decivexa-canonical-lineage-proof
           path: |
-            apps/api/src/persistence/migrations/**
-            apps/api/package-lock.json
+            src/persistence/migrations/**
+            package-lock.json
           if-no-files-found: error
