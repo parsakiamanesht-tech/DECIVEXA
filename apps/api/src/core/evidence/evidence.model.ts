@@ -1,3 +1,5 @@
+export type EvidenceProvenance = "declared" | "observed" | "measured";
+
 export type EvidenceLifecycle =
   | "active"
   | "superseded"
@@ -5,10 +7,16 @@ export type EvidenceLifecycle =
   | "revoked"
   | "disputed";
 
-export type EvidenceProvenance = "declared" | "observed" | "measured";
-
 export type Evidence = Readonly<{
   id: string;
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}>;
+
+export type EvidenceVersion = Readonly<{
+  id: string;
+  evidenceId: string;
   version: number;
   userId: string;
   provenance: EvidenceProvenance;
@@ -17,5 +25,4 @@ export type Evidence = Readonly<{
   acceptedAt: Date;
   confidence: number | null;
   createdAt: Date;
-  updatedAt: Date;
 }>;
