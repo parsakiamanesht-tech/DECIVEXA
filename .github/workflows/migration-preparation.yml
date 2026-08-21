@@ -29,7 +29,7 @@ jobs:
         run: npm run typecheck
       - name: Upgrade Drizzle snapshot metadata
         run: npx drizzle-kit up
-      - name: Full canonical 0003 proof with current schema
+      - name: Full canonical 0003 proof with exact current schema semantics
         run: |
           set -eu
           rm -rf /tmp/decivexa-canonical-proof
@@ -48,19 +48,29 @@ jobs:
           import { pgSchema, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
           const decivexa = pgSchema("decivexa");
           export const users = decivexa.table("users", {
-            id: text("id").primaryKey(), email: text("email").notNull(), passwordHash: text("password_hash").notNull(),
-            createdAt: timestamp("created_at", { withTimezone: true }).notNull(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-          }, (table) => ({ emailUnique: uniqueIndex("users_email_unique").on(table.email) }));
+            id: text("id").primaryKey(),
+            email: text("email").notNull(),
+            passwordHash: text("password_hash").notNull(),
+            createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+            updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+          }, (table) => ({
+            emailUnique: uniqueIndex("users_email_unique").on(table.email),
+          }));
           EOF
           cat > /tmp/decivexa-canonical-proof/schema/workspace.ts <<'EOF'
           import { pgSchema, text, timestamp, check } from "drizzle-orm/pg-core";
+          import { sql } from "drizzle-orm";
           import { users } from "./identity";
           const decivexa = pgSchema("decivexa");
           export const workspaces = decivexa.table("workspaces", {
-            id: text("id").primaryKey(), ownerId: text("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
-            createdAt: timestamp("created_at", { withTimezone: true }).notNull(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+            id: text("id").primaryKey(),
+            ownerId: text("owner_id").notNull().references(() => users.id, { onDelete: "restrict" }),
             lifecycleState: text("lifecycle_state").notNull().default("active"),
-          }, (table) => ({ lifecycleStateCheck: check("workspaces_lifecycle_state_check", "lifecycle_state in ('active', 'archived')") }));
+            createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+            updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+          }, (table) => [
+            check("workspaces_lifecycle_state_check", sql`${table.lifecycleState} in ('active', 'archived')`),
+          ]);
           EOF
           cat > /tmp/decivexa-canonical-proof/drizzle.config.ts <<'EOF'
           import { defineConfig } from "drizzle-kit";
@@ -75,6 +85,7 @@ jobs:
           grep -q 'lifecycle_state' "$latest"
           grep -q "DEFAULT 'active'" "$latest"
           grep -q 'workspaces_lifecycle_state_check' "$latest"
+          grep -q "'active', 'archived'" "$latest"
           if grep -q 'CREATE TABLE' "$latest"; then echo 'FAIL: latest migration recreates a table'; exit 1; fi
           if grep -q 'users_email_unique' "$latest"; then echo 'FAIL: latest migration unexpectedly changes authentication'; exit 1; fi
           if grep -q 'owner_id' "$latest"; then echo 'FAIL: latest migration unexpectedly changes workspace ownership'; exit 1; fi
