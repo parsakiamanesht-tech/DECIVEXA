@@ -1,6 +1,7 @@
 name: API Verification
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -53,7 +54,13 @@ jobs:
           DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
       - name: Verify PostgreSQL 18 and connectivity
         run: |
-          psql "postgresql://decivexa:decivexa@localhost:5432/decivexa" -c 'SELECT version();'
+          set -euo pipefail
+          VERSION=$(psql "postgresql://decivexa:decivexa@localhost:5432/decivexa" -tAc 'SHOW server_version;')
+          echo "PostgreSQL version: $VERSION"
+          case "$VERSION" in
+            18.*) ;;
+            *) echo "Expected PostgreSQL 18.x, got $VERSION"; exit 1 ;;
+          esac
       - name: Build
         run: npm run build
         working-directory: apps/api
