@@ -5,7 +5,7 @@ import { ApplicationModule } from './application/application.module';
 import { PersistenceModule } from './infrastructure/persistence/persistence.module';
 
 @Module({
-  imports: [ApplicationModule, PersistenceModule],
+  imports: [ApplicationModule.register([PersistenceModule])],
   controllers: [HealthController],
   providers: [PersistenceService],
   exports: [PersistenceService],
