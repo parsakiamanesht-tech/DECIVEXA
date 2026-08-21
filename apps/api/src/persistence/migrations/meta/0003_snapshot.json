@@ -1,0 +1,38 @@
+{
+  "id": "bf19ae88-c07b-4b57-a9cd-78565c020cd2",
+  "prevId": "7a6b3ebb-8bd6-4973-b22f-81871182567e",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "decivexa.users": {
+      "name": "users",
+      "schema": "decivexa",
+      "columns": {
+        "id": {"name": "id", "type": "text", "primaryKey": true, "notNull": true},
+        "email": {"name": "email", "type": "text", "primaryKey": false, "notNull": true},
+        "password_hash": {"name": "password_hash", "type": "text", "primaryKey": false, "notNull": true},
+        "created_at": {"name": "created_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true},
+        "updated_at": {"name": "updated_at", "type": "timestamp with time zone", "primaryKey": false, "notNull": true}
+      },
+      "indexes": {"users_email_unique": {"name":"users_email_unique","columns":[{"expression":"email","isExpression":false,"asc":true,"nulls":"last"}],"isUnique":true,"concurrently":false,"method":"btree","with":{}}},
+      "foreignKeys": {}, "compositePrimaryKeys": {}, "uniqueConstraints": {}, "policies": {}, "checkConstraints": {}, "isRLSEnabled": false
+    },
+    "decivexa.workspaces": {
+      "name": "workspaces", "schema": "decivexa",
+      "columns": {
+        "id": {"name":"id","type":"text","primaryKey":true,"notNull":true},
+        "owner_id": {"name":"owner_id","type":"text","primaryKey":false,"notNull":true},
+        "lifecycle_state": {"name":"lifecycle_state","type":"text","primaryKey":false,"notNull":true,"default":"'active'"},
+        "created_at": {"name":"created_at","type":"timestamp with time zone","primaryKey":false,"notNull":true},
+        "updated_at": {"name":"updated_at","type":"timestamp with time zone","primaryKey":false,"notNull":true}
+      },
+      "indexes": {},
+      "foreignKeys": {"workspaces_owner_id_users_id_fk": {"name":"workspaces_owner_id_users_id_fk","tableFrom":"workspaces","tableTo":"users","schemaTo":"decivexa","columnsFrom":["owner_id"],"columnsTo":["id"],"onDelete":"restrict","onUpdate":"no action"}},
+      "compositePrimaryKeys": {}, "uniqueConstraints": {}, "policies": {},
+      "checkConstraints": {"workspaces_lifecycle_state_check": {"name":"workspaces_lifecycle_state_check","value":"\"decivexa\".\"workspaces\".\"lifecycle_state\" in ('active', 'archived')"}},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {}, "schemas": {}, "sequences": {}, "roles": {}, "policies": {}, "views": {},
+  "_meta": {"columns":{},"schemas":{},"tables":{}}
+}

@@ -1,5 +1,5 @@
 {
-  "id": "7f7c2f20-4f8a-4a2b-9d5d-6f9b7d3a1e21",
+  "id": "7a6b3ebb-8bd6-4973-b22f-81871182567e",
   "prevId": "1115fd3a-6108-4cb4-b79f-acf3b6aa68fd",
   "version": "7",
   "dialect": "postgresql",
@@ -8,33 +8,123 @@
       "name": "users",
       "schema": "decivexa",
       "columns": {
-        "id": {"name":"id","type":"text","primaryKey":true,"notNull":true},
-        "email": {"name":"email","type":"text","primaryKey":false,"notNull":true},
-        "password_hash": {"name":"password_hash","type":"text","primaryKey":false,"notNull":true},
-        "created_at": {"name":"created_at","type":"timestamp with time zone","primaryKey":false,"notNull":true},
-        "updated_at": {"name":"updated_at","type":"timestamp with time zone","primaryKey":false,"notNull":true}
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
       },
       "indexes": {
-        "users_email_unique": {"name":"users_email_unique","columns":["email"],"isUnique":true,"concurrently":false,"method":"btree","where":null,"with":{}}
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
       },
-      "foreignKeys": {}, "compositePrimaryKeys": {}, "uniqueConstraints": {}, "policies": {}, "checkConstraints": {}, "isRLSEnabled": false
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
     "decivexa.workspaces": {
       "name": "workspaces",
       "schema": "decivexa",
       "columns": {
-        "id": {"name":"id","type":"text","primaryKey":true,"notNull":true},
-        "owner_id": {"name":"owner_id","type":"text","primaryKey":false,"notNull":true},
-        "created_at": {"name":"created_at","type":"timestamp with time zone","primaryKey":false,"notNull":true},
-        "updated_at": {"name":"updated_at","type":"timestamp with time zone","primaryKey":false,"notNull":true}
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
       },
       "indexes": {},
       "foreignKeys": {
-        "workspaces_owner_id_users_id_fk": {"name":"workspaces_owner_id_users_id_fk","tableFrom":"workspaces","tableTo":"users","schemaTo":"decivexa","columnsFrom":["owner_id"],"columnsTo":["id"],"onDelete":"restrict","onUpdate":"no action"}
+        "workspaces_owner_id_users_id_fk": {
+          "name": "workspaces_owner_id_users_id_fk",
+          "tableFrom": "workspaces",
+          "tableTo": "users",
+          "schemaTo": "decivexa",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
       },
-      "compositePrimaryKeys": {}, "uniqueConstraints": {}, "policies": {}, "checkConstraints": {}, "isRLSEnabled": false
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
-  "enums": {}, "schemas": {}, "sequences": {}, "roles": {}, "policies": {}, "views": {},
-  "_meta": {"columns":{},"schemas":{},"tables":{}}
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
 }

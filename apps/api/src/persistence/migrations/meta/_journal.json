@@ -22,6 +22,13 @@
       "when": 1787410000000,
       "tag": "0002_authentication_credentials",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787332414096,
+      "tag": "0003_pretty_menace",
+      "breakpoints": true
     }
   ]
 }
