@@ -1,12 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import type { AccessTokenClaims, AccessTokenServicePort } from "../../application/auth/access-token.service.port";
 
-export type AccessTokenClaims = Readonly<{
-  userId: string;
-  email: string;
-  expiresAt: number;
-}>;
-
-export class AccessTokenService {
+export class AccessTokenService implements AccessTokenServicePort {
   private readonly secret: string;
   private readonly ttlSeconds = 60 * 60;
 
