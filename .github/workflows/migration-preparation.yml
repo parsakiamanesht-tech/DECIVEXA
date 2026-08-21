@@ -43,22 +43,22 @@ jobs:
           echo '--- migration SQL ---'
           find src/persistence/migrations -maxdepth 1 -type f -name '*.sql' -print -exec sh -c 'echo "--- $1 ---"; cat "$1"' _ {} \;
 
-      - name: Reconstruction experiment B from verified 0001 baseline with email uniqueness
+      - name: Canonical 0002 replacement test from verified 0001 baseline
         run: |
           set -eu
-          rm -rf /tmp/decivexa-reconstruction-b
-          mkdir -p /tmp/decivexa-reconstruction-b/schema /tmp/decivexa-reconstruction-b/migrations/meta
-          cp src/persistence/migrations/0000_*.sql /tmp/decivexa-reconstruction-b/migrations/
-          cp src/persistence/migrations/0001_*.sql /tmp/decivexa-reconstruction-b/migrations/
-          cp src/persistence/migrations/meta/0000_snapshot.json /tmp/decivexa-reconstruction-b/migrations/meta/
-          cp src/persistence/migrations/meta/0001_snapshot.json /tmp/decivexa-reconstruction-b/migrations/meta/
+          rm -rf /tmp/decivexa-canonical-0002
+          mkdir -p /tmp/decivexa-canonical-0002/schema /tmp/decivexa-canonical-0002/migrations/meta
+          cp src/persistence/migrations/0000_*.sql /tmp/decivexa-canonical-0002/migrations/
+          cp src/persistence/migrations/0001_*.sql /tmp/decivexa-canonical-0002/migrations/
+          cp src/persistence/migrations/meta/0000_snapshot.json /tmp/decivexa-canonical-0002/migrations/meta/
+          cp src/persistence/migrations/meta/0001_snapshot.json /tmp/decivexa-canonical-0002/migrations/meta/
           node - <<'NODE'
           const fs = require('fs');
           const src = JSON.parse(fs.readFileSync('src/persistence/migrations/meta/_journal.json', 'utf8'));
           src.entries = src.entries.filter(e => e.idx <= 1);
-          fs.writeFileSync('/tmp/decivexa-reconstruction-b/migrations/meta/_journal.json', JSON.stringify(src, null, 2) + '\n');
+          fs.writeFileSync('/tmp/decivexa-canonical-0002/migrations/meta/_journal.json', JSON.stringify(src, null, 2) + '\n');
           NODE
-          cat > /tmp/decivexa-reconstruction-b/schema/identity.ts <<'EOF'
+          cat > /tmp/decivexa-canonical-0002/schema/identity.ts <<'EOF'
           import { pgSchema, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
           const decivexa = pgSchema("decivexa");
           export const users = decivexa.table("users", {
@@ -71,7 +71,7 @@ jobs:
             emailUnique: uniqueIndex("users_email_unique").on(table.email),
           }));
           EOF
-          cat > /tmp/decivexa-reconstruction-b/schema/workspace.ts <<'EOF'
+          cat > /tmp/decivexa-canonical-0002/schema/workspace.ts <<'EOF'
           import { pgSchema, text, timestamp } from "drizzle-orm/pg-core";
           import { users } from "./identity";
           const decivexa = pgSchema("decivexa");
@@ -82,7 +82,7 @@ jobs:
             updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
           });
           EOF
-          cat > /tmp/decivexa-reconstruction-b/drizzle.config.ts <<'EOF'
+          cat > /tmp/decivexa-canonical-0002/drizzle.config.ts <<'EOF'
           import { defineConfig } from "drizzle-kit";
           export default defineConfig({
             schema: "./schema/*.ts",
@@ -90,10 +90,26 @@ jobs:
             dialect: "postgresql",
           });
           EOF
-          cd /tmp/decivexa-reconstruction-b
+          cd /tmp/decivexa-canonical-0002
           NODE_PATH="$GITHUB_WORKSPACE/apps/api/node_modules" node "$GITHUB_WORKSPACE/apps/api/node_modules/drizzle-kit/bin.cjs" generate --config=./drizzle.config.ts
-          echo '--- reconstructed Experiment B files ---'
-          find /tmp/decivexa-reconstruction-b/migrations -maxdepth 2 -type f -print -exec sh -c 'echo "--- $1 ---"; cat "$1"' _ {} \;
+          echo '--- canonical 0002 SQL ---'
+          find migrations -maxdepth 1 -type f -name '*.sql' -print -exec sh -c 'echo "--- $1 ---"; cat "$1"' _ {} \;
+          echo '--- canonical 0002 snapshot ---'
+          find migrations/meta -maxdepth 1 -type f -name '0002_snapshot.json' -print -exec sh -c 'echo "--- $1 ---"; cat "$1"' _ {} \;
+          echo '--- current repository 0002 snapshot ---'
+          cat "$GITHUB_WORKSPACE/apps/api/src/persistence/migrations/meta/0002_snapshot.json"
+          echo '--- semantic comparison ---'
+          node - <<'NODE'
+          const fs = require('fs');
+          const current = JSON.parse(fs.readFileSync(process.env.GITHUB_WORKSPACE + '/apps/api/src/persistence/migrations/meta/0002_snapshot.json', 'utf8'));
+          const canonical = JSON.parse(fs.readdirSync('/tmp/decivexa-canonical-0002/migrations/meta').find(f => /^0002_snapshot\.json$/.test(f)).replace(/^/, '/tmp/decivexa-canonical-0002/migrations/meta/').length ? fs.readFileSync('/tmp/decivexa-canonical-0002/migrations/meta/0002_snapshot.json', 'utf8') : '{}');
+          const normalize = (x) => JSON.stringify(x, (k, v) => k === 'id' || k === 'prevId' ? undefined : v);
+          if (normalize(current) !== normalize(canonical)) {
+            console.log('Semantic snapshot comparison: DIFFERENT');
+            process.exit(2);
+          }
+          console.log('Semantic snapshot comparison: EQUIVALENT after metadata IDs normalization.');
+          NODE
 
       - name: Generate migration
         run: npm run db:generate
