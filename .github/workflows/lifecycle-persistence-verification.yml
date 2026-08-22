@@ -32,8 +32,12 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Create temporary lockfile and install dependencies
+        run: |
+          set -euo pipefail
+          trap 'rm -f package-lock.json' EXIT
+          npm install --package-lock-only --ignore-scripts
+          npm ci
         working-directory: apps/api
 
       - name: Apply canonical migrations only
