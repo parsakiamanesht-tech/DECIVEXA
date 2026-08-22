@@ -2,6 +2,9 @@ name: Drizzle Kit 0.31.4 Compatibility Diagnostic
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - diagnostic/drizzle-kit-0314-compatibility
 
 permissions:
   contents: read
@@ -17,22 +20,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
       - name: Install repository dependencies
         run: npm ci
-
       - name: Report baseline versions
         run: |
           set -euo pipefail
           node --version
           npm --version
           npm ls drizzle-kit drizzle-orm --depth=0
-
       - name: Run Drizzle Kit 0.31.4 generate in isolated workspace
         run: |
           set -euo pipefail
@@ -53,6 +52,5 @@ jobs:
           echo "--- snapshot files after generate ---"
           find src/persistence/migrations/meta -maxdepth 1 -type f -name '*_snapshot.json' -print | sort
           exit 0
-
       - name: Diagnostic result
         run: echo "DRIZZLE KIT 0.31.4 COMPATIBILITY DIAGNOSTIC COMPLETE"
