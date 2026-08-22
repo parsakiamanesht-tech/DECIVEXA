@@ -54,7 +54,7 @@ test("Evidence domain contract", async (t) => {
       evidenceId: "evidence-1",
       versionId: "evidence-version-2",
       expectedVersion: 1,
-      lifecycle: "archived",
+      lifecycle: "corrected",
       now: new Date("2026-01-02T00:00:00.000Z"),
     };
 
