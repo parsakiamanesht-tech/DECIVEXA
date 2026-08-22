@@ -19,7 +19,7 @@ jobs:
           node-version: 22
 
       - name: Install API dependencies
-        run: npm ci
+        run: npm install --no-package-lock
 
       - name: Capture exact resolved package versions
         run: |
