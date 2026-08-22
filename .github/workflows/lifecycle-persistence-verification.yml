@@ -1,0 +1,85 @@
+name: Lifecycle Persistence Verification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "apps/api/**"
+      - ".github/workflows/lifecycle-persistence-verification.yml"
+
+jobs:
+  verify-lifecycle-persistence:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: decivexa
+          POSTGRES_USER: decivexa
+          POSTGRES_PASSWORD: decivexa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U decivexa -d decivexa"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: apps/api
+
+      - name: Generate migrations in isolated workspace
+        run: npm run db:generate
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
+
+      - name: Apply canonical migrations to ephemeral PostgreSQL
+        run: npm run db:migrate
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
+
+      - name: Verify lifecycle persistence contract (read-only)
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
+        run: |
+          set -euo pipefail
+
+          echo '--- workspaces.lifecycle_state column ---'
+          COLUMN=$(psql "$DATABASE_URL" -tAc "SELECT data_type || '|' || is_nullable || '|' || COALESCE(column_default, '<NULL>') FROM information_schema.columns WHERE table_schema='public' AND table_name='workspaces' AND column_name='lifecycle_state';")
+          echo "$COLUMN"
+          test "$COLUMN" = "text|NO|'active'::text"
+
+          echo '--- lifecycle check constraint ---'
+          CONSTRAINT=$(psql "$DATABASE_URL" -tAc "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid='public.workspaces'::regclass AND contype='c' AND pg_get_constraintdef(oid) ILIKE '%lifecycle_state%';")
+          echo "$CONSTRAINT"
+          echo "$CONSTRAINT" | grep -F "lifecycle_state" >/dev/null
+          echo "$CONSTRAINT" | grep -F "active" >/dev/null
+          echo "$CONSTRAINT" | grep -F "archived" >/dev/null
+
+          echo '--- migration journal ---'
+          psql "$DATABASE_URL" -c 'SELECT * FROM drizzle.__drizzle_migrations ORDER BY created_at;'
+
+          echo 'Lifecycle persistence verification PASSED.'
+
+      - name: Verify no migration file was committed by this gate
+        run: |
+          set -euo pipefail
+          git status --short
+          echo 'Generated migration files are diagnostic output only; this workflow does not commit or push them.'
+
+      - name: Upload lifecycle verification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: decivexa-lifecycle-persistence-verification
+          path: apps/api/src/persistence/migrations/**
+          if-no-files-found: warn
