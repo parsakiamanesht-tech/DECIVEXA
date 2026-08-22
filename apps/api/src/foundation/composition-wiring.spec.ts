@@ -3,8 +3,10 @@ import test from "node:test";
 import { Test } from "@nestjs/testing";
 import { WORKSPACE_REPOSITORY } from "../core/resource/workspace.repository.token";
 import { EVIDENCE_REPOSITORY } from "../core/evidence/evidence.repository.token";
+import { PERSONAL_INTELLIGENCE_CLAIM_REPOSITORY } from "../core/personal-intelligence/personal-intelligence-claim.repository.token";
 import { DrizzleWorkspaceRepository } from "../infrastructure/persistence/workspace.repository";
 import { DrizzleEvidenceRepository } from "../infrastructure/persistence/evidence.repository";
+import { DrizzlePersonalIntelligenceClaimRepository } from "../infrastructure/persistence/personal-intelligence-claim.repository";
 import { PersistenceModule } from "../infrastructure/persistence/persistence.module";
 import { EvidenceModule } from "../infrastructure/evidence/evidence.module";
 import { EvidenceUseCase } from "../application/evidence/evidence.use-case";
@@ -47,6 +49,21 @@ void test("composition wires the evidence repository port to the Drizzle adapter
   assert.ok(repository instanceof DrizzleEvidenceRepository);
   assert.ok(useCase instanceof EvidenceUseCase);
   assert.strictEqual(injectedRepository, repository);
+
+  await moduleRef.close();
+});
+
+void test("composition wires the personal intelligence claim repository port to the Drizzle adapter", async () => {
+  const moduleRef = await Test.createTestingModule({
+    imports: [PersistenceModule],
+  })
+    .overrideProvider(DatabaseService)
+    .useValue({ client: {} as DatabaseClient })
+    .compile();
+
+  const repository = moduleRef.get(PERSONAL_INTELLIGENCE_CLAIM_REPOSITORY);
+
+  assert.ok(repository instanceof DrizzlePersonalIntelligenceClaimRepository);
 
   await moduleRef.close();
 });
