@@ -5,9 +5,10 @@ import { ApplicationModule } from './application/application.module';
 import { PersistenceModule } from './infrastructure/persistence/persistence.module';
 import { AuthModule } from './infrastructure/auth/auth.module';
 import { PersonalStateModule } from './infrastructure/personal-state/personal-state.module';
+import { EvidenceModule } from './infrastructure/evidence/evidence.module';
 
 @Module({
-  imports: [ApplicationModule.register([PersistenceModule]), AuthModule, PersonalStateModule],
+  imports: [ApplicationModule.register([PersistenceModule]), AuthModule, PersonalStateModule, EvidenceModule],
   controllers: [HealthController],
   providers: [PersistenceService],
   exports: [PersistenceService],

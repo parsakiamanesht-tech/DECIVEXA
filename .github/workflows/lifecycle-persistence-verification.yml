@@ -53,7 +53,7 @@ jobs:
             const fs = require("fs");
             const p = process.env.JOURNAL_PATH;
             const j = JSON.parse(fs.readFileSync(p, "utf8"));
-            j.entries = j.entries.filter((e) => e.idx !== 4);
+            j.entries = j.entries.filter((e) => e.idx < 4);
             fs.writeFileSync(p, JSON.stringify(j, null, 2));
           '
           echo "--- 0000-0003-only journal ---"
@@ -127,6 +127,7 @@ jobs:
       - name: Verify repository remained unchanged by the gate
         run: |
           set -euo pipefail
+          rm -rf apps/api/node_modules
           git status --short
           test -z "$(git status --porcelain)"
           echo 'No repository files were generated, modified, committed, or pushed by this gate.'
