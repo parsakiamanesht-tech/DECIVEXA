@@ -4,18 +4,21 @@ This directory is the repository-level context layer for DECIVEXA.
 
 ## Reading Order for Humans and AI Agents
 
-1. `00_PROJECT_CONSTITUTION.md` — identity, principles, governance, truth hierarchy.
-2. `01_ARCHITECTURE.md` — target architecture and boundaries.
-3. `02_PRODUCT_VISION.md` — product purpose, differentiation, and experience.
-4. `03_MODULE_MAP.md` — module responsibilities and boundaries.
-5. `04_ARCHITECTURAL_DECISIONS.md` — durable architecture decisions and rationale.
-6. `05_CURRENT_STATE.md` — current lifecycle, repository state, and active technical risks.
-7. `06_RECOVERY_BASELINE.md` — recovery anchors and safety rules.
-8. `07_ARCHITECTURE_BACKLOG.md` — deferred strategic capabilities.
-9. `08_DEVELOPMENT_RULES.md` — implementation and engineering rules.
-10. `09_EVIDENCE_PROTOCOL.md` — evidence classification and diagnostic discipline.
-11. `10_HANDOFF.md` — onboarding contract for engineers and AI agents.
-12. `11_PROJECT_KNOWLEDGE_REGISTER.md` — consolidated project knowledge and historical context.
+1. `12_SOURCE_OF_TRUTH_INDEX.md` — entry point and authority model.
+2. `00_PROJECT_CONSTITUTION.md` — identity, principles, governance, truth hierarchy.
+3. `01_ARCHITECTURE.md` — target architecture and boundaries.
+4. `02_PRODUCT_VISION.md` — product purpose, differentiation, and experience.
+5. `03_MODULE_MAP.md` — module responsibilities and boundaries.
+6. `04_ARCHITECTURAL_DECISIONS.md` — durable architecture decisions and rationale.
+7. `05_CURRENT_STATE.md` — current lifecycle, repository state, and active technical risks.
+8. `06_RECOVERY_BASELINE.md` — recovery anchors and safety rules.
+9. `07_ARCHITECTURE_BACKLOG.md` — deferred strategic capabilities.
+10. `08_DEVELOPMENT_RULES.md` — implementation and engineering rules.
+11. `09_EVIDENCE_PROTOCOL.md` — evidence classification and diagnostic discipline.
+12. `10_HANDOFF.md` — onboarding contract for engineers and AI agents.
+13. `11_PROJECT_KNOWLEDGE_REGISTER.md` — consolidated project knowledge and historical context.
+14. `13_KNOWLEDGE_BASE_AND_FUTURE_MEMORY.md` — durable knowledge, future memory, research, and knowledge-base direction.
+15. `14_COMPLETENESS_AUDIT.md` — coverage audit and explicit deferred capabilities.
 
 ## Authority Model
 
@@ -31,13 +34,15 @@ For deferred ideas, use the Architecture Backlog.
 
 For historical context, use the Knowledge Register and git history.
 
+For durable knowledge and future memory direction, use `13_KNOWLEDGE_BASE_AND_FUTURE_MEMORY.md`.
+
 ## Required Agent Behavior
 
 Before material work, an AI agent should read this index and then the relevant documents in order. It must inspect the actual repository before modifying code.
 
 ## Maintenance Rule
 
-When a durable product or architecture decision is made, update the relevant source-of-truth document. When a decision is deferred, update the backlog. When the verified state changes, update the current-state document. When a recovery anchor changes, update the recovery document.
+When a durable product or architecture decision is made, update the relevant source-of-truth document. When a decision is deferred, update the backlog. When the verified state changes, update the current-state document. When a recovery anchor changes, update the recovery document. When durable knowledge or memory architecture evolves, update the knowledge-base document.
 
 ## Important Boundary
 
