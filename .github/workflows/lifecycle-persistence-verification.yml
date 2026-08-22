@@ -124,6 +124,150 @@ jobs:
 
           echo 'Lifecycle persistence verification PASSED.'
 
+      - name: Verify personal_state_revisions on the fresh canonical database (0006 fresh-path regression check)
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
+        run: |
+          set -euo pipefail
+
+          echo '--- personal_state_revisions exists on the main canonical database ---'
+          TABLE=$(psql "$DATABASE_URL" -tAc "SELECT to_regclass('decivexa.personal_state_revisions');")
+          echo "personal_state_revisions: '${TABLE}'"
+          test "$TABLE" = "personal_state_revisions"
+
+          echo '--- backfill was correctly a no-op (no personal_states rows existed on this fresh database before 0006 applied) ---'
+          COUNT=$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM decivexa.personal_state_revisions;")
+          test "$COUNT" = "0"
+
+          echo '--- 0006 present in the canonical journal ---'
+          psql "$DATABASE_URL" -c 'SELECT * FROM drizzle.__drizzle_migrations ORDER BY created_at;'
+
+          echo 'Fresh-database 0006 regression check PASSED.'
+
+      - name: Phase 3 - build 0000-0005 boundary database (pre-existing-0006 scenario)
+        run: |
+          set -euo pipefail
+          psql "postgresql://decivexa:decivexa@localhost:5432/decivexa" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE decivexa_0006_boundary OWNER decivexa;'
+          tmpdir="$(mktemp -d)"
+          cp -a apps/api "$tmpdir/apps-api"
+          rm -f "$tmpdir/apps-api/src/persistence/migrations/0006_sad_zaladane.sql"
+          rm -f "$tmpdir/apps-api/src/persistence/migrations/meta/0006_snapshot.json"
+          JOURNAL_PATH="$tmpdir/apps-api/src/persistence/migrations/meta/_journal.json" node -e '
+            const fs = require("fs");
+            const p = process.env.JOURNAL_PATH;
+            const j = JSON.parse(fs.readFileSync(p, "utf8"));
+            j.entries = j.entries.filter((e) => e.idx < 6);
+            fs.writeFileSync(p, JSON.stringify(j, null, 2));
+          '
+          echo "--- 0000-0005-only journal (boundary database) ---"
+          cat "$tmpdir/apps-api/src/persistence/migrations/meta/_journal.json"
+          (cd "$tmpdir/apps-api" && DATABASE_URL="postgresql://decivexa:decivexa@localhost:5432/decivexa_0006_boundary" npx drizzle-kit migrate)
+          rm -rf "$tmpdir"
+
+      - name: Phase 3 check - boundary database has 0000-0005 only, personal_state_revisions absent
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa_0006_boundary
+        run: |
+          set -euo pipefail
+          COUNT=$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM drizzle.__drizzle_migrations;")
+          echo "boundary database applied migration count: $COUNT"
+          test "$COUNT" = "6"
+
+          TABLE=$(psql "$DATABASE_URL" -tAc "SELECT to_regclass('decivexa.personal_state_revisions');")
+          echo "boundary database personal_state_revisions: '${TABLE}'"
+          test -z "$TABLE"
+          echo "Confirmed: boundary database has exactly 0000-0005 applied, personal_state_revisions correctly absent."
+
+      - name: Phase 3 - seed a pre-existing personal_states row before applying 0006
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa_0006_boundary
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO decivexa.users (id, email, password_hash, created_at, updated_at) VALUES ('boundary-seed-user', 'boundary-seed@example.com', 'x', now(), now());"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO decivexa.personal_states (id, user_id, timezone, locale, availability, provenance, revision, created_at, updated_at) VALUES ('boundary-seed-state', 'boundary-seed-user', 'Europe/Paris', 'fr-FR', 'limited', 'observed', 5, now() - interval '10 days', now() - interval '1 hour');"
+          echo "Seeded a personal_states row at revision 5 (not 1) for boundary-seed-user, to prove backfill preserves the actual current revision."
+
+      - name: Phase 3 - apply migration 0006 to the boundary database
+        run: npm run db:migrate
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa_0006_boundary
+
+      - name: Phase 3 check - migration 0006 applied correctly with accurate backfill
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa_0006_boundary
+        run: |
+          set -euo pipefail
+
+          echo '--- personal_state_revisions now exists ---'
+          TABLE=$(psql "$DATABASE_URL" -tAc "SELECT to_regclass('decivexa.personal_state_revisions');")
+          test "$TABLE" = "personal_state_revisions"
+
+          echo '--- exactly one backfilled revision for the seeded user ---'
+          COUNT=$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM decivexa.personal_state_revisions WHERE user_id = 'boundary-seed-user';")
+          test "$COUNT" = "1"
+
+          echo '--- backfilled row matches the seeded personal_states row exactly, preserving revision 5 (not hardcoded to 1) ---'
+          ROW=$(psql "$DATABASE_URL" -tAc "SELECT user_id || '|' || revision || '|' || timezone || '|' || locale || '|' || availability || '|' || provenance || '|' || COALESCE(evidence_version_id, '<NULL>') FROM decivexa.personal_state_revisions WHERE user_id = 'boundary-seed-user';")
+          echo "$ROW"
+          test "$ROW" = "boundary-seed-user|5|Europe/Paris|fr-FR|limited|observed|<NULL>"
+
+          echo '--- backfilled created_at matches the seeded personal_states.updated_at exactly ---'
+          MATCH=$(psql "$DATABASE_URL" -tAc "SELECT (r.created_at = s.updated_at) FROM decivexa.personal_state_revisions r JOIN decivexa.personal_states s ON s.user_id = r.user_id WHERE r.user_id = 'boundary-seed-user';")
+          test "$MATCH" = "t"
+
+          echo '--- unique(user_id, revision) exists ---'
+          IDX=$(psql "$DATABASE_URL" -tAc "SELECT indexdef FROM pg_indexes WHERE schemaname='decivexa' AND tablename='personal_state_revisions' AND indexname='personal_state_revisions_user_id_revision_unique';")
+          test -n "$IDX"
+          echo "$IDX" | grep -F "UNIQUE" >/dev/null
+
+          echo '--- all three FKs exist ---'
+          FKS=$(psql "$DATABASE_URL" -tAc "SELECT conname FROM pg_constraint WHERE conrelid='decivexa.personal_state_revisions'::regclass AND contype='f' ORDER BY conname;")
+          echo "$FKS"
+          echo "$FKS" | grep -F "personal_state_revisions_user_id_users_id_fk" >/dev/null
+          echo "$FKS" | grep -F "personal_state_revisions_state_owner_fk" >/dev/null
+          echo "$FKS" | grep -F "personal_state_revisions_evidence_version_fk" >/dev/null
+
+          echo '--- all three check constraints exist ---'
+          CHECKS=$(psql "$DATABASE_URL" -tAc "SELECT conname FROM pg_constraint WHERE conrelid='decivexa.personal_state_revisions'::regclass AND contype='c' ORDER BY conname;")
+          echo "$CHECKS"
+          echo "$CHECKS" | grep -F "personal_state_revisions_availability_check" >/dev/null
+          echo "$CHECKS" | grep -F "personal_state_revisions_provenance_check" >/dev/null
+          echo "$CHECKS" | grep -F "personal_state_revisions_revision_check" >/dev/null
+
+          echo '--- personal_states own check constraints remain intact (no spurious drop/re-add) ---'
+          PS_CONSTRAINTS=$(psql "$DATABASE_URL" -tAc "SELECT conname FROM pg_constraint WHERE conrelid='decivexa.personal_states'::regclass AND contype='c' ORDER BY conname;")
+          echo "$PS_CONSTRAINTS"
+          echo "$PS_CONSTRAINTS" | grep -F "personal_states_availability_check" >/dev/null
+          echo "$PS_CONSTRAINTS" | grep -F "personal_states_provenance_check" >/dev/null
+          echo "$PS_CONSTRAINTS" | grep -F "personal_states_revision_check" >/dev/null
+
+          echo '--- migration journal contains 0006 exactly once, strictly after 0005 ---'
+          psql "$DATABASE_URL" -c 'SELECT * FROM drizzle.__drizzle_migrations ORDER BY created_at;'
+          TOTAL=$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM drizzle.__drizzle_migrations;")
+          test "$TOTAL" = "7"
+          ORDERED=$(psql "$DATABASE_URL" -tAc "SELECT (SELECT created_at FROM drizzle.__drizzle_migrations ORDER BY created_at DESC LIMIT 1) > (SELECT created_at FROM drizzle.__drizzle_migrations ORDER BY created_at DESC OFFSET 1 LIMIT 1);")
+          test "$ORDERED" = "t"
+
+          echo 'Migration 0006 boundary verification PASSED.'
+
+      - name: Phase 3 - re-run migrate to prove 0006 is not reapplied (idempotency)
+        run: npm run db:migrate
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa_0006_boundary
+
+      - name: Phase 3 check - idempotency verification
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa_0006_boundary
+        run: |
+          set -euo pipefail
+          TOTAL=$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM drizzle.__drizzle_migrations;")
+          test "$TOTAL" = "7"
+          COUNT=$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM decivexa.personal_state_revisions WHERE user_id = 'boundary-seed-user';")
+          test "$COUNT" = "1"
+          echo "Confirmed: re-running db:migrate did not re-apply 0006 or duplicate the backfilled revision row."
+
       - name: Verify repository remained unchanged by the gate
         run: |
           set -euo pipefail
