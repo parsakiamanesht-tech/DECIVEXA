@@ -36,13 +36,7 @@ jobs:
         run: npm ci
         working-directory: apps/api
 
-      - name: Generate migrations in isolated workspace
-        run: npm run db:generate
-        working-directory: apps/api
-        env:
-          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
-
-      - name: Apply canonical migrations to ephemeral PostgreSQL
+      - name: Apply canonical migrations only
         run: npm run db:migrate
         working-directory: apps/api
         env:
@@ -66,20 +60,14 @@ jobs:
           echo "$CONSTRAINT" | grep -F "active" >/dev/null
           echo "$CONSTRAINT" | grep -F "archived" >/dev/null
 
-          echo '--- migration journal ---'
+          echo '--- canonical migration journal ---'
           psql "$DATABASE_URL" -c 'SELECT * FROM public.__drizzle_migrations ORDER BY created_at;'
 
           echo 'Lifecycle persistence verification PASSED.'
 
-      - name: Verify no migration file was committed by this gate
+      - name: Verify repository remained unchanged by the gate
         run: |
           set -euo pipefail
           git status --short
-          echo 'Generated migration files are diagnostic output only; this workflow does not commit or push them.'
-
-      - name: Upload lifecycle verification evidence
-        uses: actions/upload-artifact@v4
-        with:
-          name: decivexa-lifecycle-persistence-verification
-          path: apps/api/src/persistence/migrations/**
-          if-no-files-found: warn
+          test -z "$(git status --porcelain)"
+          echo 'No repository files were generated, modified, committed, or pushed by this gate.'
