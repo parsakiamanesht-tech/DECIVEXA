@@ -1,0 +1,91 @@
+name: Lifecycle Persistence Verification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "apps/api/**"
+      - ".github/workflows/lifecycle-persistence-verification.yml"
+
+jobs:
+  verify-lifecycle-persistence:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: decivexa
+          POSTGRES_USER: decivexa
+          POSTGRES_PASSWORD: decivexa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U decivexa -d decivexa"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Create temporary lockfile and install dependencies
+        run: |
+          set -euo pipefail
+          trap 'rm -f package-lock.json' EXIT
+          npm install --package-lock-only --ignore-scripts
+          npm ci
+        working-directory: apps/api
+
+      - name: Apply canonical migrations only
+        run: npm run db:migrate
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
+
+      - name: Verify lifecycle persistence contract (read-only)
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
+        run: |
+          set -euo pipefail
+
+          echo '--- workspaces.lifecycle_state column ---'
+          COLUMN=$(psql "$DATABASE_URL" -tAc "SELECT data_type || '|' || is_nullable || '|' || COALESCE(column_default, '<NULL>') FROM information_schema.columns WHERE table_schema='decivexa' AND table_name='workspaces' AND column_name='lifecycle_state';")
+          echo "$COLUMN"
+          test "$COLUMN" = "text|NO|'active'::text"
+
+          echo '--- lifecycle check constraint ---'
+          CONSTRAINT=$(psql "$DATABASE_URL" -tAc "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid='decivexa.workspaces'::regclass AND contype='c' AND pg_get_constraintdef(oid) ILIKE '%lifecycle_state%';")
+          echo "$CONSTRAINT"
+          echo "$CONSTRAINT" | grep -F "lifecycle_state" >/dev/null
+          echo "$CONSTRAINT" | grep -F "active" >/dev/null
+          echo "$CONSTRAINT" | grep -F "archived" >/dev/null
+
+          echo '--- users_email_unique remains present ---'
+          EMAIL_INDEX=$(psql "$DATABASE_URL" -tAc "SELECT indexdef FROM pg_indexes WHERE schemaname='decivexa' AND tablename='users' AND indexname='users_email_unique';")
+          echo "$EMAIL_INDEX"
+          test -n "$EMAIL_INDEX"
+          echo "$EMAIL_INDEX" | grep -F "UNIQUE" >/dev/null
+          echo "$EMAIL_INDEX" | grep -F "email" >/dev/null
+
+          echo '--- personal_states check constraints remain intact ---'
+          PS_CONSTRAINTS=$(psql "$DATABASE_URL" -tAc "SELECT conname FROM pg_constraint WHERE conrelid='decivexa.personal_states'::regclass AND contype='c' ORDER BY conname;")
+          echo "$PS_CONSTRAINTS"
+          echo "$PS_CONSTRAINTS" | grep -F "personal_states_availability_check" >/dev/null
+          echo "$PS_CONSTRAINTS" | grep -F "personal_states_provenance_check" >/dev/null
+          echo "$PS_CONSTRAINTS" | grep -F "personal_states_revision_check" >/dev/null
+
+          echo '--- canonical migration journal ---'
+          psql "$DATABASE_URL" -c 'SELECT * FROM drizzle.__drizzle_migrations ORDER BY created_at;'
+
+          echo 'Lifecycle persistence verification PASSED.'
+
+      - name: Verify repository remained unchanged by the gate
+        run: |
+          set -euo pipefail
+          git status --short
+          test -z "$(git status --porcelain)"
+          echo 'No repository files were generated, modified, committed, or pushed by this gate.'
