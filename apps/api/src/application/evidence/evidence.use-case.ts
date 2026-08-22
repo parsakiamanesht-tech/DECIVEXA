@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import type { RequestContext } from "../../context/request-context";
-import type { EvidenceLifecycle, EvidenceProvenance, EvidenceVersion } from "../../core/evidence/evidence.model";
+import type { Evidence, EvidenceLifecycle, EvidenceProvenance, EvidenceVersion } from "../../core/evidence/evidence.model";
 import { EVIDENCE_REPOSITORY } from "../../core/evidence/evidence.repository.token";
 import type { EvidenceRepository } from "../../core/evidence/evidence.repository";
 import { failure, success, type Result } from "../../shared/result/result";
@@ -21,10 +21,32 @@ export type EvidenceLifecycleAppendInput = Readonly<{
 
 export class EvidenceValidationError extends Error {}
 export class EvidenceConflictError extends Error {}
+export class EvidenceNotFoundError extends Error {}
 
 @Injectable()
 export class EvidenceUseCase {
   constructor(@Inject(EVIDENCE_REPOSITORY) private readonly repository: EvidenceRepository) {}
+
+  async get(evidenceId: string, context: RequestContext): Promise<Result<Evidence>> {
+    if (!context.userId) return failure(new EvidenceValidationError("Authenticated user required"));
+    const evidence = await this.repository.findByIdForUser(context.userId, evidenceId);
+    if (!evidence) return failure(new EvidenceNotFoundError("Evidence not found"));
+    return success(evidence);
+  }
+
+  async getVersion(
+    evidenceId: string,
+    version: number,
+    context: RequestContext,
+  ): Promise<Result<EvidenceVersion>> {
+    if (!context.userId) return failure(new EvidenceValidationError("Authenticated user required"));
+    if (!Number.isInteger(version) || version < 1) {
+      return failure(new EvidenceValidationError("Invalid version"));
+    }
+    const found = await this.repository.findVersionForUser(context.userId, evidenceId, version);
+    if (!found) return failure(new EvidenceNotFoundError("Evidence version not found"));
+    return success(found);
+  }
 
   async create(input: EvidenceCreateInput, context: RequestContext): Promise<Result<EvidenceVersion>> {
     if (!context.userId) return failure(new EvidenceValidationError("Authenticated user required"));

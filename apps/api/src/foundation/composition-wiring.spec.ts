@@ -6,9 +6,16 @@ import { EVIDENCE_REPOSITORY } from "../core/evidence/evidence.repository.token"
 import { DrizzleWorkspaceRepository } from "../infrastructure/persistence/workspace.repository";
 import { DrizzleEvidenceRepository } from "../infrastructure/persistence/evidence.repository";
 import { PersistenceModule } from "../infrastructure/persistence/persistence.module";
+import { EvidenceModule } from "../infrastructure/evidence/evidence.module";
 import { EvidenceUseCase } from "../application/evidence/evidence.use-case";
 import type { DatabaseClient } from "../persistence/database";
 import { DatabaseService } from "../persistence/database.service";
+
+// EvidenceModule imports AuthModule, which constructs a real AccessTokenService;
+// each node --test file runs in its own isolated process, so the env var set by
+// access-token.service.spec.ts does not reach this file - set it here too,
+// mirroring that same spec file's own convention.
+process.env.AUTH_TOKEN_SECRET ??= "decivexa-test-auth-token-secret-0123456789";
 
 void test("composition wires the workspace repository port to the Drizzle adapter", async () => {
   const moduleRef = await Test.createTestingModule({
@@ -27,7 +34,7 @@ void test("composition wires the workspace repository port to the Drizzle adapte
 
 void test("composition wires the evidence repository port to the Drizzle adapter", async () => {
   const moduleRef = await Test.createTestingModule({
-    imports: [PersistenceModule],
+    imports: [EvidenceModule],
   })
     .overrideProvider(DatabaseService)
     .useValue({ client: {} as DatabaseClient })
