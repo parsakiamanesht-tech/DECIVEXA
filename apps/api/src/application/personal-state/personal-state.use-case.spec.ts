@@ -23,6 +23,9 @@ class FakePersonalStateRepository implements PersonalStateRepository {
     this.states.set(userId, next);
     return next;
   }
+  async findRevisionsForUser() {
+    return [];
+  }
 }
 
 test("personal state is always resolved from authenticated user context", async () => {
