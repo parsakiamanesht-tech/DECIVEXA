@@ -1,0 +1,70 @@
+name: Snapshot Validator Probe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - name: Checkout diagnostic commit
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+
+      - name: Install API dependencies
+        run: npm ci
+
+      - name: Probe resolved Drizzle versions
+        run: |
+          node -e "console.log('drizzle-kit', require('drizzle-kit/package.json').version); console.log('drizzle-orm', require('drizzle-orm/package.json').version)"
+
+      - name: Locate snapshot validator implementation
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require.resolve('drizzle-kit');
+          console.log('drizzle-kit entry:', path);
+          const root = path.split('/node_modules/drizzle-kit/')[0] + '/node_modules/drizzle-kit';
+          function walk(dir, depth=0) {
+            if (depth > 4 || !fs.existsSync(dir)) return;
+            for (const e of fs.readdirSync(dir, {withFileTypes:true})) {
+              const p = dir + '/' + e.name;
+              if (e.isDirectory() && !['node_modules','.git'].includes(e.name)) walk(p, depth+1);
+              else if (e.isFile() && /\.(js|cjs|mjs|d\.ts|ts)$/.test(e.name)) {
+                let s=''; try{s=fs.readFileSync(p,'utf8')}catch{}
+                if (/data is malformed|malformed|snapshot/i.test(s)) console.log('MATCH', p);
+              }
+            }
+          }
+          walk(root);
+          NODE
+
+      - name: Capture snapshots and validation diagnostics
+        run: |
+          mkdir -p /tmp/probe
+          cp src/persistence/migrations/meta/0002_snapshot.json /tmp/probe/0002_snapshot.json
+          cp src/persistence/migrations/meta/0003_snapshot.json /tmp/probe/0003_snapshot.json
+          set +e
+          npx drizzle-kit generate --config=drizzle.config.ts > /tmp/probe/generate.log 2>&1
+          code=$?
+          set -e
+          echo "generate_exit_code=$code" | tee /tmp/probe/summary.txt
+          cat /tmp/probe/generate.log | tee -a /tmp/probe/summary.txt
+          find node_modules/drizzle-kit -type f \( -name '*.js' -o -name '*.cjs' -o -name '*.mjs' \) -print0 | xargs -0 grep -nE 'data is malformed|malformed' 2>/dev/null | head -100 | tee /tmp/probe/malformed-matches.txt || true
+
+      - name: Upload validator probe evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-validator-probe-evidence
+          path: /tmp/probe
+          if-no-files-found: error
+          retention-days: 14
