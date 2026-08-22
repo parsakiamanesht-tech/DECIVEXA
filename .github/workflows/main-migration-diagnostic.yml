@@ -1,0 +1,101 @@
+name: DECIVEXA Snapshot Repair Diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - diagnostic/snapshot-index-shape
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot-repair-diagnostic:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify tested commit and main base
+        working-directory: .
+        run: |
+          set -euo pipefail
+          git fetch origin main --quiet
+          base="$(git merge-base HEAD origin/main)"
+          main="$(git rev-parse origin/main)"
+          head="$(git rev-parse HEAD)"
+          echo "origin/main=$main"
+          echo "HEAD=$head"
+          echo "merge-base=$base"
+          test "$base" = "$main"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Report resolved Drizzle versions
+        run: |
+          set -euo pipefail
+          npx drizzle-kit --version
+          npm ls drizzle-kit drizzle-orm --depth=0
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Validate snapshots and generate in isolated workspace
+        run: |
+          set -euo pipefail
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
+          cp -a . "$tmpdir/apps-api"
+          cd "$tmpdir/apps-api"
+          echo "Diagnostic workspace: $PWD"
+          npx drizzle-kit generate
+          echo "--- generated migration files ---"
+          find src/persistence/migrations -maxdepth 1 -type f -name '*.sql' -print | sort
+          generated="$(find src/persistence/migrations -maxdepth 1 -type f -name '*.sql' | sort | tail -n 1)"
+          if [ -n "$generated" ]; then
+            echo "--- GENERATED SQL: $generated ---"
+            cat "$generated"
+            echo "--- END GENERATED SQL ---"
+          else
+            echo "No generated SQL migration file found."
+          fi
+          echo "--- GENERATED SNAPSHOT CHECK CONSTRAINT EVIDENCE ---"
+          snapshot="$(find src/persistence/migrations/meta -maxdepth 1 -type f -name '*_snapshot.json' | sort | tail -n 1)"
+          if [ -n "$snapshot" ]; then
+            node -e 'const fs=require("fs"); const path=process.argv[1]; const data=JSON.parse(fs.readFileSync(path,"utf8")); const table=data.tables?.["decivexa.personal_states"]; console.log(`snapshot=${path}`); if(!table){console.log("personal_states table not found in generated snapshot"); process.exit(0);} console.log(JSON.stringify({checkConstraints:table.checkConstraints??{}},null,2));' "$snapshot"
+          else
+            echo "No generated snapshot file found."
+          fi
+          echo "--- END GENERATED SNAPSHOT CHECK CONSTRAINT EVIDENCE ---"
+          echo "--- COMMITTED 0003 SNAPSHOT CHECK CONSTRAINT EVIDENCE ---"
+          node -e 'const fs=require("fs"); const path=process.argv[1]; const data=JSON.parse(fs.readFileSync(path,"utf8")); const table=data.tables?.["decivexa.personal_states"]; console.log(`snapshot=${path}`); if(!table){console.log("personal_states table not found in committed snapshot"); process.exit(0);} console.log(JSON.stringify({checkConstraints:table.checkConstraints??{}},null,2));' src/persistence/migrations/meta/0003_snapshot.json
+          echo "--- END COMMITTED 0003 SNAPSHOT CHECK CONSTRAINT EVIDENCE ---"
+
+      - name: Report repository drift scope
+        working-directory: .
+        run: |
+          set -euo pipefail
+          git diff --name-only origin/main...HEAD | sort | grep -v '^\.github/workflows/main-migration-diagnostic\.yml$' || true
+          echo "Workflow files are excluded from migration-repair scope; this step is informational only."
+
+      - name: Report diagnostic result
+        run: |
+          echo "SNAPSHOT REPAIR DIAGNOSTIC COMPLETE"
+          echo "The generated SQL and snapshot constraint evidence above are authoritative evidence for the next migration decision."
+
+# Diagnostic-only trigger preservation comment: this workflow intentionally runs on the repair branch.

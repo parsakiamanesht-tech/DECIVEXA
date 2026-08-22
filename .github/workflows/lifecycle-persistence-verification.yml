@@ -1,0 +1,132 @@
+name: Lifecycle Persistence Verification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "apps/api/**"
+      - ".github/workflows/lifecycle-persistence-verification.yml"
+
+jobs:
+  verify-lifecycle-persistence:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: decivexa
+          POSTGRES_USER: decivexa
+          POSTGRES_PASSWORD: decivexa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U decivexa -d decivexa"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Create temporary lockfile and install dependencies
+        run: |
+          set -euo pipefail
+          trap 'rm -f package-lock.json' EXIT
+          npm install --package-lock-only --ignore-scripts
+          npm ci
+        working-directory: apps/api
+
+      - name: Phase 1 - apply 0000-0003 only (pre-existing-database scenario)
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
+        run: |
+          set -euo pipefail
+          tmpdir="$(mktemp -d)"
+          cp -a apps/api "$tmpdir/apps-api"
+          rm -f "$tmpdir/apps-api/src/persistence/migrations/0004_pretty_hellion.sql"
+          rm -f "$tmpdir/apps-api/src/persistence/migrations/meta/0004_snapshot.json"
+          JOURNAL_PATH="$tmpdir/apps-api/src/persistence/migrations/meta/_journal.json" node -e '
+            const fs = require("fs");
+            const p = process.env.JOURNAL_PATH;
+            const j = JSON.parse(fs.readFileSync(p, "utf8"));
+            j.entries = j.entries.filter((e) => e.idx !== 4);
+            fs.writeFileSync(p, JSON.stringify(j, null, 2));
+          '
+          echo "--- 0000-0003-only journal ---"
+          cat "$tmpdir/apps-api/src/persistence/migrations/meta/_journal.json"
+          (cd "$tmpdir/apps-api" && npx drizzle-kit migrate)
+          rm -rf "$tmpdir"
+
+      - name: Phase 1 check - lifecycle_state must NOT exist yet
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
+        run: |
+          set -euo pipefail
+          COLUMN=$(psql "$DATABASE_URL" -tAc "SELECT column_name FROM information_schema.columns WHERE table_schema='decivexa' AND table_name='workspaces' AND column_name='lifecycle_state';")
+          echo "phase1 lifecycle_state column: '${COLUMN}'"
+          test -z "$COLUMN"
+          echo "Confirmed: only 0000-0003 applied, lifecycle_state correctly absent."
+
+      - name: Phase 2 - apply full canonical migration set (incremental scenario)
+        run: npm run db:migrate
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
+
+      - name: Phase 2 check - 0004 must NOT have been skipped
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
+        run: |
+          set -euo pipefail
+          COLUMN=$(psql "$DATABASE_URL" -tAc "SELECT column_name FROM information_schema.columns WHERE table_schema='decivexa' AND table_name='workspaces' AND column_name='lifecycle_state';")
+          echo "phase2 lifecycle_state column: '${COLUMN}'"
+          test "$COLUMN" = "lifecycle_state"
+          echo "Confirmed: 0004 applied incrementally on top of an already-migrated 0000-0003 database, not skipped due to journal ordering."
+
+      - name: Verify lifecycle persistence contract (read-only)
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
+        run: |
+          set -euo pipefail
+
+          echo '--- workspaces.lifecycle_state column ---'
+          COLUMN=$(psql "$DATABASE_URL" -tAc "SELECT data_type || '|' || is_nullable || '|' || COALESCE(column_default, '<NULL>') FROM information_schema.columns WHERE table_schema='decivexa' AND table_name='workspaces' AND column_name='lifecycle_state';")
+          echo "$COLUMN"
+          test "$COLUMN" = "text|NO|'active'::text"
+
+          echo '--- lifecycle check constraint ---'
+          CONSTRAINT=$(psql "$DATABASE_URL" -tAc "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid='decivexa.workspaces'::regclass AND contype='c' AND pg_get_constraintdef(oid) ILIKE '%lifecycle_state%';")
+          echo "$CONSTRAINT"
+          echo "$CONSTRAINT" | grep -F "lifecycle_state" >/dev/null
+          echo "$CONSTRAINT" | grep -F "active" >/dev/null
+          echo "$CONSTRAINT" | grep -F "archived" >/dev/null
+
+          echo '--- users_email_unique remains present ---'
+          EMAIL_INDEX=$(psql "$DATABASE_URL" -tAc "SELECT indexdef FROM pg_indexes WHERE schemaname='decivexa' AND tablename='users' AND indexname='users_email_unique';")
+          echo "$EMAIL_INDEX"
+          test -n "$EMAIL_INDEX"
+          echo "$EMAIL_INDEX" | grep -F "UNIQUE" >/dev/null
+          echo "$EMAIL_INDEX" | grep -F "email" >/dev/null
+
+          echo '--- personal_states check constraints remain intact ---'
+          PS_CONSTRAINTS=$(psql "$DATABASE_URL" -tAc "SELECT conname FROM pg_constraint WHERE conrelid='decivexa.personal_states'::regclass AND contype='c' ORDER BY conname;")
+          echo "$PS_CONSTRAINTS"
+          echo "$PS_CONSTRAINTS" | grep -F "personal_states_availability_check" >/dev/null
+          echo "$PS_CONSTRAINTS" | grep -F "personal_states_provenance_check" >/dev/null
+          echo "$PS_CONSTRAINTS" | grep -F "personal_states_revision_check" >/dev/null
+
+          echo '--- canonical migration journal ---'
+          psql "$DATABASE_URL" -c 'SELECT * FROM drizzle.__drizzle_migrations ORDER BY created_at;'
+
+          echo 'Lifecycle persistence verification PASSED.'
+
+      - name: Verify repository remained unchanged by the gate
+        run: |
+          set -euo pipefail
+          git status --short
+          test -z "$(git status --porcelain)"
+          echo 'No repository files were generated, modified, committed, or pushed by this gate.'

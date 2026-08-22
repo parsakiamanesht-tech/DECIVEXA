@@ -1,0 +1,75 @@
+name: Drizzle Kit Malformed Source Probe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - name: Checkout diagnostic commit
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install API dependencies
+        run: npm install --no-package-lock
+
+      - name: Capture exact resolved package versions
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/probe
+          node -e "console.log('drizzle-kit', require('drizzle-kit/package.json').version); console.log('drizzle-orm', require('drizzle-orm/package.json').version)" | tee /tmp/probe/versions.txt
+          npm ls drizzle-kit drizzle-orm --depth=0 | tee /tmp/probe/npm-ls.txt
+          node -e "console.log(require.resolve('drizzle-kit'))" | tee /tmp/probe/entry.txt
+
+      - name: Locate exact malformed validator source
+        run: |
+          set -euo pipefail
+          KIT_DIR="$(node -e "const p=require.resolve('drizzle-kit'); console.log(p.slice(0,p.lastIndexOf('/')))")"
+          echo "KIT_DIR=$KIT_DIR" | tee /tmp/probe/source-location.txt
+          find "$KIT_DIR" -maxdepth 2 -type f -print | sort | tee /tmp/probe/package-files.txt
+          grep -RniE --include='*.cjs' --include='*.js' --include='*.mjs' 'data is malformed' "$KIT_DIR" | tee /tmp/probe/exact-malformed-match.txt
+          grep -RniE --include='*.cjs' --include='*.js' --include='*.mjs' 'malformed' "$KIT_DIR" | head -200 | tee /tmp/probe/all-malformed-matches.txt
+
+      - name: Capture source context around every exact match
+        run: |
+          set -euo pipefail
+          KIT_DIR="$(node -e "const p=require.resolve('drizzle-kit'); console.log(p.slice(0,p.lastIndexOf('/')))")"
+          : > /tmp/probe/malformed-context.txt
+          while IFS=: read -r file line rest; do
+            [ -n "$line" ] || continue
+            {
+              echo "=== $file:$line ==="
+              start=$((line-25)); [ "$start" -lt 1 ] && start=1
+              end=$((line+35))
+              sed -n "${start},${end}p" "$file"
+              echo
+            } >> /tmp/probe/malformed-context.txt
+          done < /tmp/probe/exact-malformed-match.txt
+          cat /tmp/probe/malformed-context.txt
+
+      - name: Reproduce generate without mutating migrations
+        run: |
+          set +e
+          npx drizzle-kit generate --config=drizzle.config.ts > /tmp/probe/generate.log 2>&1
+          code=$?
+          set -e
+          echo "generate_exit_code=$code" | tee /tmp/probe/generate-exit.txt
+          cat /tmp/probe/generate.log
+          git status --short > /tmp/probe/git-status.txt
+          git diff -- apps/api/src/persistence/migrations > /tmp/probe/git-diff.patch || true
+
+      - name: Upload source-level diagnostic evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: drizzle-kit-malformed-source-evidence
+          path: /tmp/probe
+          if-no-files-found: error
+          retention-days: 14
