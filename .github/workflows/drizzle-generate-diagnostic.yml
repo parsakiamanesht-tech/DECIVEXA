@@ -1,0 +1,91 @@
+name: Drizzle Generate Diagnostic
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "apps/api/**"
+      - ".github/workflows/drizzle-generate-diagnostic.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-diagnostic:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        working-directory: apps/api
+        run: |
+          set -euo pipefail
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --ignore-scripts
+          fi
+
+      - name: Capture baseline
+        run: |
+          set -euo pipefail
+          git status --short > /tmp/before-status.txt
+          git ls-files apps/api/src/persistence/migrations > /tmp/before-files.txt
+          git diff -- apps/api/src/persistence/migrations > /tmp/before-diff.patch
+
+      - name: Generate migration with project Drizzle script
+        working-directory: apps/api
+        run: npm run db:generate
+
+      - name: Collect generated evidence
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/drizzle-evidence
+          git status --short > /tmp/drizzle-evidence/status-after-generate.txt
+          git diff -- apps/api/src/persistence/migrations > /tmp/drizzle-evidence/tracked-diff.patch
+          git ls-files --others --exclude-standard apps/api/src/persistence/migrations > /tmp/drizzle-evidence/untracked-files.txt
+          cp /tmp/before-files.txt /tmp/drizzle-evidence/before-files.txt
+          cp /tmp/before-status.txt /tmp/drizzle-evidence/before-status.txt
+          cp /tmp/before-diff.patch /tmp/drizzle-evidence/before-diff.patch
+          find apps/api/src/persistence/migrations -type f -print0 | sort -z | tar --null -T - -czf /tmp/drizzle-evidence/migrations-after-generate.tgz
+
+          echo '--- STATUS AFTER GENERATE ---'
+          cat /tmp/drizzle-evidence/status-after-generate.txt
+          echo '--- TRACKED DIFF ---'
+          cat /tmp/drizzle-evidence/tracked-diff.patch || true
+          echo '--- UNTRACKED MIGRATION FILES ---'
+          cat /tmp/drizzle-evidence/untracked-files.txt || true
+
+      - name: Verify generate did not rewrite existing migration files
+        run: |
+          set -euo pipefail
+          while IFS= read -r file; do
+            if ! git diff --quiet -- "$file"; then
+              echo "ERROR: Existing tracked migration changed: $file"
+              exit 1
+            fi
+          done < /tmp/before-files.txt
+          echo 'Existing tracked migrations were not modified.'
+
+      - name: Upload generated evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: drizzle-generate-diagnostic
+          path: /tmp/drizzle-evidence
+          if-no-files-found: error
+
+      - name: Discard all generated working-tree changes
+        run: |
+          set -euo pipefail
+          git reset --hard HEAD
+          git clean -fd -- apps/api/src/persistence/migrations
+          test -z "$(git status --porcelain)"
+          echo 'Generated changes discarded. No commit or push performed.'
