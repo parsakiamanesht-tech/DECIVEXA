@@ -46,6 +46,39 @@ jobs:
           grep -RniE --include='*.cjs' --include='*.js' --include='*.mjs' 'data is malformed' "$KIT_DIR" | tee /tmp/probe/exact-malformed-match.txt
           grep -RniE --include='*.cjs' --include='*.js' --include='*.mjs' 'malformed' "$KIT_DIR" | head -200 | tee /tmp/probe/all-malformed-matches.txt
 
+      - name: Locate validator definitions exactly
+        run: |
+          set -euo pipefail
+          KIT_DIR="$(node -e "const p=require.resolve('drizzle-kit'); const fs=require('fs'); let d=require('path').dirname(p); while (d!==require('path').dirname(d)) { if (fs.existsSync(require('path').join(d,'package.json'))) { console.log(d); break; } d=require('path').dirname(d); }")"
+          {
+            echo '=== validator definitions ==='
+            grep -RniE --include='*.cjs' --include='*.js' --include='*.mjs' 'backwardCompatible(Pg|Sqlite|Mysql|SingleStore|Gel)Schema' "$KIT_DIR" || true
+            echo
+            echo '=== validatorForDialect definitions ==='
+            grep -RniE --include='*.cjs' --include='*.js' --include='*.mjs' 'validatorForDialect' "$KIT_DIR" || true
+          } | tee /tmp/probe/validator-definitions.txt
+
+      - name: Capture validator definition context
+        run: |
+          set -euo pipefail
+          KIT_DIR="$(node -e "const p=require.resolve('drizzle-kit'); const fs=require('fs'); let d=require('path').dirname(p); while (d!==require('path').dirname(d)) { if (fs.existsSync(require('path').join(d,'package.json'))) { console.log(d); break; } d=require('path').dirname(d); }")"
+          : > /tmp/probe/validator-definition-context.txt
+          while IFS=: read -r file line rest; do
+            [ -n "$line" ] || continue
+            case "$file" in
+              "$KIT_DIR"/*.cjs|"$KIT_DIR"/*.js|"$KIT_DIR"/*.mjs)
+                {
+                  echo "=== $file:$line ==="
+                  start=$((line-40)); [ "$start" -lt 1 ] && start=1
+                  end=$((line+120))
+                  sed -n "${start},${end}p" "$file"
+                  echo
+                } >> /tmp/probe/validator-definition-context.txt
+                ;;
+            esac
+          done < <(grep -RniE --include='*.cjs' --include='*.js' --include='*.mjs' 'backwardCompatible(Pg|Sqlite|Mysql|SingleStore|Gel)Schema' "$KIT_DIR" || true)
+          cat /tmp/probe/validator-definition-context.txt
+
       - name: Capture validator source range 8140-8185
         run: |
           set -euo pipefail
@@ -81,6 +114,19 @@ jobs:
             } >> /tmp/probe/malformed-context.txt
           done < /tmp/probe/exact-malformed-match.txt
           cat /tmp/probe/malformed-context.txt
+
+      - name: Inventory migration snapshots and journal
+        run: |
+          set -euo pipefail
+          {
+            echo '=== migration files ==='
+            find src/persistence/migrations -maxdepth 3 -type f -print | sort || true
+            echo
+            echo '=== snapshot versions and ids ==='
+            find src/persistence/migrations -type f -name 'snapshot.json' -print0 2>/dev/null | while IFS= read -r -d '' f; do
+              node -e "const fs=require('fs'); const p=process.argv[1]; const j=JSON.parse(fs.readFileSync(p,'utf8')); console.log(p, 'version=', j.version, 'id=', j.id, 'prevId=', j.prevId)" "$f" || true
+            done
+          } | tee /tmp/probe/migration-inventory.txt
 
       - name: Reproduce generate without mutating migrations
         run: |
