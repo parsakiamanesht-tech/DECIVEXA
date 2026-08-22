@@ -1,0 +1,119 @@
+name: Canonical Snapshot Diff Diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - diagnostic/canonical-snapshot-diff
+
+jobs:
+  canonical-snapshot-diff:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout diagnostic commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: npm install --no-audit --no-fund
+
+      - name: Capture committed migration metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf diagnostic-output
+          mkdir -p diagnostic-output/committed-meta diagnostic-output/generated-meta
+          cp apps/api/src/persistence/migrations/meta/0002_snapshot.json diagnostic-output/committed-meta/0002_snapshot.json
+          cp apps/api/src/persistence/migrations/meta/0003_snapshot.json diagnostic-output/committed-meta/0003_snapshot.json
+          cp apps/api/src/persistence/migrations/meta/_journal.json diagnostic-output/committed-meta/_journal.json
+
+      - name: Run canonical Drizzle Kit 0.31.10 generate
+        working-directory: apps/api
+        shell: bash
+        run: |
+          set +e
+          npx --yes drizzle-kit@0.31.10 generate > ../../diagnostic-output/generate.log 2>&1
+          status=$?
+          echo "$status" > ../../diagnostic-output/generate.exit_code
+          set -e
+          # Generation diagnostics are evidence; do not fail before artifacts are uploaded.
+          exit 0
+
+      - name: Capture generated metadata and structural diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -d apps/api/src/persistence/migrations/meta ]; then
+            cp -a apps/api/src/persistence/migrations/meta/. diagnostic-output/generated-meta/
+          fi
+
+          python3 - <<'PY'
+          import json, pathlib
+          from collections import Counter
+
+          root = pathlib.Path('diagnostic-output')
+          out = root / 'structural-diff.txt'
+          pairs = [('0002_snapshot.json', '0002'), ('0003_snapshot.json', '0003')]
+
+          def load(path):
+              with open(path, encoding='utf-8') as f:
+                  return json.load(f)
+
+          lines = []
+          for filename, label in pairs:
+              committed = root / 'committed-meta' / filename
+              generated = root / 'generated-meta' / filename
+              lines.append(f'=== {label} ===')
+              if not generated.exists():
+                  lines.append('GENERATED_SNAPSHOT_NOT_FOUND')
+                  continue
+              a, b = load(committed), load(generated)
+              lines.append(f'committed keys: {sorted(a.keys())}')
+              lines.append(f'generated keys: {sorted(b.keys())}')
+              lines.append(f'committed id={a.get("id")} prevId={a.get("prevId")} version={a.get("version")} dialect={a.get("dialect")}')
+              lines.append(f'generated id={b.get("id")} prevId={b.get("prevId")} version={b.get("version")} dialect={b.get("dialect")}')
+
+              for section in ['tables', 'enums', 'schemas', 'views', '_meta']:
+                  av, bv = a.get(section), b.get(section)
+                  if av != bv:
+                      lines.append(f'{section}: DIFFERENT')
+                      if isinstance(av, dict) and isinstance(bv, dict):
+                          lines.append(f'  committed names={sorted(av.keys())}')
+                          lines.append(f'  generated names={sorted(bv.keys())}')
+
+              at = a.get('tables', {})
+              bt = b.get('tables', {})
+              for table in sorted(set(at) | set(bt)):
+                  if table not in at or table not in bt:
+                      lines.append(f'table {table}: missing from one side')
+                      continue
+                  for section in ['columns', 'indexes', 'foreignKeys', 'compositePrimaryKeys', 'uniqueConstraints', 'checkConstraints']:
+                      if at[table].get(section) != bt[table].get(section):
+                          lines.append(f'table {table}.{section}: DIFFERENT')
+                          lines.append('  COMMITTED: ' + json.dumps(at[table].get(section), sort_keys=True, separators=(',', ':')))
+                          lines.append('  GENERATED: ' + json.dumps(bt[table].get(section), sort_keys=True, separators=(',', ':')))
+              lines.append('')
+
+          out.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+
+          git status --short > diagnostic-output/git-status.txt || true
+          git diff -- apps/api/src/persistence/migrations > diagnostic-output/git-diff.patch || true
+
+      - name: Upload canonical snapshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canonical-snapshot-diff-evidence
+          path: diagnostic-output/
+          if-no-files-found: error
+          retention-days: 14
