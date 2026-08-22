@@ -1,0 +1,172 @@
+name: Drizzle Kit Validator Failure Probe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: apps/api
+
+    steps:
+      - name: Checkout diagnostic branch
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install API dependencies
+        run: npm install --no-package-lock
+
+      - name: Direct PostgreSQL validator failure probe
+        run: |
+          set +e
+
+          mkdir -p /tmp/probe
+
+          KIT_DIR="$(node -e "
+            const p=require.resolve('drizzle-kit');
+            const fs=require('fs');
+            let d=require('path').dirname(p);
+            while (d!==require('path').dirname(d)) {
+              if (fs.existsSync(require('path').join(d,'package.json'))) {
+                console.log(d);
+                break;
+              }
+              d=require('path').dirname(d);
+            }
+          ")"
+
+          echo "KIT_DIR=$KIT_DIR" | tee /tmp/probe/source.txt
+
+          cat > /tmp/probe/run-validator.cjs <<'NODE'
+          const fs = require("fs");
+          const path = require("path");
+
+          const kitDir = process.env.KIT_DIR;
+
+          const candidates = [
+            path.join(kitDir, "api.js"),
+            path.join(kitDir, "utils.js")
+          ];
+
+          console.log("=== candidate module files ===");
+          console.log(candidates.join("\n"));
+
+          for (const file of candidates) {
+            console.log(`\n=== ${file} ===`);
+            try {
+              const mod = require(file);
+              console.log("exports:", Object.keys(mod).sort().join(", "));
+            } catch (e) {
+              console.log("require_failed:", e.message);
+            }
+          }
+
+          console.log("\n=== snapshot inspection ===");
+
+          const files = [
+            "src/persistence/migrations/meta/0002_snapshot.json",
+            "src/persistence/migrations/meta/0003_snapshot.json"
+          ];
+
+          for (const file of files) {
+            console.log(`\n--- ${file} ---`);
+
+            try {
+              const raw = JSON.parse(fs.readFileSync(file, "utf8"));
+
+              console.log("top_level_keys:");
+              console.log(Object.keys(raw).sort());
+
+              console.log("version:", raw.version);
+              console.log("id:", raw.id);
+              console.log("prevId:", raw.prevId);
+
+              console.log("\nvalue_types:");
+              for (const [k, v] of Object.entries(raw)) {
+                console.log(
+                  `${k}: ${Array.isArray(v) ? "array" : typeof v}`
+                );
+              }
+
+              console.log("\njson_length:", JSON.stringify(raw).length);
+            } catch (e) {
+              console.log("snapshot_read_failed:", e.stack);
+            }
+          }
+
+          console.log("\n=== validator source search ===");
+
+          const textFiles = [
+            path.join(kitDir, "api.js"),
+            path.join(kitDir, "utils.js")
+          ];
+
+          for (const file of textFiles) {
+            if (!fs.existsSync(file)) continue;
+
+            const text = fs.readFileSync(file, "utf8");
+
+            for (const needle of [
+              "backwardCompatiblePgSchema",
+              "validatorForDialect",
+              "safeParse(raw"
+            ]) {
+              let pos = 0;
+              while ((pos = text.indexOf(needle, pos)) !== -1) {
+                const line =
+                  text.slice(0, pos).split("\n").length;
+
+                console.log(`${file}:${line}:${needle}`);
+                pos += needle.length;
+              }
+            }
+          }
+
+          console.log("\n=== direct package metadata ===");
+
+          for (const pkg of ["drizzle-kit", "drizzle-orm"]) {
+            try {
+              const p = require.resolve(`${pkg}/package.json`);
+              const j = JSON.parse(fs.readFileSync(p, "utf8"));
+              console.log(pkg, j.version);
+            } catch (e) {
+              console.log(pkg, "metadata unavailable:", e.message);
+            }
+          }
+          NODE
+
+          KIT_DIR="$KIT_DIR" node /tmp/probe/run-validator.cjs \
+            > /tmp/probe/validator-failure-report.txt 2>&1
+
+          code=$?
+
+          echo "probe_exit_code=$code" \
+            | tee /tmp/probe/probe-exit.txt
+
+          cat /tmp/probe/validator-failure-report.txt
+
+          echo
+          echo "=== git status ==="
+          git status --short | tee /tmp/probe/git-status.txt
+
+          echo
+          echo "=== migration diff ==="
+          git diff -- src/persistence/migrations \
+            | tee /tmp/probe/git-diff.patch
+
+          exit 0
+
+      - name: Upload validator failure evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: drizzle-kit-validator-failure-evidence
+          path: /tmp/probe
+          if-no-files-found: error
+          retention-days: 14
