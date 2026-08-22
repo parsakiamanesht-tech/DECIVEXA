@@ -25,15 +25,23 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/probe
-          node -e "console.log('drizzle-kit', require('drizzle-kit/package.json').version); console.log('drizzle-orm', require('drizzle-orm/package.json').version)" | tee /tmp/probe/versions.txt
           npm ls drizzle-kit drizzle-orm --depth=0 | tee /tmp/probe/npm-ls.txt
-          node -e "console.log(require.resolve('drizzle-kit'))" | tee /tmp/probe/entry.txt
+          KIT_ENTRY="$(node -e "console.log(require.resolve('drizzle-kit'))")"
+          ORM_ENTRY="$(node -e "console.log(require.resolve('drizzle-orm'))")"
+          echo "drizzle-kit-entry=$KIT_ENTRY" | tee /tmp/probe/entry.txt
+          echo "drizzle-orm-entry=$ORM_ENTRY" | tee -a /tmp/probe/entry.txt
+          KIT_ROOT="$(node -e "const p=require.resolve('drizzle-kit'); const fs=require('fs'); let d=require('path').dirname(p); while (d!==require('path').dirname(d)) { if (fs.existsSync(require('path').join(d,'package.json'))) { console.log(d); break; } d=require('path').dirname(d); }")"
+          ORM_ROOT="$(node -e "const p=require.resolve('drizzle-orm'); const fs=require('fs'); let d=require('path').dirname(p); while (d!==require('path').dirname(d)) { if (fs.existsSync(require('path').join(d,'package.json'))) { console.log(d); break; } d=require('path').dirname(d); }")"
+          node -e "const fs=require('fs'); const p=require('path').join(process.argv[1],'package.json'); const j=JSON.parse(fs.readFileSync(p,'utf8')); console.log('drizzle-kit',j.version)" "$KIT_ROOT" | tee /tmp/probe/versions.txt
+          node -e "const fs=require('fs'); const p=require('path').join(process.argv[1],'package.json'); const j=JSON.parse(fs.readFileSync(p,'utf8')); console.log('drizzle-orm',j.version)" "$ORM_ROOT" | tee -a /tmp/probe/versions.txt
 
       - name: Locate exact malformed validator source
         run: |
           set -euo pipefail
-          KIT_DIR="$(node -e "const p=require.resolve('drizzle-kit'); console.log(p.slice(0,p.lastIndexOf('/')))")"
-          echo "KIT_DIR=$KIT_DIR" | tee /tmp/probe/source-location.txt
+          KIT_ENTRY="$(node -e "console.log(require.resolve('drizzle-kit'))")"
+          KIT_DIR="$(node -e "const p=require.resolve('drizzle-kit'); const fs=require('fs'); let d=require('path').dirname(p); while (d!==require('path').dirname(d)) { if (fs.existsSync(require('path').join(d,'package.json'))) { console.log(d); break; } d=require('path').dirname(d); }")"
+          echo "KIT_ENTRY=$KIT_ENTRY" | tee /tmp/probe/source-location.txt
+          echo "KIT_DIR=$KIT_DIR" | tee -a /tmp/probe/source-location.txt
           find "$KIT_DIR" -maxdepth 2 -type f -print | sort | tee /tmp/probe/package-files.txt
           grep -RniE --include='*.cjs' --include='*.js' --include='*.mjs' 'data is malformed' "$KIT_DIR" | tee /tmp/probe/exact-malformed-match.txt
           grep -RniE --include='*.cjs' --include='*.js' --include='*.mjs' 'malformed' "$KIT_DIR" | head -200 | tee /tmp/probe/all-malformed-matches.txt
@@ -41,7 +49,7 @@ jobs:
       - name: Capture source context around every exact match
         run: |
           set -euo pipefail
-          KIT_DIR="$(node -e "const p=require.resolve('drizzle-kit'); console.log(p.slice(0,p.lastIndexOf('/')))")"
+          KIT_DIR="$(node -e "const p=require.resolve('drizzle-kit'); const fs=require('fs'); let d=require('path').dirname(p); while (d!==require('path').dirname(d)) { if (fs.existsSync(require('path').join(d,'package.json'))) { console.log(d); break; } d=require('path').dirname(d); }")"
           : > /tmp/probe/malformed-context.txt
           while IFS=: read -r file line rest; do
             [ -n "$line" ] || continue
