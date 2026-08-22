@@ -6,6 +6,6 @@
     {"idx": 1, "version": "7", "when": 1787173373643, "tag": "0001_burly_steel_serpent", "breakpoints": true},
     {"idx": 2, "version": "7", "when": 1787410000000, "tag": "0002_authentication_credentials", "breakpoints": true},
     {"idx": 3, "version": "7", "when": 1787420000000, "tag": "0003_personal_state", "breakpoints": true},
-    {"idx": 4, "version": "7", "when": 1787416014909, "tag": "0004_pretty_hellion", "breakpoints": true}
+    {"idx": 4, "version": "7", "when": 1787430000000, "tag": "0004_pretty_hellion", "breakpoints": true}
   ]
 }
