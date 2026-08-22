@@ -53,7 +53,7 @@ jobs:
             const fs = require("fs");
             const p = process.env.JOURNAL_PATH;
             const j = JSON.parse(fs.readFileSync(p, "utf8"));
-            j.entries = j.entries.filter((e) => e.idx !== 4);
+            j.entries = j.entries.filter((e) => e.idx < 4);
             fs.writeFileSync(p, JSON.stringify(j, null, 2));
           '
           echo "--- 0000-0003-only journal ---"
