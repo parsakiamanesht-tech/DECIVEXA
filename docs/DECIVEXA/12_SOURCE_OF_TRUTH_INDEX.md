@@ -19,6 +19,7 @@ This directory is the repository-level context layer for DECIVEXA.
 13. `11_PROJECT_KNOWLEDGE_REGISTER.md` — consolidated project knowledge and historical context.
 14. `13_KNOWLEDGE_BASE_AND_FUTURE_MEMORY.md` — durable knowledge, future memory, research, and knowledge-base direction.
 15. `14_COMPLETENESS_AUDIT.md` — coverage audit and explicit deferred capabilities.
+16. `15_HISTORICAL_DECISIONS_AND_ARTIFACTS.md` — historical decisions, evolution, superseded approaches, experiments, and preserved artifacts.
 
 ## Authority Model
 
@@ -32,7 +33,7 @@ For architecture truth, use the constitution and approved architectural decision
 
 For deferred ideas, use the Architecture Backlog.
 
-For historical context, use the Knowledge Register and git history.
+For historical context, use `15_HISTORICAL_DECISIONS_AND_ARTIFACTS.md`, the Knowledge Register, and git history.
 
 For durable knowledge and future memory direction, use `13_KNOWLEDGE_BASE_AND_FUTURE_MEMORY.md`.
 
@@ -42,8 +43,10 @@ Before material work, an AI agent should read this index and then the relevant d
 
 ## Maintenance Rule
 
-When a durable product or architecture decision is made, update the relevant source-of-truth document. When a decision is deferred, update the backlog. When the verified state changes, update the current-state document. When a recovery anchor changes, update the recovery document. When durable knowledge or memory architecture evolves, update the knowledge-base document.
+When a durable product or architecture decision is made, update the relevant source-of-truth document. When a decision is deferred, update the backlog. When the verified state changes, update the current-state document. When a recovery anchor changes, update the recovery document. When durable knowledge or memory architecture evolves, update the knowledge-base document. When historical context is clarified, corrected, superseded, or expanded, update the historical register.
 
 ## Important Boundary
 
 This directory is designed to prevent loss of project knowledge. It is not permission for an AI agent to treat every documented aspiration as an implemented feature. Each capability must be explicitly classified as implemented, verified, planned, backlog, or unknown.
+
+Historical records are context, not current implementation authority. A historical decision marked superseded, deferred, experimental, rejected, recovery artifact, or unknown must not be silently promoted into current architecture.
