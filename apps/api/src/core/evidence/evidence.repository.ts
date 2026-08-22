@@ -6,7 +6,8 @@ import type {
 } from "./evidence.model";
 
 export type CreateEvidenceInput = Readonly<{
-  id: string;
+  evidenceId: string;
+  versionId: string;
   userId: string;
   provenance: EvidenceProvenance;
   observedAt: Date;
@@ -15,9 +16,10 @@ export type CreateEvidenceInput = Readonly<{
   now: Date;
 }>;
 
-export type UpdateEvidenceLifecycleInput = Readonly<{
+export type AppendLifecycleVersionInput = Readonly<{
   userId: string;
   evidenceId: string;
+  versionId: string;
   expectedVersion: number;
   lifecycle: EvidenceLifecycle;
   now: Date;
@@ -31,7 +33,7 @@ export interface EvidenceRepository {
     version: number,
   ): Promise<EvidenceVersion | null>;
   create(input: CreateEvidenceInput): Promise<EvidenceVersion>;
-  updateLifecycle(
-    input: UpdateEvidenceLifecycleInput,
+  appendLifecycleVersion(
+    input: AppendLifecycleVersionInput,
   ): Promise<EvidenceVersion | null>;
 }
