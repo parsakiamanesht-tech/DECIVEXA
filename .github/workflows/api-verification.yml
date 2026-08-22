@@ -117,6 +117,70 @@ jobs:
           test "$AUTH_MISSING_STATUS" = "401"
           TAMPERED_TOKEN_STATUS=$(curl --silent --output /tmp/decivexa-tampered-token.json --write-out '%{http_code}' http://127.0.0.1:3000/auth/me -H "Authorization: Bearer ${TOKEN}tampered")
           test "$TAMPERED_TOKEN_STATUS" = "401"
+      - name: Verify Evidence API contract
+        run: |
+          set -euo pipefail
+          EVIDENCE_EMAIL="ci-evidence-${GITHUB_RUN_ID}@example.com"
+          EVIDENCE_SECOND_EMAIL="ci-evidence-second-${GITHUB_RUN_ID}@example.com"
+          EVIDENCE_PASSWORD="CorrectHorseBatteryStaple123!"
+
+          curl --fail --silent --show-error -X POST http://127.0.0.1:3000/auth/register -H 'Content-Type: application/json' -d "{\"email\":\"${EVIDENCE_EMAIL}\",\"password\":\"${EVIDENCE_PASSWORD}\"}" > /dev/null
+          EVIDENCE_LOGIN=$(curl --fail --silent --show-error -X POST http://127.0.0.1:3000/auth/login -H 'Content-Type: application/json' -d "{\"email\":\"${EVIDENCE_EMAIL}\",\"password\":\"${EVIDENCE_PASSWORD}\"}")
+          EVIDENCE_TOKEN=$(node -e 'const body=JSON.parse(process.argv[1]); if(!body.accessToken) process.exit(1); process.stdout.write(body.accessToken)' "$EVIDENCE_LOGIN")
+          EVIDENCE_ME=$(curl --fail --silent --show-error http://127.0.0.1:3000/auth/me -H "Authorization: Bearer ${EVIDENCE_TOKEN}")
+          EVIDENCE_USER_ID=$(node -e 'const body=JSON.parse(process.argv[1]); if(!body.userId) process.exit(1); process.stdout.write(body.userId)' "$EVIDENCE_ME")
+
+          curl --fail --silent --show-error -X POST http://127.0.0.1:3000/auth/register -H 'Content-Type: application/json' -d "{\"email\":\"${EVIDENCE_SECOND_EMAIL}\",\"password\":\"${EVIDENCE_PASSWORD}\"}" > /dev/null
+          EVIDENCE_SECOND_LOGIN=$(curl --fail --silent --show-error -X POST http://127.0.0.1:3000/auth/login -H 'Content-Type: application/json' -d "{\"email\":\"${EVIDENCE_SECOND_EMAIL}\",\"password\":\"${EVIDENCE_PASSWORD}\"}")
+          EVIDENCE_SECOND_TOKEN=$(node -e 'const body=JSON.parse(process.argv[1]); if(!body.accessToken) process.exit(1); process.stdout.write(body.accessToken)' "$EVIDENCE_SECOND_LOGIN")
+
+          # A - create evidence; a spoofed userId in the body must be ignored, ownership must come from auth
+          CREATE_STATUS=$(curl --silent --output /tmp/decivexa-evidence-create.json --write-out '%{http_code}' -X POST http://127.0.0.1:3000/evidence -H 'Content-Type: application/json' -H "Authorization: Bearer ${EVIDENCE_TOKEN}" -d '{"provenance":"observed","observedAt":"2026-01-01T00:00:00.000Z","acceptedAt":"2026-01-01T00:05:00.000Z","confidence":0.8,"userId":"spoofed-hacker-id"}')
+          test "$CREATE_STATUS" = "201"
+          CREATE_BODY=$(cat /tmp/decivexa-evidence-create.json)
+          EVIDENCE_ID=$(node -e 'const b=JSON.parse(process.argv[1]); const uid=process.argv[2]; if(b.version!==1||b.lifecycle!=="active"||!b.evidenceId||!b.id||b.id===b.evidenceId||b.userId!==uid||b.userId==="spoofed-hacker-id") process.exit(1); process.stdout.write(b.evidenceId)' "$CREATE_BODY" "$EVIDENCE_USER_ID")
+          test -n "$EVIDENCE_ID"
+          VERSION1_ID=$(node -e 'const b=JSON.parse(process.argv[1]); process.stdout.write(b.id)' "$CREATE_BODY")
+
+          # B - get evidence by owner
+          GET_STATUS=$(curl --silent --output /tmp/decivexa-evidence-get.json --write-out '%{http_code}' "http://127.0.0.1:3000/evidence/${EVIDENCE_ID}" -H "Authorization: Bearer ${EVIDENCE_TOKEN}")
+          test "$GET_STATUS" = "200"
+          node -e 'const b=JSON.parse(process.argv[1]); if(b.id!==process.argv[2]) process.exit(1)' "$(cat /tmp/decivexa-evidence-get.json)" "$EVIDENCE_ID"
+
+          # C - get historical version 1
+          GETV1_STATUS=$(curl --silent --output /tmp/decivexa-evidence-version1.json --write-out '%{http_code}' "http://127.0.0.1:3000/evidence/${EVIDENCE_ID}/versions/1" -H "Authorization: Bearer ${EVIDENCE_TOKEN}")
+          test "$GETV1_STATUS" = "200"
+          node -e 'const b=JSON.parse(process.argv[1]); if(b.version!==1||b.id!==process.argv[2]) process.exit(1)' "$(cat /tmp/decivexa-evidence-version1.json)" "$VERSION1_ID"
+
+          # D - append lifecycle version
+          APPEND_STATUS=$(curl --silent --output /tmp/decivexa-evidence-append.json --write-out '%{http_code}' -X POST "http://127.0.0.1:3000/evidence/${EVIDENCE_ID}/versions" -H 'Content-Type: application/json' -H "Authorization: Bearer ${EVIDENCE_TOKEN}" -d '{"expectedVersion":1,"lifecycle":"corrected"}')
+          test "$APPEND_STATUS" = "201"
+          node -e 'const b=JSON.parse(process.argv[1]); if(b.version!==2||b.id===process.argv[2]) process.exit(1)' "$(cat /tmp/decivexa-evidence-append.json)" "$VERSION1_ID"
+
+          # E - immutability: version 1 must remain exactly as it was
+          GETV1_AFTER_STATUS=$(curl --silent --output /tmp/decivexa-evidence-version1-after.json --write-out '%{http_code}' "http://127.0.0.1:3000/evidence/${EVIDENCE_ID}/versions/1" -H "Authorization: Bearer ${EVIDENCE_TOKEN}")
+          test "$GETV1_AFTER_STATUS" = "200"
+          node -e 'const b=JSON.parse(process.argv[1]); if(b.id!==process.argv[2]||b.version!==1||b.lifecycle!=="active") process.exit(1)' "$(cat /tmp/decivexa-evidence-version1-after.json)" "$VERSION1_ID"
+
+          # F - stale expectedVersion must be rejected and must not create version 3
+          STALE_STATUS=$(curl --silent --output /tmp/decivexa-evidence-stale.json --write-out '%{http_code}' -X POST "http://127.0.0.1:3000/evidence/${EVIDENCE_ID}/versions" -H 'Content-Type: application/json' -H "Authorization: Bearer ${EVIDENCE_TOKEN}" -d '{"expectedVersion":1,"lifecycle":"revoked"}')
+          test "$STALE_STATUS" = "409"
+          NO_VERSION3_STATUS=$(curl --silent --output /tmp/decivexa-evidence-version3.json --write-out '%{http_code}' "http://127.0.0.1:3000/evidence/${EVIDENCE_ID}/versions/3" -H "Authorization: Bearer ${EVIDENCE_TOKEN}")
+          test "$NO_VERSION3_STATUS" = "404"
+
+          # G - cross-user isolation
+          CROSS_GET_STATUS=$(curl --silent --output /tmp/decivexa-evidence-cross-get.json --write-out '%{http_code}' "http://127.0.0.1:3000/evidence/${EVIDENCE_ID}" -H "Authorization: Bearer ${EVIDENCE_SECOND_TOKEN}")
+          test "$CROSS_GET_STATUS" = "404"
+          CROSS_APPEND_STATUS=$(curl --silent --output /tmp/decivexa-evidence-cross-append.json --write-out '%{http_code}' -X POST "http://127.0.0.1:3000/evidence/${EVIDENCE_ID}/versions" -H 'Content-Type: application/json' -H "Authorization: Bearer ${EVIDENCE_SECOND_TOKEN}" -d '{"expectedVersion":2,"lifecycle":"revoked"}')
+          test "$CROSS_APPEND_STATUS" = "409"
+
+          # H - missing authentication
+          EVIDENCE_NOAUTH_STATUS=$(curl --silent --output /tmp/decivexa-evidence-noauth.json --write-out '%{http_code}' "http://127.0.0.1:3000/evidence/${EVIDENCE_ID}")
+          test "$EVIDENCE_NOAUTH_STATUS" = "401"
+
+          # I - missing resource
+          EVIDENCE_NOTFOUND_STATUS=$(curl --silent --output /tmp/decivexa-evidence-notfound.json --write-out '%{http_code}' "http://127.0.0.1:3000/evidence/nonexistent-evidence-id" -H "Authorization: Bearer ${EVIDENCE_TOKEN}")
+          test "$EVIDENCE_NOTFOUND_STATUS" = "404"
       - name: Upload verification evidence
         uses: actions/upload-artifact@v4
         with:
@@ -133,4 +197,15 @@ jobs:
             /tmp/decivexa-wrong-password.json
             /tmp/decivexa-auth-missing-token.json
             /tmp/decivexa-tampered-token.json
+            /tmp/decivexa-evidence-create.json
+            /tmp/decivexa-evidence-get.json
+            /tmp/decivexa-evidence-version1.json
+            /tmp/decivexa-evidence-append.json
+            /tmp/decivexa-evidence-version1-after.json
+            /tmp/decivexa-evidence-stale.json
+            /tmp/decivexa-evidence-version3.json
+            /tmp/decivexa-evidence-cross-get.json
+            /tmp/decivexa-evidence-cross-append.json
+            /tmp/decivexa-evidence-noauth.json
+            /tmp/decivexa-evidence-notfound.json
           if-no-files-found: warn
