@@ -46,6 +46,25 @@ jobs:
           grep -RniE --include='*.cjs' --include='*.js' --include='*.mjs' 'data is malformed' "$KIT_DIR" | tee /tmp/probe/exact-malformed-match.txt
           grep -RniE --include='*.cjs' --include='*.js' --include='*.mjs' 'malformed' "$KIT_DIR" | head -200 | tee /tmp/probe/all-malformed-matches.txt
 
+      - name: Capture validator source range 8140-8185
+        run: |
+          set -euo pipefail
+          KIT_DIR="$(node -e "const p=require.resolve('drizzle-kit'); const fs=require('fs'); let d=require('path').dirname(p); while (d!==require('path').dirname(d)) { if (fs.existsSync(require('path').join(d,'package.json'))) { console.log(d); break; } d=require('path').dirname(d); }")"
+          : > /tmp/probe/validator-source-8140-8185.txt
+          while IFS=: read -r file line rest; do
+            [ -n "$line" ] || continue
+            case "$file" in
+              "$KIT_DIR"/bin.cjs)
+                {
+                  echo "=== $file:8140-8185 ==="
+                  sed -n '8140,8185p' "$file"
+                  echo
+                } >> /tmp/probe/validator-source-8140-8185.txt
+                ;;
+            esac
+          done < /tmp/probe/exact-malformed-match.txt
+          cat /tmp/probe/validator-source-8140-8185.txt
+
       - name: Capture source context around every exact match
         run: |
           set -euo pipefail
