@@ -145,8 +145,8 @@ export class DrizzleEvidenceRepository implements EvidenceRepository {
             .select({
               id: sql<string>`${input.versionId}`.as("id"),
               evidenceId: evidenceVersions.evidenceId,
-              version: sql<number>`${evidenceVersions.version} + 1`.as("version"),
               userId: evidenceVersions.userId,
+              version: sql<number>`${evidenceVersions.version} + 1`.as("version"),
               provenance: evidenceVersions.provenance,
               lifecycle: sql<string>`${input.lifecycle}`.as("lifecycle"),
               observedAt: evidenceVersions.observedAt,
