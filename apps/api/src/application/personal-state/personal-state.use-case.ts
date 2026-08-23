@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import type { RequestContext } from "../../context/request-context";
 import type { PersonalState, PersonalStateAvailability } from "../../core/personal-state/personal-state.model";
+import type { PersonalStateRevision } from "../../core/personal-state/personal-state-revision.model";
 import { PERSONAL_STATE_REPOSITORY } from "../../core/personal-state/personal-state.repository.token";
 import type { PersonalStatePatch, PersonalStateRepository } from "../../core/personal-state/personal-state.repository";
 import { failure, success, type Result } from "../../shared/result/result";
@@ -35,6 +36,15 @@ export class PersonalStateUseCase {
     const state = await this.repository.findByUserId(context.userId);
     if (!state) return failure(new PersonalStateNotFoundError("Personal state not initialized"));
     return success(state);
+  }
+
+  // Exposes the existing, already-tested revision-history persistence
+  // capability (Increment 005 / ADR-001 F.1: narrow history exposure).
+  // Thin delegation only - no re-ordering, filtering, pagination, or
+  // interpretation is introduced here.
+  async getHistory(context: RequestContext): Promise<Result<PersonalStateRevision[]>> {
+    if (!context.userId) return failure(new PersonalStateValidationError("Authenticated user required"));
+    return success(await this.repository.findRevisionsForUser(context.userId));
   }
 
   async initialize(input: PersonalStateInput, context: RequestContext): Promise<Result<PersonalState>> {

@@ -25,6 +25,16 @@ export class PersonalStateController {
     return result.value;
   }
 
+  // Increment 005 / ADR-001 F.1: narrow, read-only exposure of the
+  // existing revision-history capability. Bare array response, no
+  // envelope (Contract §J.3).
+  @Get("history")
+  async getHistory(@Req() request: AuthenticatedRequest) {
+    const result = await this.state.getHistory(contextOf(request));
+    if (!result.ok) throw new BadRequestException(result.error.message);
+    return result.value;
+  }
+
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async initialize(@Body() body: PersonalStateInput, @Req() request: AuthenticatedRequest) {
