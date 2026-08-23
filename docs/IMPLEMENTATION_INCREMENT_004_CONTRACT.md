@@ -4,40 +4,58 @@
 
 - **Title:** PI Access Authorization Boundary
 - **Increment ID:** Implementation Increment 004
-- **Status:** FOUNDER-APPROVED CONTRACT — BUILD AUTHORIZATION NOT YET GRANTED
+- **Status:** BUILD AUTHORIZED — IMPLEMENTATION MAY PROCEED STRICTLY WITHIN
+  THIS CONTRACT'S SCOPE
 - **Date drafted:** 2026-08-23
 - **Contract approval date:** 2026-08-23
 - **Contract approval reference:** Explicit Founder approval recorded in
   project governance conversation ("Contract Increment 004 را به‌طور
   صریح تأیید می‌کنم"), Phase 10J — Governance Ratification & Build-
   Authorization Gate.
+- **Build Authorization date:** 2026-08-23
+- **Build Authorization reference:** Explicit Founder Build Authorization
+  recorded in project governance conversation ("I explicitly authorize
+  BUILD of IMPLEMENTATION INCREMENT 004..."), Phase 10J.3 — Explicit
+  Founder Build Authorization for Increment 004. This is a distinct
+  governance event from Contract approval (above), recorded separately
+  and dated separately, per Section B.
 - **Architecture Baseline:** `DECIVEXA-ARCH-FREEZE-001 / v1.0.0`
 - **Technology Baseline:** `TD-08`
 - **Governance Gate:** `TD-09` — Build Authorization checklist item B15
-  ("Founder Build Authorization explicitly recorded") remains **PENDING**
-  per `docs/TD-09_IMPLEMENTATION_READINESS_BUILD_AUTHORIZATION.md` as of
-  this Contract's approval date. Contract approval is **not** Build
-  Authorization; see Section B and Section T.
+  ("Founder Build Authorization explicitly recorded") is now **SATISFIED
+  FOR INCREMENT 004 ONLY** by the Build Authorization recorded above.
+  This does **not** update or supersede the general/global TD-09 gate
+  document (`docs/TD-09_IMPLEMENTATION_READINESS_BUILD_AUTHORIZATION.md`,
+  left unmodified), which remains `NOT AUTHORIZED` for any scope outside
+  this Contract. Per the TD-09 readiness review (Phase 10J.2), criteria
+  B1–B14 were found PASS or NOT APPLICABLE for this Contract's specific,
+  narrow scope; B15 is satisfied here, for Increment 004 only, by this
+  explicit record.
 - **Base:** `main` at `4a363f14b7bea1d4c531d897710263c01fc02be8`
 
 ## B. Authority Boundary
 
-This Contract's scope has received explicit Founder approval (Section A,
-Phase 10J). **Contract approval is not implementation authorization.**
-Nothing in this Contract, the Founder's approval of it, or the Phase 10G
-governance remediation artifacts it references, authorizes any code,
-test, schema, or migration change. Implementation may begin only after
-the applicable TD-09 Build Authorization gate independently records
-Build Authorization for this specific increment — mirroring the Gate
-Rule already established by `docs/IMPLEMENTATION_INCREMENT_002_CONTRACT.md`
-and the approval pattern of `docs/IMPLEMENTATION_INCREMENT_003_CONTRACT.md`.
-As of this Contract's approval date, `docs/TD-09_IMPLEMENTATION_READINESS_BUILD_AUTHORIZATION.md`
-checklist item B15 remains **PENDING** and its Founder Approval Record
-section remains unset for this or any increment; no criterion-by-criterion
-TD-09 readiness review specific to this increment has been performed or
-recorded anywhere in the repository. That review, and its own explicit
-Founder Build Authorization decision, remain outstanding and are not
-performed by this edit.
+This Contract's scope received explicit Founder approval on 2026-08-23
+(Section A, Phase 10J). **Contract approval was not, by itself,
+implementation authorization.** A criterion-by-criterion TD-09 readiness
+review (Phase 10J.2) subsequently found checklist items B1–B14 PASS or
+NOT APPLICABLE for this Contract's specific, narrow scope. The Founder
+then separately and explicitly recorded Build Authorization for this
+Contract on 2026-08-23 (Section A, Phase 10J.3), satisfying TD-09
+checklist item B15 **for Increment 004 only**. Implementation may now
+proceed, strictly within the scope defined by Sections F and G of this
+Contract — mirroring the Gate Rule already established by
+`docs/IMPLEMENTATION_INCREMENT_002_CONTRACT.md` and the approval pattern
+of `docs/IMPLEMENTATION_INCREMENT_003_CONTRACT.md`. This Build
+Authorization does not modify, and is not recorded in,
+`docs/TD-09_IMPLEMENTATION_READINESS_BUILD_AUTHORIZATION.md`, which
+remains unmodified and continues to state `NOT AUTHORIZED` as its
+general, repository-wide gate status for any scope beyond this Contract.
+Nothing in this Contract, the Founder's approval of it, the Phase 10G
+governance remediation artifacts it references, or this Build
+Authorization retroactively authorizes any historical Personal
+Intelligence implementation (Phases 1–9), or any capability outside
+Sections F and G.
 
 This Contract does **not** treat the Phase 10G governance remediation
 (`docs/gates/PERSONAL-INTELLIGENCE-GOVERNANCE-REMEDIATION-RECORD.md`,
@@ -372,16 +390,18 @@ out of scope for this Contract's approval.
 
 ## T. Implementation Authorization Statement
 
-This Contract defines a prospective implementation scope but does **not**
-authorize implementation. Implementation requires explicit Founder
-approval of this Contract and satisfaction of the applicable TD-09 Build
-Authorization gate. Until those conditions are independently satisfied,
-no implementation may begin.
+This Contract defined a prospective implementation scope. Contract
+approval (2026-08-23) and Build Authorization (2026-08-23) are two
+distinct, separately recorded governance events (Section A); both have
+now occurred for this Contract's exact scope only (Sections F and G).
+Implementation may begin, strictly within that scope. This authorization
+does not extend to any capability outside Sections F and G, does not
+retroactively authorize historical Personal Intelligence implementation,
+and does not by itself constitute implementation completion or
+publication — those remain separate, later events.
 
 ## Current Decision
 
 **Implementation Increment 004 (PI Access Authorization Boundary):
-CONTRACT FOUNDER-APPROVED (2026-08-23) / BUILD AUTHORIZATION NOT YET
-GRANTED.** Implementation remains prohibited until the TD-09 Build
-Authorization gate (Section R, Section T) is independently satisfied and
-recorded.
+CONTRACT FOUNDER-APPROVED (2026-08-23) / BUILD AUTHORIZED (2026-08-23) —
+IMPLEMENTATION MAY PROCEED STRICTLY WITHIN THIS CONTRACT'S SCOPE.**
