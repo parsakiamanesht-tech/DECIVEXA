@@ -7,9 +7,10 @@ import { AuthModule } from './infrastructure/auth/auth.module';
 import { PersonalStateModule } from './infrastructure/personal-state/personal-state.module';
 import { EvidenceModule } from './infrastructure/evidence/evidence.module';
 import { PersonalIntelligenceModule } from './application/personal-intelligence/personal-intelligence.module';
+import { MemoryModule } from './application/memory/memory.module';
 
 @Module({
-  imports: [ApplicationModule.register([PersistenceModule]), AuthModule, PersonalStateModule, EvidenceModule, PersonalIntelligenceModule],
+  imports: [ApplicationModule.register([PersistenceModule]), AuthModule, PersonalStateModule, EvidenceModule, PersonalIntelligenceModule, MemoryModule],
   controllers: [HealthController],
   providers: [PersistenceService],
   exports: [PersistenceService],

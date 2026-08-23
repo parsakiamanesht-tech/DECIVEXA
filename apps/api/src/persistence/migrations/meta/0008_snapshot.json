@@ -1,0 +1,1093 @@
+{
+  "id": "41eb6a91-7fd9-438d-bb07-bc533fb19ebd",
+  "prevId": "b139bdce-dddf-45b1-9bb0-fef2b8ff1383",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "decivexa.users": {
+      "name": "users",
+      "schema": "decivexa",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "decivexa.workspaces": {
+      "name": "workspaces",
+      "schema": "decivexa",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lifecycle_state": {
+          "name": "lifecycle_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "workspaces_owner_id_users_id_fk": {
+          "name": "workspaces_owner_id_users_id_fk",
+          "tableFrom": "workspaces",
+          "tableTo": "users",
+          "schemaTo": "decivexa",
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "workspaces_lifecycle_state_check": {
+          "name": "workspaces_lifecycle_state_check",
+          "value": "\"decivexa\".\"workspaces\".\"lifecycle_state\" in ('active', 'archived')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "decivexa.personal_state_revisions": {
+      "name": "personal_state_revisions",
+      "schema": "decivexa",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "availability": {
+          "name": "availability",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "provenance": {
+          "name": "provenance",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evidence_version_id": {
+          "name": "evidence_version_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "personal_state_revisions_user_id_revision_unique": {
+          "name": "personal_state_revisions_user_id_revision_unique",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "revision",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "personal_state_revisions_user_id_users_id_fk": {
+          "name": "personal_state_revisions_user_id_users_id_fk",
+          "tableFrom": "personal_state_revisions",
+          "tableTo": "users",
+          "schemaTo": "decivexa",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "personal_state_revisions_state_owner_fk": {
+          "name": "personal_state_revisions_state_owner_fk",
+          "tableFrom": "personal_state_revisions",
+          "tableTo": "personal_states",
+          "schemaTo": "decivexa",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "user_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "personal_state_revisions_evidence_version_fk": {
+          "name": "personal_state_revisions_evidence_version_fk",
+          "tableFrom": "personal_state_revisions",
+          "tableTo": "evidence_versions",
+          "schemaTo": "decivexa",
+          "columnsFrom": [
+            "evidence_version_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "personal_state_revisions_availability_check": {
+          "name": "personal_state_revisions_availability_check",
+          "value": "\"decivexa\".\"personal_state_revisions\".\"availability\" is null or \"decivexa\".\"personal_state_revisions\".\"availability\" in ('available','limited','unavailable')"
+        },
+        "personal_state_revisions_provenance_check": {
+          "name": "personal_state_revisions_provenance_check",
+          "value": "\"decivexa\".\"personal_state_revisions\".\"provenance\" in ('declared','observed')"
+        },
+        "personal_state_revisions_revision_check": {
+          "name": "personal_state_revisions_revision_check",
+          "value": "\"decivexa\".\"personal_state_revisions\".\"revision\" >= 1"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "decivexa.personal_states": {
+      "name": "personal_states",
+      "schema": "decivexa",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "timezone": {
+          "name": "timezone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locale": {
+          "name": "locale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "availability": {
+          "name": "availability",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "provenance": {
+          "name": "provenance",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'declared'"
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "personal_states_user_id_unique": {
+          "name": "personal_states_user_id_unique",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "personal_states_user_id_users_id_fk": {
+          "name": "personal_states_user_id_users_id_fk",
+          "tableFrom": "personal_states",
+          "tableTo": "users",
+          "schemaTo": "decivexa",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "personal_states_availability_check": {
+          "name": "personal_states_availability_check",
+          "value": "\"decivexa\".\"personal_states\".\"availability\" is null or \"decivexa\".\"personal_states\".\"availability\" in ('available','limited','unavailable')"
+        },
+        "personal_states_provenance_check": {
+          "name": "personal_states_provenance_check",
+          "value": "\"decivexa\".\"personal_states\".\"provenance\" in ('declared','observed')"
+        },
+        "personal_states_revision_check": {
+          "name": "personal_states_revision_check",
+          "value": "\"decivexa\".\"personal_states\".\"revision\" >= 1"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "decivexa.evidence": {
+      "name": "evidence",
+      "schema": "decivexa",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "evidence_id_user_id_unique": {
+          "name": "evidence_id_user_id_unique",
+          "columns": [
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "evidence_user_id_users_id_fk": {
+          "name": "evidence_user_id_users_id_fk",
+          "tableFrom": "evidence",
+          "tableTo": "users",
+          "schemaTo": "decivexa",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "decivexa.evidence_versions": {
+      "name": "evidence_versions",
+      "schema": "decivexa",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "evidence_id": {
+          "name": "evidence_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provenance": {
+          "name": "provenance",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lifecycle": {
+          "name": "lifecycle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "observed_at": {
+          "name": "observed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accepted_at": {
+          "name": "accepted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "confidence": {
+          "name": "confidence",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "evidence_versions_evidence_version_unique": {
+          "name": "evidence_versions_evidence_version_unique",
+          "columns": [
+            {
+              "expression": "evidence_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "evidence_versions_user_id_users_id_fk": {
+          "name": "evidence_versions_user_id_users_id_fk",
+          "tableFrom": "evidence_versions",
+          "tableTo": "users",
+          "schemaTo": "decivexa",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "evidence_versions_evidence_owner_fk": {
+          "name": "evidence_versions_evidence_owner_fk",
+          "tableFrom": "evidence_versions",
+          "tableTo": "evidence",
+          "schemaTo": "decivexa",
+          "columnsFrom": [
+            "evidence_id",
+            "user_id"
+          ],
+          "columnsTo": [
+            "id",
+            "user_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "evidence_versions_version_check": {
+          "name": "evidence_versions_version_check",
+          "value": "\"decivexa\".\"evidence_versions\".\"version\" >= 1"
+        },
+        "evidence_versions_provenance_check": {
+          "name": "evidence_versions_provenance_check",
+          "value": "\"decivexa\".\"evidence_versions\".\"provenance\" in ('declared','observed','measured')"
+        },
+        "evidence_versions_lifecycle_check": {
+          "name": "evidence_versions_lifecycle_check",
+          "value": "\"decivexa\".\"evidence_versions\".\"lifecycle\" in ('active','superseded','corrected','revoked','disputed')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "decivexa.personal_intelligence_claim_versions": {
+      "name": "personal_intelligence_claim_versions",
+      "schema": "decivexa",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "claim_id": {
+          "name": "claim_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value_kind": {
+          "name": "value_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value_text": {
+          "name": "value_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provenance": {
+          "name": "provenance",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "confidence": {
+          "name": "confidence",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lifecycle": {
+          "name": "lifecycle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "evidence_version_id": {
+          "name": "evidence_version_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "observed_at": {
+          "name": "observed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accepted_at": {
+          "name": "accepted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "personal_intelligence_claim_versions_claim_id_version_unique": {
+          "name": "personal_intelligence_claim_versions_claim_id_version_unique",
+          "columns": [
+            {
+              "expression": "claim_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "personal_intelligence_claim_versions_user_id_users_id_fk": {
+          "name": "personal_intelligence_claim_versions_user_id_users_id_fk",
+          "tableFrom": "personal_intelligence_claim_versions",
+          "tableTo": "users",
+          "schemaTo": "decivexa",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "personal_intelligence_claim_versions_claim_owner_fk": {
+          "name": "personal_intelligence_claim_versions_claim_owner_fk",
+          "tableFrom": "personal_intelligence_claim_versions",
+          "tableTo": "personal_intelligence_claims",
+          "schemaTo": "decivexa",
+          "columnsFrom": [
+            "claim_id",
+            "user_id"
+          ],
+          "columnsTo": [
+            "id",
+            "user_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "personal_intelligence_claim_versions_evidence_version_fk": {
+          "name": "personal_intelligence_claim_versions_evidence_version_fk",
+          "tableFrom": "personal_intelligence_claim_versions",
+          "tableTo": "evidence_versions",
+          "schemaTo": "decivexa",
+          "columnsFrom": [
+            "evidence_version_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "personal_intelligence_claim_versions_version_check": {
+          "name": "personal_intelligence_claim_versions_version_check",
+          "value": "\"decivexa\".\"personal_intelligence_claim_versions\".\"version\" >= 1"
+        },
+        "personal_intelligence_claim_versions_value_kind_check": {
+          "name": "personal_intelligence_claim_versions_value_kind_check",
+          "value": "\"decivexa\".\"personal_intelligence_claim_versions\".\"value_kind\" in ('text','boolean','enum')"
+        },
+        "personal_intelligence_claim_versions_provenance_check": {
+          "name": "personal_intelligence_claim_versions_provenance_check",
+          "value": "\"decivexa\".\"personal_intelligence_claim_versions\".\"provenance\" in ('declared','observed')"
+        },
+        "personal_intelligence_claim_versions_confidence_check": {
+          "name": "personal_intelligence_claim_versions_confidence_check",
+          "value": "\"decivexa\".\"personal_intelligence_claim_versions\".\"confidence\" >= 0 and \"decivexa\".\"personal_intelligence_claim_versions\".\"confidence\" <= 1"
+        },
+        "personal_intelligence_claim_versions_lifecycle_check": {
+          "name": "personal_intelligence_claim_versions_lifecycle_check",
+          "value": "\"decivexa\".\"personal_intelligence_claim_versions\".\"lifecycle\" in ('active','superseded','corrected','revoked','disputed')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "decivexa.personal_intelligence_claims": {
+      "name": "personal_intelligence_claims",
+      "schema": "decivexa",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "claim_type": {
+          "name": "claim_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "personal_intelligence_claims_id_user_id_unique": {
+          "name": "personal_intelligence_claims_id_user_id_unique",
+          "columns": [
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "personal_intelligence_claims_user_id_users_id_fk": {
+          "name": "personal_intelligence_claims_user_id_users_id_fk",
+          "tableFrom": "personal_intelligence_claims",
+          "tableTo": "users",
+          "schemaTo": "decivexa",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "personal_intelligence_claims_claim_type_check": {
+          "name": "personal_intelligence_claims_claim_type_check",
+          "value": "\"decivexa\".\"personal_intelligence_claims\".\"claim_type\" in ('identity_attribute','value','preference','capability','constraint','environment_context','strength','weakness','behavior_pattern')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "decivexa.memory_record_versions": {
+      "name": "memory_record_versions",
+      "schema": "decivexa",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "record_id": {
+          "name": "record_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provenance": {
+          "name": "provenance",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lifecycle": {
+          "name": "lifecycle",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "observed_at": {
+          "name": "observed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "accepted_at": {
+          "name": "accepted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "confidence": {
+          "name": "confidence",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "memory_record_versions_record_id_version_unique": {
+          "name": "memory_record_versions_record_id_version_unique",
+          "columns": [
+            {
+              "expression": "record_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "memory_record_versions_user_id_users_id_fk": {
+          "name": "memory_record_versions_user_id_users_id_fk",
+          "tableFrom": "memory_record_versions",
+          "tableTo": "users",
+          "schemaTo": "decivexa",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "memory_record_versions_record_owner_fk": {
+          "name": "memory_record_versions_record_owner_fk",
+          "tableFrom": "memory_record_versions",
+          "tableTo": "memory_records",
+          "schemaTo": "decivexa",
+          "columnsFrom": [
+            "record_id",
+            "user_id"
+          ],
+          "columnsTo": [
+            "id",
+            "user_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "memory_record_versions_version_check": {
+          "name": "memory_record_versions_version_check",
+          "value": "\"decivexa\".\"memory_record_versions\".\"version\" >= 1"
+        },
+        "memory_record_versions_provenance_check": {
+          "name": "memory_record_versions_provenance_check",
+          "value": "\"decivexa\".\"memory_record_versions\".\"provenance\" in ('declared','observed')"
+        },
+        "memory_record_versions_lifecycle_check": {
+          "name": "memory_record_versions_lifecycle_check",
+          "value": "\"decivexa\".\"memory_record_versions\".\"lifecycle\" in ('active','corrected','deleted')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "decivexa.memory_records": {
+      "name": "memory_records",
+      "schema": "decivexa",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "memory_records_id_user_id_unique": {
+          "name": "memory_records_id_user_id_unique",
+          "columns": [
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "memory_records_user_id_users_id_fk": {
+          "name": "memory_records_user_id_users_id_fk",
+          "tableFrom": "memory_records",
+          "tableTo": "users",
+          "schemaTo": "decivexa",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
