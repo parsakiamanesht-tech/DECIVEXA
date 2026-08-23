@@ -8,6 +8,7 @@ export default defineConfig({
     "./src/persistence/schema/workspace.schema.ts",
     "./src/persistence/schema/personal-state.schema.ts",
     "./src/persistence/schema/evidence.schema.ts",
+    "./src/persistence/schema/personal-intelligence.schema.ts",
   ],
   out: "./src/persistence/migrations",
   dbCredentials: {
