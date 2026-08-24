@@ -47,3 +47,39 @@ export function getPersonalState(): Promise<PersonalState> {
 export function getPersonalStateHistory(): Promise<PersonalStateRevision[]> {
   return apiFetch<PersonalStateRevision[]>("/personal-state/history");
 }
+
+// Increment 007 / ADR-003: Web write exposure. Both functions below
+// consume the existing, unmodified POST/PATCH /personal-state contract
+// exactly - no new request/response semantics are invented here, and
+// no caller-supplied user id is ever included (ownership is derived
+// entirely server-side, same as the read functions above).
+
+export type PersonalStateWriteInput = {
+  timezone?: string | null;
+  locale?: string | null;
+  availability?: PersonalStateAvailability | null;
+};
+
+// POST /personal-state - idempotent: if the authenticated user already
+// has a Personal State, the backend returns it unchanged rather than
+// erroring or overwriting it.
+export function initializePersonalState(input: PersonalStateWriteInput): Promise<PersonalState> {
+  return apiFetch<PersonalState>("/personal-state", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+// PATCH /personal-state - optimistic concurrency: `revision` must equal
+// the currently stored revision or the backend responds 409 (surfaced
+// by apiFetch as an ApiError with status 409). This function does not
+// resolve conflicts itself - the caller is responsible for supplying
+// the current revision and handling a conflict response.
+export function updatePersonalState(
+  input: PersonalStateWriteInput & { revision: number },
+): Promise<PersonalState> {
+  return apiFetch<PersonalState>("/personal-state", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
