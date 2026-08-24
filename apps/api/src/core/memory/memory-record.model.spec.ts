@@ -22,6 +22,9 @@ test("MemoryRecord domain contract", async (t) => {
       observedAt: new Date("2025-12-31T23:00:00.000Z"),
       acceptedAt: new Date("2026-01-01T00:00:00.000Z"),
       confidence: null,
+      valueKind: null,
+      value: null,
+      userConfirmed: false,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     };
 
@@ -40,6 +43,9 @@ test("MemoryRecord domain contract", async (t) => {
       observedAt: new Date("2026-01-01T00:00:00.000Z"),
       acceptedAt: new Date("2026-01-01T00:01:00.000Z"),
       confidence: null,
+      valueKind: null,
+      value: null,
+      userConfirmed: false,
       createdAt: new Date("2026-01-01T00:01:00.000Z"),
     };
 
@@ -57,6 +63,9 @@ test("MemoryRecord domain contract", async (t) => {
       observedAt: new Date("2026-01-01T00:00:00.000Z"),
       acceptedAt: new Date("2026-01-01T00:00:00.000Z"),
       confidence: 0.9,
+      valueKind: null,
+      value: null,
+      userConfirmed: false,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     };
 
@@ -78,6 +87,9 @@ test("MemoryRecord domain contract", async (t) => {
       observedAt: new Date("2026-01-01T00:00:00.000Z"),
       acceptedAt: new Date("2026-01-01T00:00:00.000Z"),
       confidence: null,
+      valueKind: null,
+      value: null,
+      userConfirmed: false,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     };
 
@@ -113,10 +125,100 @@ test("MemoryRecord domain contract", async (t) => {
       observedAt: new Date("2026-01-01T00:00:00.000Z"),
       acceptedAt: new Date("2026-01-01T00:00:00.000Z"),
       confidence: 0.5,
+      valueKind: null,
+      value: null,
+      userConfirmed: false,
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
     };
 
     assert.equal(typeof version.version, "number");
     assert.equal(version.version, 1);
+  });
+
+  await t.test("carries an inline content value discriminated by 'content'", () => {
+    const version: MemoryRecordVersion = {
+      id: "memory-version-9",
+      recordId: "memory-9",
+      version: 1,
+      userId: "user-9",
+      provenance: "declared",
+      lifecycle: "active",
+      observedAt: new Date("2026-01-01T00:00:00.000Z"),
+      acceptedAt: new Date("2026-01-01T00:00:00.000Z"),
+      confidence: null,
+      valueKind: "content",
+      value: "the user prefers morning focus sessions",
+      userConfirmed: false,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+
+    assert.equal(version.valueKind, "content");
+    assert.equal(version.value, "the user prefers morning focus sessions");
+  });
+
+  await t.test("carries a reference value discriminated by 'reference', distinct from content", () => {
+    const contentVersion: MemoryRecordVersion = {
+      id: "memory-version-10",
+      recordId: "memory-10",
+      version: 1,
+      userId: "user-10",
+      provenance: "declared",
+      lifecycle: "active",
+      observedAt: new Date("2026-01-01T00:00:00.000Z"),
+      acceptedAt: new Date("2026-01-01T00:00:00.000Z"),
+      confidence: null,
+      valueKind: "content",
+      value: "inline text",
+      userConfirmed: false,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+
+    const referenceVersion: MemoryRecordVersion = {
+      ...contentVersion,
+      id: "memory-version-11",
+      valueKind: "reference",
+      value: "some-referenced-identifier",
+    };
+
+    assert.equal(referenceVersion.valueKind, "reference");
+    assert.notEqual(referenceVersion.valueKind, contentVersion.valueKind);
+  });
+
+  await t.test("keeps userConfirmed independent of provenance, lifecycle, and confidence", () => {
+    const observedUnconfirmed: MemoryRecordVersion = {
+      id: "memory-version-12",
+      recordId: "memory-12",
+      version: 1,
+      userId: "user-12",
+      provenance: "observed",
+      lifecycle: "active",
+      observedAt: new Date("2026-01-01T00:00:00.000Z"),
+      acceptedAt: new Date("2026-01-01T00:00:00.000Z"),
+      confidence: 0.95,
+      valueKind: null,
+      value: null,
+      userConfirmed: false,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+
+    // A high-confidence, system-observed version remains unconfirmed by
+    // default - confidence and provenance never imply confirmation.
+    assert.equal(observedUnconfirmed.provenance, "observed");
+    assert.equal(observedUnconfirmed.confidence, 0.95);
+    assert.equal(observedUnconfirmed.userConfirmed, false);
+
+    // A declared, low-confidence version can be explicitly confirmed -
+    // confirmation is a distinct dimension, not derived from either field.
+    const declaredConfirmed: MemoryRecordVersion = {
+      ...observedUnconfirmed,
+      id: "memory-version-13",
+      provenance: "declared",
+      confidence: 0.1,
+      userConfirmed: true,
+    };
+
+    assert.equal(declaredConfirmed.provenance, "declared");
+    assert.equal(declaredConfirmed.confidence, 0.1);
+    assert.equal(declaredConfirmed.userConfirmed, true);
   });
 });

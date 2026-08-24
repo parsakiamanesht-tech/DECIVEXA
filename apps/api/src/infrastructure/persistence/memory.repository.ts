@@ -29,6 +29,9 @@ function toDomainVersion(row: typeof memoryRecordVersions.$inferSelect): MemoryR
     observedAt: row.observedAt,
     acceptedAt: row.acceptedAt,
     confidence: row.confidence,
+    valueKind: row.valueKind,
+    value: row.value,
+    userConfirmed: row.userConfirmed,
     createdAt: row.createdAt,
   };
 }
@@ -101,6 +104,12 @@ export class DrizzleMemoryRecordRepository implements MemoryRecordRepository {
           observedAt: input.observedAt,
           acceptedAt: input.acceptedAt,
           confidence: input.confidence,
+          valueKind: input.valueKind ?? null,
+          value: input.value ?? null,
+          // No confirmation workflow is authorized in this increment;
+          // every created version is unconfirmed by construction,
+          // matching the column's own default.
+          userConfirmed: false,
           createdAt: input.now,
         })
         .returning();
@@ -157,6 +166,15 @@ export class DrizzleMemoryRecordRepository implements MemoryRecordRepository {
               observedAt: memoryRecordVersions.observedAt,
               acceptedAt: memoryRecordVersions.acceptedAt,
               confidence: memoryRecordVersions.confidence,
+              // Founder-authorized copy-forward semantics (Interpretation
+              // X, Memory Schema Implementation Blocker Resolution,
+              // Blocker 4): a lifecycle-only transition copies the value
+              // slot and confirmation state forward unchanged, exactly as
+              // provenance/confidence already are above. No value
+              // mutation or confirmation-state change happens here.
+              valueKind: memoryRecordVersions.valueKind,
+              value: memoryRecordVersions.value,
+              userConfirmed: memoryRecordVersions.userConfirmed,
               createdAt: sql<Date>`${input.now}`.as("created_at"),
             })
             .from(memoryRecordVersions)

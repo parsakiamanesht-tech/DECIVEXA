@@ -6,16 +6,24 @@ import type {
   MemoryProvenance,
   MemoryRecord,
   MemoryRecordVersion,
+  MemoryValueKind,
 } from "../../core/memory/memory-record.model";
 import { MEMORY_RECORD_REPOSITORY } from "../../core/memory/memory-record.repository.token";
 import type { MemoryRecordRepository } from "../../core/memory/memory-record.repository";
 import { failure, success, type Result } from "../../shared/result/result";
+
+const MEMORY_VALUE_KINDS: readonly MemoryValueKind[] = ["content", "reference"];
 
 export type MemoryCreateInput = Readonly<{
   provenance: MemoryProvenance;
   observedAt: Date;
   acceptedAt: Date;
   confidence: number | null;
+  // Unified content/reference value (Decision B). Both optional/nullable -
+  // a Memory may be created with no value at all, matching every
+  // pre-increment record.
+  valueKind?: MemoryValueKind | null;
+  value?: string | null;
 }>;
 
 export type MemoryLifecycleAppendInput = Readonly<{
@@ -57,6 +65,9 @@ export class MemoryUseCase {
 
   async create(input: MemoryCreateInput, context: RequestContext): Promise<Result<MemoryRecordVersion>> {
     if (!context.userId) return failure(new MemoryValidationError("Authenticated user required"));
+    if (input.valueKind != null && !MEMORY_VALUE_KINDS.includes(input.valueKind)) {
+      return failure(new MemoryValidationError("Invalid value kind"));
+    }
     try {
       const version = await this.repository.create({
         recordId: randomUUID(),
@@ -66,6 +77,8 @@ export class MemoryUseCase {
         observedAt: input.observedAt,
         acceptedAt: input.acceptedAt,
         confidence: input.confidence,
+        valueKind: input.valueKind ?? null,
+        value: input.value ?? null,
         now: new Date(),
       });
       return success(version);
