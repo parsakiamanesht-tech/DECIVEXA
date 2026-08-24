@@ -10,17 +10,27 @@ The canonical Founder-approved synthesis of DECIVEXA's philosophy, purpose, visi
 
 **[DECIVEXA — Master Philosophy, Vision & Intelligence Architecture](./docs/DECIVEXA_MASTER_ARCHITECTURE_AND_VISION.md)**
 
-The current AI architecture is governed by:
+## Canonical AI Architecture
+
+The **master AI specification** consolidates the complete AI architecture, resilience model, privacy/security boundaries, memory integrity, context architecture, routing, model/provider independence, evaluation, observability, offline continuity, agent-readiness, v1 scope, and implementation invariants:
+
+**[DECIVEXA AI Architecture — Master Specification v1](./docs/architecture/DECIVEXA_AI_ARCHITECTURE_MASTER_SPEC_V1.md)**
+
+The conceptual architecture is defined in:
 
 **[DECIVEXA Intelligence Architecture v1](./docs/architecture/DECIVEXA_INTELLIGENCE_ARCHITECTURE_V1.md)**
 
-Its execution boundary for implementation agents is:
+Its execution boundary for Claude Code and implementation agents is:
 
 **[DECIVEXA AI Implementation Contract v1](./docs/architecture/DECIVEXA_AI_IMPLEMENTATION_CONTRACT_V1.md)**
 
-Its resilience and failure requirements are defined in:
+Its failure and resilience requirements are defined in:
 
 **[DECIVEXA AI Failure & Resilience Matrix v1](./docs/architecture/DECIVEXA_AI_FAILURE_AND_RESILIENCE_MATRIX_V1.md)**
+
+Its completeness and implementation acceptance criteria are defined in:
+
+**[DECIVEXA AI v1 Traceability & Acceptance Matrix](./docs/architecture/DECIVEXA_AI_V1_TRACEABILITY_AND_ACCEPTANCE.md)**
 
 These documents establish the AI foundation as a **Provider-agnostic, capability-centric, intelligence-owned** subsystem. DECIVEXA must not become dependent on a single AI provider, model, cloud region, or network path.
 
