@@ -1501,3 +1501,344 @@ material implementation activity. Each capability named in §7 still
 requires its own separate, explicit Founder Implementation Authorization
 Gate — following the same gate sequence already established for the AI
 Provider Adapter Foundation — before any code is written.
+
+---
+
+## ADR-007 — Agent V1 Architecture
+
+**Authoritative identity:** `docs/DECIVEXA/ARCHITECTURE_DECISIONS.md`
+§ADR-007.
+
+### 1. Title
+
+Agent V1 Architecture — Bounded, Governed Agent Capability Required in
+V1; Unbounded Autonomy Explicitly Prohibited.
+
+### 2. Status
+
+FOUNDER-APPROVED — ARCHITECTURALLY DECIDED — NOT IMPLEMENTATION-AUTHORIZED.
+
+ADR-007 records architecture and governance decisions only. It does not
+authorize implementation.
+
+### 3. Date
+
+2026-08-24
+
+### 4. Founder
+
+Parsa Kiamanesh
+
+### 5. Decision Context
+
+ADR-006 conditionally reopened "Agent architecture where required by
+DECIVEXA Vision." A dedicated read-only readiness gate found no
+canonical document affirmatively required Agents for V1 and recommended
+treating them as NOT CURRENTLY REQUIRED absent a Founder decision. The
+Founder subsequently and explicitly overrode that recommendation: Agent
+capability **is** required in DECIVEXA V1. A dedicated read-only
+architecture-specification gate then produced the full specification
+this ADR now formally registers. This ADR is the durable governance
+record of both the override and the resulting specification.
+
+### 6. Agent Definition
+
+**Agent Capability:** Understand → Plan → Act → Observe → Evaluate →
+Adapt. The Agent performs bounded multi-step work and may use an
+observed action result to determine its next step — more than a
+single-shot Capability.
+
+**Autonomous Agent (V1 meaning):** multiple consecutive steps may
+execute under an explicitly bounded, session-level authorization when
+the applicable Permission Model (§9) permits it — never unrestricted
+autonomy. This is allowed only within declared tool scope, declared risk
+scope, policy boundaries, execution limits, cost limits, time limits,
+tool-call limits, failure limits, user revocation capability, and full
+auditability. The Agent never defines its own authorization scope.
+
+**Unbounded Autonomy (explicitly prohibited):** unlimited execution;
+self-authorized actions; bypassing Policy, Risk Engine, Context Engine,
+Privacy/Data Router, Intelligence Firewall, or Action Boundary; bypassing
+approval; inventing tools; modifying its own permissions or risk
+classification; ignoring a policy denial; silently continuing after an
+approval timeout; silently resuming after interruption; autonomous
+architectural self-modification.
+
+### 7. Non-Negotiable Governance Invariant
+
+**"AI cannot grant itself permission."**
+
+No Agent implementation, model, prompt, tool, planner, or runtime
+component may weaken this invariant. The authorization chain is:
+
+```
+Agent → Action Proposal → Risk Classification → Policy Evaluation
+  → Permission / Approval → Execution → Verification → Audit
+```
+
+The Agent operates inside this chain; it never controls the
+authorization boundary.
+
+### 8. Risk Model
+
+- **Informational / Read-only** — no side effect; normal Context/Policy
+  controls remain mandatory.
+- **Reversible Low-Risk** — a side effect exists but is trivially
+  reversible; session-level authorization may be permitted.
+- **User-Confirmation-Required** — a real, non-trivially-reversible side
+  effect; per-action user approval required.
+- **High-Risk** — financial, irreversible, external-side-effect, or
+  affecting-other-people actions; per-action explicit approval plus risk
+  disclosure to the user required.
+- **Prohibited** — violates security, privacy, authorization, or
+  governance invariants; no approval can ever make it executable.
+
+### 9. Permission Model
+
+- **Approval timeout = DENIED.** No response, an unavailable user, a
+  disconnected client, a missing response, or an expired approval must
+  never be interpreted as implicit approval. The Agent may terminate,
+  pause, replan where safe, or explicitly re-request approval — it may
+  never silently continue the denied action. The exact UX belongs to a
+  future implementation gate and must not weaken this invariant.
+- **Session-level pre-authorization** is permitted only for
+  Informational/Read-only and Reversible Low-Risk actions. It is **not**
+  permitted for User-Confirmation-Required, High-Risk, irreversible,
+  external-side-effect, financial, other-people-affecting, or Prohibited
+  actions. It must be explicitly granted, scoped, limited to the current
+  session, revocable by the user, non-transferable, non-persistent
+  beyond the session, and incapable of expanding itself. The Agent
+  cannot convert a low-risk authorization into a higher-risk one — risk
+  escalation must pause execution and require the appropriate new
+  approval.
+- The Agent may request permission; **it can never grant itself
+  permission.**
+
+### 10. Execution Bounds — Mandatory Concepts, Numeric Values Deferred
+
+The architecture establishes bounded execution as a hard invariant.
+Mandatory architectural concepts (maximum execution steps, maximum
+wall-clock execution time, maximum tool-call count, maximum consecutive-
+failure count, maximum cost/budget) are recorded here; **exact numeric
+values are intentionally not fixed by this ADR** and must be proposed
+and finalized during the dedicated Agent V1 Implementation Gate. The
+absence of numbers here is never permission for unbounded execution.
+Agent V1 must never operate with unlimited steps, unlimited tool calls,
+unlimited execution time, unlimited retries, unlimited cost, or
+self-modifiable limits. Any configured limit must be enforced
+deterministically by infrastructure outside the Agent's own authority.
+
+### 11. Tool Governance
+
+Agent tools must eventually be governed through a Tool Registry
+requiring: registered tool identity; versioned tool identity; declared
+capability, input schema, output schema, and risk classification; policy
+evaluation; permission evaluation; verification; audit. **The Agent may
+never invent a tool** — only registered tools may be proposed. Tool
+registration alone does not grant execution permission; every action
+still passes through the full authorization pipeline (§7).
+
+### 12. Context and Memory Boundaries
+
+Three distinct concepts, never merged: **Execution state** (the Agent's
+current plan, steps, observations, verification, evaluation, and audit
+chain — session-scoped); **Conversational context** (the user's current
+interaction, passed through the governed Context Engine only); **User
+Memory** (the canonical DECIVEXA Memory subsystem). The Agent must not
+bypass Memory governance, must not directly access arbitrary domain
+data, and must not automatically write execution state into Memory. Any
+future Agent ↔ Memory integration requires its own separate Founder
+gate.
+
+### 13. Observability
+
+Agent execution must eventually support reconstruction of: request →
+context decision → plan → action proposal → risk classification →
+policy decision → permission decision → execution → verification →
+evaluation → adaptation → final outcome. Audit records must avoid
+secrets, raw sensitive payloads, raw prompts where unnecessary, raw
+audio, and unnecessary personal data, while remaining sufficient to
+reconstruct the authorization chain without unsafe raw logs.
+
+### 14. Security Invariants
+
+Prompt injection, indirect prompt injection (via tool output), malicious
+tool output, tool abuse, privilege escalation, unauthorized context
+access, secret leakage, confused-deputy behavior, runaway loops,
+excessive cost, unauthorized external side effects, malicious user
+input, and malicious provider output must each be mapped to an existing
+or required control (Intelligence Firewall, Output Boundary
+verification, Tool Registry authorization, Context Engine exclusivity,
+Permission Model, execution bounds) before Agent V1 implementation may
+proceed.
+
+### 15. Relationship to Prior Architecture Text
+
+`docs/architecture/DECIVEXA_AI_IMPLEMENTATION_CONTRACT_V1.md` §17's
+prohibition on "full autonomous agents... merely because this
+architecture enables them" remains fully in force for unbounded
+autonomy (§6 above); it does not prohibit the bounded Agent capability
+this ADR requires. `docs/architecture/DECIVEXA_INTELLIGENCE_ARCHITECTURE_V1.md`
+§24 "Agent Readiness" and `docs/architecture/DECIVEXA_AI_IMPLEMENTATION_CONTRACT_V1.md`
+§8 "Action Boundary" are adopted unchanged as the governing pipeline
+shape for this ADR's §7 authorization chain.
+
+### 16. Non-Effects
+
+This ADR does NOT authorize: Agent code; Tool Registry implementation;
+Permission Model implementation; Policy Engine implementation; Risk
+Engine implementation; Intelligence Firewall implementation; Context
+Engine implementation; Runtime implementation; or any other
+infrastructure. It does not create a new FIS item, does not change FIS
+numbering, and does not modify Memory, schema, HTTP/API, or frontend
+code.
+
+### 17. Implementation Gate Requirement
+
+Agent V1 implementation remains separately gated. Exact numeric
+execution limits (§10) remain an Implementation Gate decision. No
+implementation may begin under authority of this ADR alone.
+
+---
+
+## ADR-008 — Voice Input V1 Architecture
+
+**Authoritative identity:** `docs/DECIVEXA/ARCHITECTURE_DECISIONS.md`
+§ADR-008.
+
+### 1. Title
+
+Voice Input V1 Architecture — Governed User Voice Input Required in V1;
+Voice Output Deferred; Provider-Agnostic Speech-to-Text.
+
+### 2. Status
+
+FOUNDER-APPROVED — ARCHITECTURALLY DECIDED — NOT IMPLEMENTATION-AUTHORIZED.
+
+ADR-008 records architecture and governance decisions only. It does not
+authorize implementation.
+
+### 3. Date
+
+2026-08-24
+
+### 4. Founder
+
+Parsa Kiamanesh
+
+### 5. Decision Context
+
+ADR-006 conditionally reopened "Voice architecture where required by the
+V1 AI architecture." A dedicated read-only readiness gate found the
+canonical corpus contained zero affirmative case for Voice in V1 and
+recommended NOT CURRENTLY REQUIRED absent a Founder decision. The
+Founder subsequently required user voice input specifically — not
+bidirectional voice — for V1. A dedicated read-only architecture-
+specification gate then produced the full specification this ADR now
+formally registers.
+
+### 6. V1 Boundary
+
+```
+User Speech
+  → Frontend / Mobile Audio Capture
+  → Speech-to-Text Adapter
+  → Normalized Text
+  → Context Engine
+  → Privacy / Data Router
+  → Policy
+  → Risk
+  → AI Runtime
+  → Capability / Agent
+  → Normal DECIVEXA Response
+```
+
+V1 supports **User → DECIVEXA voice input**. V1 does **not** support
+DECIVEXA → spoken output.
+
+### 7. Critical Invariant — No Second Security Path
+
+Voice-transcribed text must enter the same governed pipeline as typed
+text. There must not be a "Voice → special Agent path," "Voice → direct
+execution," or "Voice → bypass Context/Policy/Risk." Voice is an input
+modality, not a separate authorization system. This is enforced by
+design: no parallel path exists for it to bypass.
+
+### 8. Provider-Agnostic Speech-to-Text Architecture
+
+The architecture must remain provider-agnostic; no specific STT vendor,
+model, or implementation may be hard-coded into the canonical
+architecture. The eventual adapter follows the same normalized-provider
+pattern already established for `AIProvider`:
+
+```ts
+interface SpeechToTextProvider {
+  transcribe(request: TranscriptionRequest): Promise<TranscriptionResult>;
+  healthCheck(): Promise<ProviderHealth>;
+  getCapabilities(): TranscriptionCapabilities;
+}
+```
+
+This is an architectural contract only — not implemented by this ADR,
+and no concrete provider is selected by this ADR. Commercial STT
+providers may be supported later without redesigning AI Runtime, Context
+Engine, Policy Engine, Risk Engine, Capability Registry, or Agent
+architecture. Provider selection must never create architectural
+lock-in.
+
+### 9. V1 Direction — Self-Hosted / Open-Weight Preference
+
+DECIVEXA V1 should prefer a self-hosted / open-weight Speech-to-Text
+architecture where technically and operationally appropriate,
+consistent with the provider-independence rationale already established
+for the generation-provider adapter (ADR-001). This is a direction, not
+an implementation authorization; concrete provider/model selection
+remains an implementation-stage decision within this approved
+provider-agnostic architecture.
+
+### 10. Audio Privacy — Raw Audio Never Persisted (V1 Invariant)
+
+```
+Microphone → Temporary Audio Buffer → Speech-to-Text Adapter
+  → Normalized Text → Governed AI Pipeline → Raw Audio Deleted
+```
+
+Raw audio must not be stored in the database, stored in Memory, written
+to audit logs, written to application logs, retained for analytics,
+persisted for model training, or silently retained by DECIVEXA
+infrastructure. Raw audio exists only transiently, for the minimum time
+necessary to perform transcription. A future requirement proposing
+persistent audio storage requires a separate explicit Founder
+authorization and governance gate — it is not authorized by this ADR.
+
+### 11. UX Security Requirement
+
+V1 must eventually provide microphone permission request, recording
+start/stop, recording cancellation, transcription-in-progress state,
+transcription failure state, and **editable transcription before it can
+trigger an action-class request** — protecting against transcription
+errors causing unintended actions. Not implemented by this ADR.
+
+### 12. Future Bidirectional Voice — Extensibility Preserved, Not Built
+
+The architecture must remain extensible toward text-to-speech,
+bidirectional voice, streaming audio, real-time voice interaction,
+barge-in, spoken confirmation, and real-time voice agents. None of these
+are V1 requirements, and none are authorized for implementation by this
+ADR.
+
+### 13. Non-Effects
+
+This ADR does NOT authorize: voice capture implementation; microphone UI;
+STT adapter implementation; installation or selection of a concrete STT
+provider or model; any dependency addition; any frontend modification;
+any backend runtime modification; any database schema for audio or
+Agent execution. It does not create a new FIS item and does not modify
+Memory, schema, HTTP/API, or frontend code.
+
+### 14. Implementation Gate Requirement
+
+Voice Input V1 implementation remains separately gated. Concrete STT
+provider/model selection remains an implementation-stage decision within
+the approved provider-agnostic architecture. No implementation may begin
+under authority of this ADR alone.

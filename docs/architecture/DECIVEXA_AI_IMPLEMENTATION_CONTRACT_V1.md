@@ -367,6 +367,8 @@ Do not implement full autonomous agents, Digital Twin, broad self-hosted frontie
 
 Implement only the interfaces and safe extension points required by v1. Deferred capabilities require their own Founder-controlled gate before material implementation.
 
+> Cross-reference: bounded, governed Agent capability and V1 user voice input are approved architectural directions per `docs/DECIVEXA/ARCHITECTURE_DECISIONS.md` §ADR-007 and §ADR-008. This does not change the prohibition above on *unbounded* autonomy, Digital Twin, or standalone Predictive Intelligence, which remain future/deferred unless separately authorized.
+
 ## 18. Definition of Done
 
 Claude Code should consider the AI foundation complete only when:

@@ -167,6 +167,8 @@ Initial capability families for v1 should include:
 
 Future capabilities may include voice, vision, advanced agents, predictive intelligence, and Digital Twin functions without changing the abstraction.
 
+> Cross-reference: bounded, governed Agent capability and V1 user voice input are now approved architectural directions per `docs/DECIVEXA/ARCHITECTURE_DECISIONS.md` §ADR-007 and §ADR-008. Voice *output*, unbounded agent autonomy, standalone Predictive Intelligence, and Digital Twin remain future/deferred unless separately authorized.
+
 ## 7. Capability Graph
 
 Complex requests may require multiple capabilities.

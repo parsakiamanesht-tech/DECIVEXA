@@ -104,6 +104,8 @@ Principles:
 
 The project also includes broader established architecture concepts such as Personal Intelligence Core, Personal Development Model, Growth Navigation Engine, Progress Intelligence, Personal AI Coach, Research Assistant, Learning Intelligence, Human/Goal/Daily/Discipline/Health/Money/Learning/Business/Relationship/Review OS layers, Memory, Integration & Evidence Platform, Adaptive Recovery, Risk Intelligence, dynamic goal completion estimation, Founder-level analytics, and future agent/voice/predictive capabilities. These must remain subordinate to the canonical architecture and Founder-controlled gates.
 
+> Cross-reference: bounded, governed Agent capability and V1 user voice input are now approved architectural directions per `docs/DECIVEXA/ARCHITECTURE_DECISIONS.md` §ADR-007 and §ADR-008, and are no longer purely "future" in that sense. Unbounded agent autonomy, voice output, and standalone Predictive Intelligence remain future/deferred unless separately authorized. Personal AI Coach remains an emergent product-level experience, not a standalone FIS.
+
 ## Benchmark-derived backlog candidates
 
 These are learning-derived architecture backlog candidates, not automatic FIS approvals:

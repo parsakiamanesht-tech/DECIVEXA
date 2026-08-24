@@ -40,6 +40,8 @@ The AI foundation must:
 13. provide extension points for future agents, voice, vision, predictive intelligence, and Digital Twin without prematurely implementing them;
 14. allow the same architecture to operate for users in regions with provider restrictions, unstable connectivity, or changing provider eligibility without hard-coding a country-specific product architecture.
 
+> Cross-reference: bounded, governed Agent capability and V1 user voice input are now approved architectural directions per `docs/DECIVEXA/ARCHITECTURE_DECISIONS.md` §ADR-007 and §ADR-008 — item 13's "without prematurely implementing them" caution remains fully in force for unbounded agent autonomy, voice output, standalone Predictive Intelligence, and Digital Twin.
+
 ---
 
 # 2. What DECIVEXA Owns vs. What Providers Own
