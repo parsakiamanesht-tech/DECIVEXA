@@ -337,14 +337,95 @@ either TD-02 file's header text to reflect this determination.
 `docs/technical-design/TD-02-DOMAIN-BOUNDARIES.md` — self-declared
 **"Proposed technical contract."**
 
-**Status relationship to operational TD-02: UNRESOLVED / HISTORICAL-
-PROPOSED ARTIFACT.**
+**Status relationship to operational TD-02, as originally recorded in this
+reconciliation: UNRESOLVED / HISTORICAL-PROPOSED ARTIFACT** (this
+reconciliation-record line, not Artifact C itself, has since been carried
+forward by the Founder Decision below — the line is preserved here as an
+accurate record of the state at the time this reconciliation was first
+drafted, and is no longer the current classification).
 
 This document was not part of the two-file comparison scope of the prior
-investigation and has not been read in full during this reconciliation.
-It is disclosed, preserved unmodified, and left classified as
-historical/proposed pending a future dedicated review (§19, backlog item
-carried from the prior investigation). Not deleted, not modified.
+investigation and had not been read in full at the time this reconciliation
+was first drafted. It was disclosed, preserved unmodified, and left
+classified as historical/proposed pending a future dedicated review (§19,
+backlog item carried from the prior investigation). That dedicated review
+has since been performed (a full read-only investigation, 2026-08-24,
+covering the file's full content, a repository-wide reference search,
+Git creation-history evidence, a three-way structural comparison against
+Artifacts A and B, and content- and authority-conflict analysis), and its
+findings are recorded in the Founder Decision immediately below. Artifact
+C itself was not deleted, renamed, merged, or modified by that
+investigation or by this record.
+
+### Founder Decision — Classification Recorded (2026-08-24)
+
+**FOUNDER DECISION — CLASSIFICATION RECORDED:** The Founder has determined
+that `docs/technical-design/TD-02-DOMAIN-BOUNDARIES.md` is classified as:
+
+**HISTORICAL-PROPOSED EARLY DRAFT — NON-OPERATIONAL — NO CURRENT
+AUTHORITY.**
+
+This classification rests on the completed read-only investigation's
+findings:
+
+- Artifact C's self-declared status is "Proposed technical contract,"
+  with no Founder-approval declaration anywhere in its text.
+- Artifact C has no Architecture Freeze incorporation — it is named
+  nowhere in `docs/ARCHITECTURE_FREEZE_BASELINE.md`'s Frozen Source Gate,
+  unlike Artifact A.
+- Artifact C has no downstream operational citations anywhere in the
+  repository, other than this reconciliation's own disclosure of it.
+- No content-level contradiction was found between Artifact C and either
+  Artifact A or Artifact B — every checked dimension (domain ownership,
+  cross-domain access, Evidence, Memory, Human OS/PI Core, AI authority,
+  Context Fusion, change control) was classified SAME or a
+  COMPATIBLE/STRUCTURAL DIFFERENCE, never a MATERIAL DIVERGENCE or DIRECT
+  CONTRADICTION.
+- The three-way coexistence of Artifacts A, B, and C — each carrying a
+  different self-declared status over the same conceptual "TD-02 — Domain
+  Boundaries" identity, with no document stating a relationship between
+  them — constituted a genuine **authority ambiguity** that required this
+  Founder determination rather than an inferred resolution.
+- Git evidence (each artifact's own dedicated creation commit, read-only)
+  shows creation timestamps in the order **C → B → A, all on 2026-08-19,
+  within an approximately 89-minute window**, each by the same author, in
+  three separate commits.
+
+**Historical-lineage treatment — evidence-consistent interpretation, not
+proven formal lineage:** The available Git and repository evidence is
+consistent with Artifact C being an earlier proposed draft in an apparent
+**C → B → A** draft-development sequence — but **no explicit historical
+document or commit establishes that lineage as a formal fact.** No commit
+message, diff, or document text anywhere states that any of the three was
+created from, based on, or replacing another. This determination
+accordingly does **not** state that C was formally superseded by B or A,
+does **not** claim the repository contains a formal supersession record,
+and does **not** claim the C → B → A sequence is historically proven —
+only that it is the interpretation the timestamp evidence is consistent
+with.
+
+**This determination does NOT constitute a formal supersession record**
+and does **not** authorize: renaming, deleting, or merging Artifact C or
+any other TD-02 file; implementation of any kind; any architecture
+change; or any domain expansion. Artifact C does not gain authority from
+this classification, does not become part of the Architecture Freeze,
+and does not become a canonical technical-design source.
+
+**Artifact A and Artifact B are unaffected by this determination.**
+Artifact A (`docs/TD-02_DOMAIN_BOUNDARIES_AND_MODULE_OWNERSHIP.md`)
+remains the operationally authoritative TD-02, on the same evidence chain
+already established in §7 above (Architecture Freeze Baseline
+incorporation, Increment Contract citations, TD-03 vocabulary
+continuity) — not on chronology or document detail. Artifact B
+(`docs/technical-design/TD-02_DOMAIN_BOUNDARIES_AND_OWNERSHIP.md`) remains
+classified exactly as previously recorded in §7 above (historical /
+Tier-3 conceptual reference artifact) and is not reclassified by this
+decision.
+
+The third variant's **classification ambiguity** is resolved by this
+Founder Decision. The separate **physical document-hygiene question** —
+three TD-02 files coexisting in the repository — remains open; see GOV-02
+(§19 below), which this decision updates accordingly but does not close.
 
 ---
 
@@ -579,10 +660,16 @@ implemented; recorded only.
   Architecture (this document is a first step; a future action could add
   reciprocal pointers inside the TD chain itself, which this document does
   not modify).
-- **GOV-02 — TD-02 duplicate artifact hygiene.** Resolve the documentation
-  duplication (three TD-02 files) in a future dedicated governance action —
-  potentially correcting artifact (2)'s header to reflect its Tier-3 status
-  and/or fully classifying artifact (3).
+- **GOV-02 — TD-02 duplicate artifact hygiene.** *Classification of the
+  third variant is now resolved* — per the Founder Decision in §8 above,
+  `docs/technical-design/TD-02-DOMAIN-BOUNDARIES.md` is classified
+  Historical-Proposed Early Draft — Non-Operational — No Current
+  Authority. The **physical document-hygiene question remains open**: all
+  three TD-02 files still coexist in the repository, unrenamed, undeleted,
+  unmerged; no such action has been authorized. Resolving that physical
+  coexistence — and potentially correcting artifact (2)'s header to
+  reflect its Tier-3 status — remains a future, separately authorized
+  governance action.
 - **GOV-03 — Personal State taxonomy.** Determine whether Personal State
   should eventually receive an explicit canonical-domain classification in
   TD-02 or a successor document.
@@ -604,7 +691,10 @@ implemented; recorded only.
   distinguished (§3).
 - TD-02 operational authority is documented, with its evidentiary basis
   made explicit and its limits disclosed (§7).
-- The third TD-02 variant is preserved and disclosed, not resolved (§8).
+- The third TD-02 variant's classification is now Founder-decided
+  (Historical-Proposed Early Draft — Non-Operational — No Current
+  Authority, §8); its physical document-hygiene coexistence with
+  Artifacts A and B remains open (§19, GOV-02).
 - Master Architecture's and the Roadmap's roles are documented (§5, §11).
 - ADR governance rules, the No-Silent-Drift rule, and the ADR naming
   collision are formalized/recorded (§10, §16).
@@ -616,7 +706,8 @@ implemented; recorded only.
   is introduced, no implementation scope is expanded, and Increment 007
   remains valid (§13, §18).
 
-Open items requiring a future, separately authorized action: GOV-01
-through GOV-05 (§19), the exact classification of the third TD-02 variant
-(§8), and any decision to correct either TD-02 file's self-declared
-header text (§7).
+Open items requiring a future, separately authorized action: GOV-01,
+GOV-02's remaining physical document-hygiene question, GOV-03, GOV-04,
+and GOV-05 (§19); and any decision to correct either TD-02 file's
+self-declared header text (§7). The third TD-02 variant's classification
+question (§8) is resolved and is no longer an open item.
