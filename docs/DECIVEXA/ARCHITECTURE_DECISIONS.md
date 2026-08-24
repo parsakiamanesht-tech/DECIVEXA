@@ -1025,3 +1025,239 @@ approval.** It is a drafted reconciliation record. A separate, explicit
 Founder review and approval of this exact decision — and of
 `docs/DECIVEXA/GOVERNANCE_RECONCILIATION.md` in full — is the next
 required governance event.
+
+---
+
+## ADR-005 — AI Architecture Documentation Track: Governance Ratification as Planning/Reference Baseline, Implementation Not Authorized
+
+**Authoritative identity:** `docs/DECIVEXA/ARCHITECTURE_DECISIONS.md`
+§ADR-005. This repository contains other ADR namespaces that reuse the
+same numeric identifier (see §14 below); this record must always be
+cited by its full qualified path, never as a bare "ADR-005."
+
+### 1. Title
+
+AI Architecture Documentation Track: Governance Ratification as
+Planning/Reference Baseline, Implementation Not Authorized
+
+### 2. Status
+
+FOUNDER-APPROVED — ARCHITECTURALLY DECIDED — NOT IMPLEMENTATION-AUTHORIZED.
+
+This status is deliberately distinct from `BUILD-AUTHORIZED`.
+
+Neither implementation authorization nor schema-migration authorization
+is claimed here.
+
+### 3. Date
+
+2026-08-24
+
+### 4. Founder
+
+Parsa Kiamanesh
+
+### 5. Decision
+
+The seven documents listed in §6 (Scope) are formally recognized as
+DECIVEXA's canonical AI architecture planning/reference baseline.
+
+This ratification establishes architectural reference authority only.
+
+It does not authorize implementation.
+
+### 6. Scope
+
+The canonical AI architecture planning/reference set consists of:
+
+1. `docs/architecture/ADR-001-AI-PROVIDER-INDEPENDENCE-AND-RESILIENCE.md`
+2. `docs/architecture/DECIVEXA_AI_FAILURE_AND_RESILIENCE_MATRIX_V1.md`
+3. `docs/architecture/DECIVEXA_AI_IMPLEMENTATION_CONTRACT_V1.md`
+4. `docs/architecture/DECIVEXA_INTELLIGENCE_ARCHITECTURE_V1.md`
+5. `docs/architecture/DECIVEXA_AI_ARCHITECTURE_MASTER_SPEC_V1.md`
+6. `docs/architecture/DECIVEXA_AI_V1_TRACEABILITY_AND_ACCEPTANCE.md`
+7. `docs/architecture/DECIVEXA_AI_ARCHITECTURE_CONFORMANCE_AUDIT_V1.md`
+
+These documents are canonical for architectural planning/reference
+purposes only.
+
+### 7. Evidence
+
+Two independent read-only governance audits conducted during the
+2026-08-24 governance review found:
+
+- no independent Tier-1/Tier-2 governance record predating this decision
+  that ratified this AI architecture track;
+- no content-level contradiction between the seven documents and the
+  shipped implementation;
+- no AI implementation code corresponding to this architecture in the
+  repository;
+- the documents' own text self-limits the architecture to
+  planning/phase-controlled use and repeatedly requires separate Founder
+  approval before implementation.
+
+The prior absence of independent ratification is therefore not
+retroactively reclassified as evidence of prior authorization.
+
+This ADR is the explicit governance decision that establishes the
+present canonical planning/reference status.
+
+### 8. Approval Reference
+
+Explicit Founder approval was given in the project governance
+conversation:
+
+"FOUNDER DECISION GATE — AI ARCHITECTURE GOVERNANCE RATIFICATION"
+
+dated 2026-08-24.
+
+This decision followed two independent read-only governance audits that
+classified the seven documents' internal "Founder-approved" claims as
+document self-assertion (Tier 3) and found no independent Tier-1/Tier-2
+governance record predating this decision.
+
+This ADR is the durable repository record of that Founder decision.
+
+It does not retroactively promote the documents' own internal claims to
+independent evidence.
+
+### 9. Architectural Effect
+
+The seven documents may now be cited as DECIVEXA's canonical AI
+architecture planning/reference baseline for:
+
+- future architectural planning;
+- future design review;
+- future implementation planning;
+- future Founder authorization gates;
+- future readiness/conformance evaluation.
+
+Canonical reference status does not constitute implementation
+authorization.
+
+### 10. Non-Effects
+
+This decision does NOT:
+
+- authorize any AI implementation;
+- authorize AI Gateway construction;
+- authorize provider adapters;
+- authorize model routing;
+- authorize LLM integration;
+- modify the Memory schema;
+- modify the Memory model;
+- modify Memory repositories;
+- modify Memory use cases;
+- widen `provenance`;
+- adopt the truth-status taxonomy;
+- introduce `sensitivity`;
+- introduce contradiction infrastructure;
+- introduce AI-generated Memory;
+- introduce AI validation;
+- expose Memory through HTTP/API;
+- create database migrations;
+- modify database schemas;
+- modify current Memory semantics;
+- amend GOV-04;
+- rename or renumber ADRs;
+- authorize any material architectural implementation activity.
+
+### 11. Implementation Boundary
+
+Any material implementation derived from this architecture requires
+separate, explicit Founder authorization and an applicable
+implementation/readiness gate.
+
+This ADR grants none of that authorization.
+
+In particular, this ADR does not authorize:
+
+- AI Gateway implementation;
+- provider adapter implementation;
+- model router implementation;
+- LLM/provider integration;
+- AI Memory write paths;
+- truth-status persistence;
+- Memory validation infrastructure;
+- schema changes;
+- migrations;
+- API exposure.
+
+Any such work must be separately gated.
+
+### 12. Memory Boundary
+
+The current shipped Memory model remains authoritative and unchanged.
+
+Its current implementation includes:
+
+- `provenance: declared | observed`;
+- `confidence`;
+- `userConfirmed: boolean`;
+- lifecycle;
+- `valueKind`/`value`;
+- envelope-only `get`;
+- exact-version `getVersion`;
+- no latest/current retrieval;
+- no HTTP exposure.
+
+Nothing in this ADR modifies, supersedes, or widens that implementation.
+
+### 13. Truth-Status Boundary
+
+The proposed ten-state truth-status taxonomy:
+
+- User-stated
+- Observed
+- Measured
+- Inferred
+- Hypothesis
+- AI-generated
+- System-derived
+- Validated
+- Contradicted
+- Deprecated
+
+is classified as:
+
+PROPOSED / ARCHITECTURAL / NOT ADOPTED.
+
+It is not represented in the shipped schema.
+
+It is not part of the current Memory implementation.
+
+It must not be treated as adopted without a separate explicit Founder
+decision.
+
+The rule that AI-generated information must never silently become
+Validated remains a proposed architectural principle only until
+separately adopted and implemented through an authorized gate.
+
+### 14. GOV-04 Namespace Treatment
+
+`docs/architecture/ADR-001-AI-PROVIDER-INDEPENDENCE-AND-RESILIENCE.md` is
+recorded as a further, non-substantive instance of the identifier reuse
+/ namespace ambiguity already documented by GOV-04.
+
+No colliding `ADR-001` document addresses the same architectural topic
+as another colliding `ADR-001` document.
+
+This is treated as a naming/namespace note only.
+
+No renaming, renumbering, migration, or architectural change is
+authorized by this ADR.
+
+GOV-04 is not superseded by this ADR.
+
+### 15. Follow-Up Gate Requirements
+
+Any future gate proposing to:
+
+(a) implement any material part of this AI architecture; or
+
+(b) adopt the truth-status taxonomy into the Memory model/schema
+
+must open as a separate, explicitly authorized Founder gate.
+
+No future implementation or schema gate may treat this ADR as
+implementation authorization.
