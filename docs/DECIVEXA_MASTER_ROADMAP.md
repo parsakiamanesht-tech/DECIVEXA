@@ -2183,3 +2183,48 @@ Use all of that context to provide trustworthy intelligence.
 DECIVEXA نباید قبل از اینکه بتواند انسان را با Evidence و History بفهمد، ادعا کند که می‌تواند برای او تصمیم هوشمندانه بگیرد.
 
 این همان چیزی است که Foundation فعلی Personal State History را به یکی از مهم‌ترین قسمت‌های کل Roadmap تبدیل می‌کند.
+
+---
+
+# PART III — GOVERNANCE POSITIONING ADDENDUM
+
+**Added 2026-08-24 by the Formal Governance Reconciliation
+(`docs/DECIVEXA/GOVERNANCE_RECONCILIATION.md` §11). This section is NOT
+part of the verbatim Founder-supplied roadmap messages preserved in PART I
+and PART II above — no text in PART I or PART II has been summarized,
+rewritten, consolidated, or deleted to add this section.**
+
+This Master Roadmap is formally positioned as:
+
+```text
+Strategic execution roadmap
+        +
+Current sequencing authority
+        +
+Phase navigation
+```
+
+**and explicitly NOT as:**
+
+```text
+Replacement architecture authority
+```
+
+This Roadmap may point to — and does not silently redefine — any of:
+
+- `docs/ARCHITECTURE_FREEZE_BASELINE.md` (Architecture Freeze);
+- `docs/DECIVEXA_MASTER_ARCHITECTURE_AND_VISION.md` (Master Architecture);
+- the TD-01…TD-12 Technical Design chain;
+- `docs/DECIVEXA/ARCHITECTURE_DECISIONS.md` (ADRs);
+- Implementation Contracts (`docs/IMPLEMENTATION_INCREMENT_00N_CONTRACT.md`);
+- governance gates (`docs/gates/`);
+- verified repository evidence.
+
+Where this Roadmap's phase sequencing and any of the above documents'
+domain/authority statements appear to interact, the Authority Hierarchy in
+`docs/technical-design/TD-01_ARCHITECTURE_CONSTITUTION_AND_DOCUMENT_AUTHORITY.md`
+§4 governs which document's *authority* controls; this Roadmap governs
+*sequencing and priority* only, and does not itself carry architectural
+authority over domain boundaries, ownership, or implementation
+authorization. Full reconciliation detail is recorded in
+`docs/DECIVEXA/GOVERNANCE_RECONCILIATION.md`.

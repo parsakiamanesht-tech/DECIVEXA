@@ -394,3 +394,42 @@ What is actually implemented and verified now?
 > **Memory may help us remember. GitHub must help us know.**
 
 این سند به‌عنوان یک Governance Reference برای جلوگیری از فراموشی تصمیم‌ها، تأیید غیرانتقادی، تناقض تصمیم‌ها و Architectural Drift ثبت می‌شود.
+
+---
+
+## 18. RELATIONSHIP TO TD-01 — AUTHORITY HIERARCHY VS. EVIDENCE HIERARCHY
+
+**Added by the Formal Governance Reconciliation (2026-08-24), per
+`docs/DECIVEXA/GOVERNANCE_RECONCILIATION.md` §3. This addendum does not
+alter §1–§17 above; it adds an explicit boundary this document was
+previously silent on.**
+
+این سند (Decision Source of Truth) یک **Evidence Hierarchy** تعریف می‌کند:
+اینکه چه منبعی برای فهمیدن «الان چه چیزی واقعاً درست است» قابل‌اتکاتر است.
+
+`docs/technical-design/TD-01_ARCHITECTURE_CONSTITUTION_AND_DOCUMENT_AUTHORITY.md`
+§4 یک **Authority Hierarchy** متفاوت تعریف می‌کند: اینکه وقتی دو سند
+معماری متعارض هستند، کدام یک حاکم است.
+
+این دو Hierarchy **یکی نیستند** و نباید در یکدیگر ادغام شوند:
+
+```text
+Document Authority (TD-01 §4)          Decision Evidence (این سند، §3)
+──────────────────────────────         ──────────────────────────────
+Founder Decision                       Authoritative Repository Documents
+Architecture Freeze                    Accepted Architecture Decisions
+Canonical Architecture / Vision        Verified Repository State
+Technical Design (TD-01…TD-12)         Current Implementation Evidence
+Implementation Contracts               Conversation Context / Model Memory
+Code                                   Assumption
+Operational Notes
+```
+
+**Authority Hierarchy** مشخص می‌کند «تصمیم چه کسی حاکم است؟».
+**Evidence Hierarchy** مشخص می‌کند «برای فهمیدن وضعیت فعلی، به کدام منبع
+بیشتر می‌شود اعتماد کرد؟».
+
+این سند (Source of Truth) جایگزین TD-01 نیست و TD-01 را override نمی‌کند؛
+این سند صرفاً مکانیزم ارزیابی evidence را تعریف می‌کند، نه سلسله‌مراتب
+اختیار معماری را. جزئیات کامل در
+`docs/DECIVEXA/GOVERNANCE_RECONCILIATION.md` §3 ثبت شده است.

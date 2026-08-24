@@ -1,0 +1,622 @@
+# DECIVEXA — Formal Governance Reconciliation
+
+**Document type:** Governance reconciliation record (not an Architecture
+Freeze, not a Technical Design document, not an Implementation Contract).
+**Status:** DRAFTED — EVIDENCE-BACKED — NOT FOUNDER-APPROVED.
+**Date:** 2026-08-24.
+**Author role:** Repository governance investigation, per the Founder-
+authorized "DECIVEXA — FORMAL GOVERNANCE RECONCILIATION" execution prompt.
+**Supersedes:** Nothing. This document creates no new architecture, resolves
+no closed domain, and changes no Founder-approved artifact's authority
+status. It formalizes, in one place, relationships already established by
+repository evidence during the preceding two read-only investigations this
+session ("DEEP GOVERNANCE RECONCILIATION PASS" and "FORMAL DECIVEXA
+GOVERNANCE DETERMINATION").
+**Cross-referenced by:** `docs/DECIVEXA/ARCHITECTURE_DECISIONS.md` (ADR-004)
+and `docs/DECIVEXA/ARCHITECTURE_DECISION_SOURCE_OF_TRUTH.md` (§18 addendum).
+
+---
+
+## 1. Purpose
+
+This document formally reconciles the repository's two governance layers —
+the pre-existing Architecture Freeze / Technical Design ("TD") chain and the
+newer Master Roadmap / Architecture Decision Source of Truth / ADR track
+("Layer γ") — without superseding, deleting, rewriting, or weakening any
+Founder-approved architecture. It records, as evidence-backed conclusions,
+findings that were previously scattered across two read-only investigation
+reports in this session's conversation history, so that future work has one
+authoritative reconciliation record to consult instead of re-deriving the
+same analysis.
+
+This document is **evidence-derived, not Founder-approved**. It records
+relationships that repository evidence supports; it does not itself
+authorize, forbid, or change any architecture. Where a genuine architectural
+change would be implied, this document stops short and records the item as
+a governance backlog entry or an open question instead (§19).
+
+---
+
+## 2. Governance Authority Model
+
+The following model is formalized as the current, evidence-supported
+picture of DECIVEXA's governance layering. It does not invent new layers —
+it names layers already visible in repository documents and orders them
+consistently with `docs/technical-design/TD-01_ARCHITECTURE_CONSTITUTION_AND_DOCUMENT_AUTHORITY.md`
+§4 ("Document Authority Hierarchy").
+
+```text
+Layer 0 — Founder Authority
+  Founder Decision / Explicit Approval.
+  No document overrides an explicit Founder decision.
+        ↓
+Layer 1 — Architecture Freeze / Approved Architecture Baseline
+  DECIVEXA-ARCH-FREEZE-001 / v1.0.0
+  docs/ARCHITECTURE_FREEZE_BASELINE.md
+  (FROZEN — FOUNDER APPROVED, dated 2026-08-21, explicit Founder
+  Approval Record.)
+        ↓
+Layer 2 — Canonical Architecture / Philosophy / Vision
+  docs/DECIVEXA_MASTER_ARCHITECTURE_AND_VISION.md (primary reference)
+  docs/FOUNDATION.md, docs/DECIVEXA-CANONICAL-BASELINE.md,
+  docs/DECIVEXA-CANONICAL-SYSTEM-MAP.md (supporting historical lineage)
+        ↓
+Layer 3 — Technical Design
+  TD-01 … TD-12 (the operational top-level docs/TD-0X_*.md chain,
+  already incorporated into the Architecture Freeze — see §7).
+        ↓
+Layer 4 — Current Decision / Reconciliation Track ("Layer γ")
+  docs/DECIVEXA_MASTER_ROADMAP.md
+  docs/DECIVEXA/ARCHITECTURE_DECISION_SOURCE_OF_TRUTH.md
+  docs/DECIVEXA/ARCHITECTURE_DECISIONS.md
+  This document (GOVERNANCE_RECONCILIATION.md).
+        ↓
+Layer 5 — Implementation Contracts
+  docs/IMPLEMENTATION_INCREMENT_00N_CONTRACT.md
+        ↓
+Layer 6 — Code
+```
+
+**[EVIDENCE]** This ordering matches TD-01 §4's own hierarchy
+(`Founder Decision → Constitution/Governance Rules → Architecture Freeze +
+Approved Architecture Baseline → Master Philosophy... → FIS Registry →
+Technical Design Documents → Approved Implementation Contracts → Phase
+Plans/Gate Decisions → Implementation/Code → Operational Notes`), with Layer
+γ inserted at the point TD-01 itself reserves for "current decisions,"
+consistent with TD-01 §17 ("Repository as Audit Trail") and never in
+conflict with any explicit TD-01 clause (TD-01 was read in full during the
+preceding investigation and contains no rule that a Layer-γ-shaped artifact
+would violate by existing at this position).
+
+---
+
+## 3. Authority Hierarchy vs. Evidence Hierarchy
+
+These are formally distinguished, per the Founder-authorized instruction
+that they must not be collapsed into one hierarchy.
+
+**Authority Hierarchy** (`docs/technical-design/TD-01...` §4) answers:
+*"When two project artifacts conflict, which one governs?"* It ranks
+**document types** by governance power (Founder Decision outranks
+Architecture Freeze outranks Technical Design outranks Implementation
+Contract outranks Code, etc.).
+
+**Evidence Hierarchy** (`docs/DECIVEXA/ARCHITECTURE_DECISION_SOURCE_OF_TRUTH.md`
+§3) answers a different question: *"When determining what is currently
+true about the project, which source should be trusted more?"* It ranks
+**evidentiary reliability** (Authoritative Repository Documents → Accepted
+Architecture/Governance Decisions → Verified Repository State → Current
+Implementation Evidence → Conversation Context/Model Memory → Assumption).
+
+```text
+Authority Hierarchy (governs)          Evidence Hierarchy (informs)
+────────────────────────────           ──────────────────────────────
+Founder Decision                       Authoritative Repository Documents
+Architecture Freeze                    Accepted Architecture/Gov. Decisions
+Canonical Architecture                 Verified Repository State
+Technical Design                       Current Implementation Evidence
+Implementation Contracts               Conversation Context / Model Memory
+Code                                   Assumption
+Operational Notes
+```
+
+A document can rank low on the Authority Hierarchy (e.g. an Implementation
+Contract) while still being high on the Evidence Hierarchy (a verified,
+already-merged Contract is stronger evidence of *what actually happened*
+than an unverified higher-authority document's silence on the same
+question). The two hierarchies are complementary, not substitutable: the
+Authority Hierarchy resolves *whose decision wins*; the Evidence Hierarchy
+resolves *how much to trust a claim about current state*. **[EVIDENCE]**
+Confirmed by direct full-text read this session: neither
+`docs/technical-design/TD-01_ARCHITECTURE_CONSTITUTION_AND_DOCUMENT_AUTHORITY.md`
+nor `docs/DECIVEXA/ARCHITECTURE_DECISION_SOURCE_OF_TRUTH.md` references the
+other, and neither hierarchy contradicts the other's stated purpose.
+
+---
+
+## 4. Relationship Between Architecture Freeze and Layer γ
+
+**[EVIDENCE]** Full-text review of all three Layer γ documents
+(`DECIVEXA_MASTER_ROADMAP.md`, `ARCHITECTURE_DECISION_SOURCE_OF_TRUTH.md`,
+`ARCHITECTURE_DECISIONS.md`) found **zero** occurrences of the words
+"supersede," "replace," or "override" applied to
+`docs/ARCHITECTURE_FREEZE_BASELINE.md`, TD-01, or TD-02 — and zero
+references to those documents at all, in either direction.
+
+**[EVIDENCE]** Implementation Increment Contracts 004, 005, and 006 each
+cite `Architecture Baseline: DECIVEXA-ARCH-FREEZE-001 / v1.0.0` **while
+simultaneously** grounding their specific scope decisions in Layer γ's
+ADR-001 (Increment 005) — i.e. both layers were drawn on together, without
+conflict, in the same real, executed Contracts.
+
+**[EVIDENCE]** Implementation Increment Contract 007 is the first Contract
+in the sequence that does **not** cite the Architecture Baseline field —
+confirmed by direct grep this session. This is recorded as a governance-
+drift finding (§13), not evidence of an intentional decision either way.
+
+**[FOUNDER DECISION REQUIRED — NOT MADE HERE]** Whether Layer γ should be
+formally required to cite the Architecture Freeze Baseline in every future
+Contract is a governance-rule question; this document proposes the rule
+(§12) but does not itself mandate retroactive correction of Increment 007
+(§13, §15).
+
+**Conclusion:** *"Layer γ is a complementary current-decision and
+reconciliation layer operating within the existing Founder-approved
+architecture/governance hierarchy."* Layer γ has never claimed
+supersession; the evidence does not support one; and this document does
+not create one.
+
+### Layer γ may:
+- record current decisions;
+- document rationale;
+- reconcile historical architecture;
+- define current implementation boundaries;
+- track roadmap sequencing;
+- identify conflicts;
+- identify deferred decisions;
+- point implementation toward approved architecture.
+
+### Layer γ may NOT:
+- silently override Architecture Freeze;
+- silently reopen closed domains (PI Core, Memory, Evidence, Human
+  Understanding);
+- override Founder-approved Technical Design;
+- create implementation authority merely by recording an ADR;
+- declare supersession without explicit Founder approval.
+
+---
+
+## 5. Master Architecture Position
+
+`docs/DECIVEXA_MASTER_ARCHITECTURE_AND_VISION.md` is formally positioned,
+per direct evidence from both its own text and TD-01 §5 (which names it
+explicitly as "the canonical architecture-intent baseline... the current
+Founder-approved synthesis"), as:
+
+- the canonical architecture-intent / consolidation baseline referenced by
+  TD-01;
+- **above** implementation, **below** Founder authority and Architecture
+  Freeze (per its own §34 "Implementation Boundary": "the existence of a
+  capability in this document does not authorize... code implementation...
+  architecture changes... Those require their own explicit decision and
+  gate");
+- not an implementation authorization;
+- not a replacement for Architecture Freeze;
+- not a replacement for Technical Design;
+- a reference baseline against which future architecture phases, FIS
+  proposals, implementation plans, and product decisions are evaluated
+  (its own §35 "Document Status").
+
+**[EVIDENCE]** Confirmed by full-text read this session: the Master
+Architecture document contains **zero** references to Layer γ
+(`MASTER_ROADMAP`, `ARCHITECTURE_DECISION_SOURCE_OF_TRUTH`,
+`ARCHITECTURE_DECISIONS.md`, `ADR-001/002/003`) or to the term "Personal
+State." Its substantive architecture is not altered by this document.
+
+---
+
+## 6. Technical Design Position
+
+The TD-01 … TD-12 sequence remains part of the technical governance chain,
+subordinate to Founder Decision, Architecture Freeze, and Canonical
+Architecture, and superior to Implementation Contracts and Code, per TD-01
+§4 (unchanged, unmodified by this document).
+
+**[EVIDENCE]** `docs/ARCHITECTURE_FREEZE_BASELINE.md`'s "Frozen Source
+Gate" section states: *"TD-02 through TD-06: approved gates"* and *"TD-07
+Architecture Freeze & Implementation Contract: freeze candidate"* — i.e.
+the Architecture Freeze already incorporates the operational top-level TD
+chain (§7 below identifies exactly which TD-02 artifact this refers to).
+
+---
+
+## 7. TD-02 Authority Determination
+
+Three TD-02 artifacts exist in the repository:
+
+1. `docs/TD-02_DOMAIN_BOUNDARIES_AND_MODULE_OWNERSHIP.md`
+2. `docs/technical-design/TD-02_DOMAIN_BOUNDARIES_AND_OWNERSHIP.md`
+3. `docs/technical-design/TD-02-DOMAIN-BOUNDARIES.md`
+
+### Determination
+
+**The currently evidenced operationally authoritative TD-02 is
+(1) `docs/TD-02_DOMAIN_BOUNDARIES_AND_MODULE_OWNERSHIP.md`.**
+
+### Why
+
+- **[EVIDENCE]** `docs/ARCHITECTURE_FREEZE_BASELINE.md` (self-declared
+  "FROZEN — FOUNDER APPROVED," with an explicit dated Founder Approval
+  Record, 2026-08-21) states in its Frozen Source Gate: *"TD-02 through
+  TD-06: approved gates"* and *"TD-07 Revision Pack R1–R14: accepted at
+  design level."* The filenames `docs/TD-07_REVISION_PACK_R1-R14.md` and
+  `docs/TD-07_RE_REVIEW.md` exist **only** in the top-level `docs/`
+  directory — the same directory as artifact (1) — establishing that the
+  Frozen Source Gate's "TD-02" refers to artifact (1)'s family, not
+  artifact (2)'s.
+- **[EVIDENCE]** Implementation Increment Contracts 004, 005, and 006 cite
+  `Architecture Baseline: DECIVEXA-ARCH-FREEZE-001 / v1.0.0` verbatim — the
+  real, executed Contracts are governed by the chain artifact (1) belongs
+  to.
+- **[EVIDENCE]** `docs/TD-03_STATE_EVENT_CONSISTENCY_MODEL.md` (top-level)
+  contains artifact (1)'s distinctive term "Evidence & Integration
+  Platform," confirming artifact (1)'s conceptual vocabulary — not
+  artifact (2)'s — was carried forward into the rest of the top-level TD
+  chain.
+- **[EVIDENCE, supporting/contextual only — not decisive]** Artifact (2) is
+  independently cited by exact path in two prior Founder Decision Gate
+  documents (`docs/gates/PHASE_10P_GOAL_READINESS_FOUNDER_DECISION_GATE.md`,
+  `docs/gates/PHASE_10Q_PERSONAL_INTELLIGENCE_MEMORY_BOUNDARY_FOUNDER_DECISION_GATE.md`).
+  The latter document classifies artifact (2) as **"Tier 3 (conceptual,
+  self-declared non-authorizing for implementation)."** This label is
+  **not, by itself, decisive evidence for this determination**: the same
+  Phase 10Q gate applies the identical "Tier 3" classification to several
+  other conceptual documents, including
+  `docs/DECIVEXA_MASTER_ARCHITECTURE_AND_VISION.md`,
+  `docs/DECIVEXA-CANONICAL-SYSTEM-MAP.md`,
+  `docs/DECIVEXA-CANONICAL-BASELINE.md`, and `docs/FOUNDATION.md` — i.e. it
+  is a broad classification that gate applies to conceptual/non-authorizing
+  artifacts generally, not evidence unique to artifact (2). It is recorded
+  here only as supporting/contextual color — confirming that a prior
+  governance track already treated artifact (2) as non-authorizing for
+  implementation on its own terms — and not as the basis for this
+  determination. The determination itself rests on the independent,
+  stronger evidence in the bullets above: the Architecture Freeze
+  Baseline's explicit inclusion of "TD-02 through TD-06" as approved gates,
+  the TD-07 revision-pack/re-review lineage existing only alongside
+  artifact (1), Increment Contracts 004–006's citation of that same Freeze
+  Baseline, and the shared TD vocabulary continuity. Artifact (2)'s own
+  header still claims "Founder-approved technical design artifact" — a
+  claim this document neither adopts nor disputes; see the
+  documentation-hygiene discrepancy note below.
+
+### Which files are historical / proposed / reference artifacts
+
+- Artifact (1) — **operationally authoritative** (this determination).
+- Artifact (2) — **historical / Tier-3 conceptual reference artifact.**
+  Not deleted, not renamed, not downgraded in its own text by this
+  document. Its citation history (Phase 10P/10Q gates) is preserved as
+  legitimate prior evidence use at the tier those gates themselves
+  assigned it.
+- Artifact (3) — **unresolved**, see §8.
+
+### Documentation-hygiene discrepancy
+
+Artifact (2)'s self-declared header ("Founder-approved technical design
+artifact," "ACCEPTED AS THE DOMAIN BOUNDARY AND OWNERSHIP BASELINE") is
+**stronger than its evidenced operational tier**. This is recorded as a
+documentation-hygiene discrepancy (§19, GOV-02) — not evidence that
+artifact (2) is actually authoritative, and not itself corrected by this
+document (correcting a Founder-approved-labeled document's header requires
+its own explicit authorization, per §7 of the execution prompt governing
+this task).
+
+### No implementation authority inferred from self-declared status alone
+
+Per the Founder-authorized instruction governing this reconciliation: no
+document's self-declared status (in either direction) is treated as proof
+of implementation authority by itself. This determination rests on
+cross-document citation evidence (above), not on artifact (1)'s own
+(weaker) self-declared "DESIGN DEFINED / GATE NOT YET PASSED" header
+either — that header appears to be equally stale, **left stale by** the
+later Architecture Freeze process's explicit incorporation of TD-02–TD-06
+as "approved gates," without artifact (1)'s own header text ever being
+updated to reflect that. This is not a claim that artifact (1) was
+formally superseded — no document in this repository declares that, and
+this document does not either — only that its self-declared header text
+was never revised to match the later operational positioning described
+above.
+
+**[FOUNDER DECISION REQUIRED — NOT MADE HERE]** Whether to formally correct
+either TD-02 file's header text to reflect this determination.
+
+---
+
+## 8. Third TD-02 Variant
+
+`docs/technical-design/TD-02-DOMAIN-BOUNDARIES.md` — self-declared
+**"Proposed technical contract."**
+
+**Status relationship to operational TD-02: UNRESOLVED / HISTORICAL-
+PROPOSED ARTIFACT.**
+
+This document was not part of the two-file comparison scope of the prior
+investigation and has not been read in full during this reconciliation.
+It is disclosed, preserved unmodified, and left classified as
+historical/proposed pending a future dedicated review (§19, backlog item
+carried from the prior investigation). Not deleted, not modified.
+
+---
+
+## 9. Canonical Baseline Lineage
+
+`docs/FOUNDATION.md` → `docs/DECIVEXA-CANONICAL-BASELINE.md` →
+`docs/DECIVEXA-CANONICAL-SYSTEM-MAP.md` → `docs/DECIVEXA_MASTER_ARCHITECTURE_AND_VISION.md`
+are treated as a **sequential-draft lineage**, not four competing
+authorities — consistent with the prior session's "PARTIALLY RECONCILED"
+finding (no confirmed content-level conflict found between them in any
+document actually checked). `DECIVEXA_MASTER_ARCHITECTURE_AND_VISION.md`
+is the most current and most complete member of this lineage and is the
+one TD-01 §5 names as canonical. The earlier three remain preserved as
+historical evidence of the lineage's development, per this document's
+non-deletion, non-rewriting constraint (§0 of the governing execution
+prompt).
+
+---
+
+## 10. ADR Governance Rules
+
+Formalized, effective for future ADRs (not retroactively applied to
+ADR-001/002/003, which are not rewritten by this document — see §11):
+
+Before accepting any new ADR that changes an architecture boundary, the
+author MUST inspect:
+
+- Founder decisions;
+- Architecture Freeze (`docs/ARCHITECTURE_FREEZE_BASELINE.md`);
+- Master Architecture (`docs/DECIVEXA_MASTER_ARCHITECTURE_AND_VISION.md`);
+- the relevant Technical Design document(s);
+- the relevant gate document(s), if any;
+- current ADR/Source-of-Truth records;
+- the current implementation contract, if applicable.
+
+If a relevant Technical Design document exists, the ADR **must** reference
+it, or explicitly record: *"No applicable TD rule found."* An ADR must
+never silently omit a relevant higher-authority architecture source.
+
+### No Silent Architectural Drift Rule (formalized)
+
+*"An ADR may refine or operationalize an existing architectural decision,
+but cannot silently supersede a Founder-approved Freeze or Technical
+Design."*
+
+If an ADR intentionally proposes a change to a higher-authority decision,
+the required sequence is:
+
+```text
+Existing authority
+        ↓
+Conflict/change identified
+        ↓
+Founder decision / explicit approval
+        ↓
+Updated governance artifact
+        ↓
+Implementation contract
+        ↓
+Implementation
+```
+
+No shortcut is permitted at any step.
+
+### ADR Naming Collision
+
+**[EVIDENCE]** Two documents both use the identifier "ADR-001" in this
+repository: `docs/adr/ADR-001-WEB-RESTORE-AUTH-FOUNDATION-BOUNDARY.md` and
+the "ADR-001" section inside `docs/DECIVEXA/ARCHITECTURE_DECISIONS.md`.
+This is a naming collision, not a silent conflation — every citation of the
+former by ADR-002/ADR-003 uses its full path, so no confusion has occurred
+in practice to date. Neither file is renamed by this document (§0 of the
+governing prompt forbids it here). **Future rule, formalized:** ADR
+identifiers must be globally unique within the repository governance
+namespace; a future dedicated action should assign one of the two existing
+"ADR-001" artifacts a disambiguating identifier.
+
+---
+
+## 11. Roadmap Governance Rules
+
+`docs/DECIVEXA_MASTER_ROADMAP.md` is formally positioned as: **strategic
+execution roadmap + current sequencing authority + phase navigation** —
+**not** a replacement architecture authority.
+
+The Roadmap may point to Architecture Freeze, Master Architecture, TD
+documents, ADRs, Implementation Contracts, gates, and evidence. It must not
+silently redefine any of them. This positioning is recorded here and
+additionally noted, non-destructively, as an appended addendum inside the
+Roadmap document itself (see the companion edit to
+`docs/DECIVEXA_MASTER_ROADMAP.md`, appended strictly after its two
+Founder-supplied verbatim parts, which remain untouched).
+
+---
+
+## 12. Increment Contract Governance Rules
+
+Formalized, effective for future Increment Contracts:
+
+All future Increment Contracts must include, where applicable:
+
+- `Architecture Baseline: DECIVEXA-ARCH-FREEZE-001 / v1.0.0`;
+- relevant ADR(s);
+- relevant TD(s);
+- relevant Gate(s).
+
+---
+
+## 13. Increment 007 Reconciliation Finding
+
+**[EVIDENCE]** `docs/IMPLEMENTATION_INCREMENT_007_CONTRACT.md` omits the
+`Architecture Baseline` field present in Increment Contracts 004–006. This
+is recorded as a **governance-drift finding**, not retroactively corrected.
+Increment 007's own Contract document is not modified by this
+reconciliation (out of scope per §0 and §19 of the governing execution
+prompt; correcting it would itself require separate explicit
+authorization).
+
+### Increment 007 architectural validity — reaffirmed
+
+**Increment 007 is architecturally valid.** Reasons (unchanged from the
+preceding investigation, reaffirmed here):
+
+- backend owns Personal State;
+- identity is derived exclusively from verified token claims;
+- the client cannot select an arbitrary user identity;
+- revision-based optimistic concurrency is enforced;
+- a revision conflict returns `409`;
+- no client-side merge authority exists;
+- no cross-domain write occurs;
+- no AI authority is exercised;
+- no closed domain (PI Core, Memory, Evidence) is reopened.
+
+No newly discovered document in this reconciliation contradicts this
+finding. Increment 007's implementation is not changed by this document.
+
+---
+
+## 14. Personal State Taxonomy Gap
+
+**[EVIDENCE]** "Personal State" — as actually implemented (timezone,
+locale, availability, revision) and as governed by ADR-003 — does not
+appear as a named canonical domain anywhere in TD-02 (either artifact (1)
+or artifact (2)), nor in `DECIVEXA_MASTER_ARCHITECTURE_AND_VISION.md`
+(confirmed by direct full-text checks across all three documents this
+session and the prior one).
+
+**Classification: Taxonomy / documentation gap — NOT an implementation
+conflict.** No document forbids or contradicts Personal State's existing
+implementation; the domain simply has no explicit named slot in the
+existing TD-02 domain maps. No new TD domain is invented by this document.
+TD-02 is not reopened. No code is changed.
+
+Recorded as a governance backlog item (§19, GOV-03) for a future,
+separately authorized reconciliation.
+
+---
+
+## 15. ADR Naming Collision
+
+See §10 above (ADR Naming Collision) — recorded there to keep the ADR
+governance material in one place. Cross-referenced here per the required
+section list.
+
+---
+
+## 16. No Silent Architectural Drift Rule
+
+Formalized in §10 above (ADR Governance Rules) and restated here as a
+repository-wide principle, applicable beyond ADRs specifically: **no
+governance artifact at any layer (Roadmap, Source of Truth, ADR,
+Implementation Contract) may silently change the authority status of a
+higher-layer document.** Any such change requires an explicit Founder
+decision, recorded as such, before the change takes effect. This document
+observes, and does not violate, that rule: it changes no authority status
+and creates no new authorization.
+
+---
+
+## 17. Future Domain-Expansion Gate
+
+Formalized: before any future increment involving Evidence exposure, Human
+Understanding, PI Core reopening, Memory reopening, a new domain,
+cross-domain ownership, new persistent state, a new authority boundary, or
+AI authority, the implementation **must** first perform a governance
+compatibility check against:
+
+- Architecture Freeze;
+- TD-02 (artifact (1), per §7's determination);
+- TD-03, TD-04, and other relevant TDs;
+- relevant ADRs;
+- Master Architecture;
+- Roadmap;
+- Source of Truth.
+
+No implementation may begin if a genuine, unresolved authority conflict is
+identified during that check.
+
+---
+
+## 18. Founder Approval Requirements
+
+The following remain explicitly Founder-controlled and are **not** decided
+or changed by this document:
+
+- changing Architecture Freeze;
+- superseding a Founder-approved TD;
+- reopening PI Core;
+- reopening Memory;
+- exposing Evidence;
+- introducing Human Understanding implementation;
+- changing domain ownership;
+- changing architectural constitution;
+- changing security/privacy authority;
+- changing AI authority;
+- deleting or renaming historical governance artifacts.
+
+No such change appeared necessary during this reconciliation. None is
+proposed for execution here.
+
+---
+
+## 19. Governance Backlog Items
+
+Recorded here because no existing dedicated Architecture Backlog file was
+found in the repository (`docs/FIS-REGISTRY.md` exists but is scoped to
+FIS capability registration, not general governance backlog items). Not
+implemented; recorded only.
+
+- **GOV-01 — Layer γ / Freeze cross-reference.** Formalize bidirectional
+  navigation between Layer γ, Architecture Freeze, the TD chain, and Master
+  Architecture (this document is a first step; a future action could add
+  reciprocal pointers inside the TD chain itself, which this document does
+  not modify).
+- **GOV-02 — TD-02 duplicate artifact hygiene.** Resolve the documentation
+  duplication (three TD-02 files) in a future dedicated governance action —
+  potentially correcting artifact (2)'s header to reflect its Tier-3 status
+  and/or fully classifying artifact (3).
+- **GOV-03 — Personal State taxonomy.** Determine whether Personal State
+  should eventually receive an explicit canonical-domain classification in
+  TD-02 or a successor document.
+- **GOV-04 — ADR namespace collision.** Create repository-wide ADR naming
+  discipline and resolve the two "ADR-001" identifiers.
+- **GOV-05 — Evidence/HU pre-expansion reconciliation.** Before expanding
+  Evidence or Human Understanding, perform a TD-04-and-later compatibility
+  verification (§17, Future Domain-Expansion Gate).
+
+---
+
+## 20. Final Reconciliation Status
+
+**PARTIALLY FORMALIZED — EVIDENCE-BACKED — NOT FOUNDER-APPROVED.**
+
+- Layer γ is formally positioned as complementary to, not superseding,
+  the Architecture Freeze / TD chain (§4).
+- The Authority Hierarchy and Evidence Hierarchy are explicitly
+  distinguished (§3).
+- TD-02 operational authority is documented, with its evidentiary basis
+  made explicit and its limits disclosed (§7).
+- The third TD-02 variant is preserved and disclosed, not resolved (§8).
+- Master Architecture's and the Roadmap's roles are documented (§5, §11).
+- ADR governance rules, the No-Silent-Drift rule, and the ADR naming
+  collision are formalized/recorded (§10, §16).
+- Increment Contract citation discipline is documented, and Increment
+  007's omission is recorded as a finding, not corrected (§12, §13).
+- The Personal State taxonomy gap is recorded as a backlog item, not
+  resolved (§14, GOV-03).
+- No architecture is weakened, no closed domain is reopened, no new domain
+  is introduced, no implementation scope is expanded, and Increment 007
+  remains valid (§13, §18).
+
+Open items requiring a future, separately authorized action: GOV-01
+through GOV-05 (§19), the exact classification of the third TD-02 variant
+(§8), and any decision to correct either TD-02 file's self-declared
+header text (§7).
