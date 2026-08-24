@@ -492,16 +492,84 @@ No shortcut is permitted at any step.
 
 ### ADR Naming Collision
 
-**[EVIDENCE]** Two documents both use the identifier "ADR-001" in this
-repository: `docs/adr/ADR-001-WEB-RESTORE-AUTH-FOUNDATION-BOUNDARY.md` and
-the "ADR-001" section inside `docs/DECIVEXA/ARCHITECTURE_DECISIONS.md`.
-This is a naming collision, not a silent conflation — every citation of the
+**[EVIDENCE, as originally recorded here]** Two documents both use the
+identifier "ADR-001" in this repository:
+`docs/adr/ADR-001-WEB-RESTORE-AUTH-FOUNDATION-BOUNDARY.md` and the
+"ADR-001" section inside `docs/DECIVEXA/ARCHITECTURE_DECISIONS.md`. This
+is a naming collision, not a silent conflation — every citation of the
 former by ADR-002/ADR-003 uses its full path, so no confusion has occurred
-in practice to date. Neither file is renamed by this document (§0 of the
-governing prompt forbids it here). **Future rule, formalized:** ADR
-identifiers must be globally unique within the repository governance
-namespace; a future dedicated action should assign one of the two existing
-"ADR-001" artifacts a disambiguating identifier.
+in practice to date. Neither file is renamed by this document.
+
+**This original framing understated the collision's true scope.** A
+dedicated GOV-04 read-only investigation (2026-08-24) built a complete
+repository-wide ADR inventory and found identifier reuse across **three**
+separate namespaces, not two, and at four identifiers, not one:
+
+- **ADR-001** (2 documents): `docs/adr/ADR-001-WEB-RESTORE-AUTH-FOUNDATION-BOUNDARY.md`; `ARCHITECTURE_DECISIONS.md` §ADR-001.
+- **ADR-002** (3 documents): `docs/adr/ADR-002-IDENTITY-BOUNDARY.md`; `docs/adr/ADR-002-CORE-FOUNDATION-APPLICATION-DOMAIN-BOUNDARY.md` (an internal duplicate within `docs/adr/` itself); `ARCHITECTURE_DECISIONS.md` §ADR-002.
+- **ADR-003** (3 documents): `docs/architecture/ADR-003-persistence-stack.md`; `docs/adr/ADR-003-RESOURCE-ACCESS-BOUNDARY.md`; `ARCHITECTURE_DECISIONS.md` §ADR-003.
+- **ADR-004** (3 documents): `docs/architecture/ADR-004-domain-identity-modeling.md`; `docs/adr/ADR-004-MIGRATION-GOVERNANCE.md`; `ARCHITECTURE_DECISIONS.md` §ADR-004.
+- **ADR-005, ADR-006** (`docs/architecture/` only): unique, no collision.
+
+The investigation found this is **identifier reuse / namespace ambiguity,
+not a substantive architectural conflict**: every colliding set represents
+materially different decisions (e.g. ADR-002-IDENTITY-BOUNDARY defines the
+Core identity primitive; ADR-002-CORE-FOUNDATION-APPLICATION-DOMAIN-BOUNDARY
+defines application/domain layering — unrelated topics that happen to
+share a number). No content-level contradiction was found in any
+collision. No pair of colliding documents was found to represent the same
+decision. No document explicitly claims authority over, or supersedes,
+any other colliding document.
+
+### Founder Decision — GOV-04 Scope Expansion & Historical Namespace
+Treatment (2026-08-24)
+
+**A. GOV-04 scope, expanded:** GOV-04's recorded scope is formally
+expanded from the previously recorded ADR-001-only collision to the
+complete repository-wide identifier collision above (ADR-001 through
+ADR-004, across `docs/architecture/`, `docs/adr/`, and
+`docs/DECIVEXA/ARCHITECTURE_DECISIONS.md`, including the internal ADR-002
+duplicate inside `docs/adr/`). This is recorded as identifier reuse /
+namespace ambiguity, not a substantive architectural conflict.
+
+**B. Historical namespace treatment:** For the purpose of current
+governance interpretation, `docs/architecture/` and `docs/adr/` are
+treated as **historical / closed ADR tracks**. Their files remain
+physically untouched; their identifiers are preserved as historical
+identities; their content is not rewritten; they are not renumbered,
+renamed, merged, deleted, or moved by this decision. **This is a
+governance-interpretation treatment, not a factual claim.** It must not
+be read as proof that any individual ADR was formally superseded by
+another, must not be read as proof that one historical ADR was replaced
+by another, and does not infer authority merely from chronology. "Closed
+track" describes the absence of an active governance program adding new
+ADRs to those directories going forward — it does not mean the documents
+are invalid, incorrect, or without historical value.
+
+**C. Current DECIVEXA ADR track:** This decision does **not** declare that
+the ADRs in `docs/DECIVEXA/ARCHITECTURE_DECISIONS.md` automatically
+outrank, replace, or supersede the historical ADR files, and it creates no
+new authority hierarchy. The existing Founder-approval status of
+individual `ARCHITECTURE_DECISIONS.md` entries (ADR-001 through ADR-004)
+remains governed exactly by their own existing evidence and records,
+unaffected by this decision.
+
+**D. Future ADR naming discipline (principle only):** From this point
+forward, new ADR creation should use an explicitly identifiable repository
+governance namespace; a future ADR must not rely on a bare numeric
+identifier alone as its sole identity where that number could be
+ambiguous across repository namespaces. **The exact naming convention is
+not chosen here** — not global sequential numbering, not directory- or
+domain-qualified identifiers, not a namespace-prefix scheme, nor any
+other specific convention. That remains a separate, future,
+Founder-controlled ADR Namespace Design decision.
+
+**E. Explicitly left open:** the exact future ADR naming convention;
+retroactive renumbering or renaming of any existing ADR; migration or
+deletion of historical ADRs; merging any of the three namespaces;
+individual reclassification of any of the 8 orphaned standalone ADRs;
+any claim that a historical ADR was formally superseded; and any change
+to Architecture Freeze. None of these is decided here.
 
 ---
 
@@ -673,8 +741,16 @@ implemented; recorded only.
 - **GOV-03 — Personal State taxonomy.** Determine whether Personal State
   should eventually receive an explicit canonical-domain classification in
   TD-02 or a successor document.
-- **GOV-04 — ADR namespace collision.** Create repository-wide ADR naming
-  discipline and resolve the two "ADR-001" identifiers.
+- **GOV-04 — ADR namespace collision.** *Scope expanded and historical
+  namespace treatment recorded* — per the Founder Decision in §10 above,
+  the collision spans ADR-001 through ADR-004 across three namespaces
+  (`docs/architecture/`, `docs/adr/`, `ARCHITECTURE_DECISIONS.md`), and
+  `docs/architecture/`/`docs/adr/` are treated as historical/closed ADR
+  tracks for governance interpretation (not formally superseded, not
+  renamed/merged/deleted). **Still open:** the exact future ADR naming
+  convention; any retroactive renumbering, renaming, or migration; and
+  individual reclassification of the 8 orphaned standalone ADRs. No such
+  action has been authorized.
 - **GOV-05 — Evidence/HU pre-expansion reconciliation.** Before expanding
   Evidence or Human Understanding, perform a TD-04-and-later compatibility
   verification (§17, Future Domain-Expansion Gate).
