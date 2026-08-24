@@ -10,6 +10,32 @@ The canonical Founder-approved synthesis of DECIVEXA's philosophy, purpose, visi
 
 **[DECIVEXA — Master Philosophy, Vision & Intelligence Architecture](./docs/DECIVEXA_MASTER_ARCHITECTURE_AND_VISION.md)**
 
+## Living Goal Tree / Goal Growth — Corrected Unified Architecture v3
+
+The Living Goal Tree / Goal Growth concept has been re-reconciled under the correct interpretation of the previously discussed **85 + 70 conceptual developments for the Goal Growth idea itself**. They are not FIS-001..FIS-085 plus a separate 70-item catalog.
+
+**[DECIVEXA Living Goal Tree 85+70 Unified Architecture v3](./docs/architecture/DECIVEXA_LIVING_GOAL_TREE_85_70_UNIFIED_ARCHITECTURE_V3.md)** — the corrected pre-freeze synthesis covering the Goal Growth Model, graph-first/tree-projection architecture, dynamic growth and pruning, capability intelligence, evidence, progress, health, bottlenecks, leverage, experimentation, adaptation, goal ecology, capacity, navigation, AI boundaries, privacy, persistence, versioning, lineage, evaluation, Digital Twin/agent compatibility, and architectural invariants.
+
+### Core specification set
+
+1. **[Goal Growth Intelligence Master Specification v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_INTELLIGENCE_MASTER_SPEC_V1.md)** — product/domain architecture, principles, lifecycle, graph/tree model, intelligence, adaptation, governance, V1 scope and invariants.
+2. **[Goal Growth Domain Model v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_DOMAIN_MODEL_V1.md)** — canonical entities, relationships, state machines, events, domain services, application use cases and invariants.
+3. **[Goal Growth AI & Intelligence Contract v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_AI_AND_INTELLIGENCE_CONTRACT_V1.md)** — AI boundary, evidence discipline, structured proposals, validation, governance, failure behavior and evaluation.
+4. **[Goal Growth Persistence & API Specification v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_PERSISTENCE_AND_API_SPEC_V1.md)** — PostgreSQL direction, conceptual tables, transaction/concurrency rules, API resources, authorization, audit and read models.
+5. **[Goal Growth Implementation Handoff to Claude Code v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_IMPLEMENTATION_HANDOFF_TO_CLAUDE_CODE_V1.md)** — execution boundary, implementation sequence, tests, stop conditions and definition of done.
+6. **[Goal Growth Traceability & Acceptance Matrix v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_TRACEABILITY_AND_ACCEPTANCE_V1.md)** — integration and acceptance baseline.
+7. **[ADR-GGI-001](./docs/DECIVEXA/ADR-GGI-001-LIVING-GOAL-TREE-AND-GOAL-GROWTH-MODEL.md)** — canonical architectural decision: Tree is a projection of the Goal Growth Model.
+
+### Second-pass hardening and audit
+
+8. **[Goal Growth Architecture Hardening v2](./docs/architecture/DECIVEXA_GOAL_GROWTH_ARCHITECTURE_HARDENING_V2.md)** — canonical ownership, aggregate/version boundaries, concurrency, idempotency, outbox, tree stability, privacy, degraded mode and implementation invariants.
+9. **[Goal Growth Strict Document Audit v2](./docs/architecture/DECIVEXA_GOAL_GROWTH_DOCUMENT_AUDIT_V2.md)** — adversarial review of the first document set and identified gaps.
+10. **[Goal Growth Freeze Readiness v2](./docs/architecture/DECIVEXA_GOAL_GROWTH_FREEZE_READINESS_V2.md)** — formal gate record and remaining blockers before Architecture Freeze.
+
+**Removed correction:** the previously created `DECIVEXA_GOAL_GROWTH_85_FIS_AND_70_EXTENSION_RECONCILIATION_V2.md` was based on an incorrect interpretation of “85 + 70” and has been deleted from this branch. It must not be used as a project reference.
+
+**Important:** These documents are architecture proposals and implementation guidance. They do **not** constitute Build Authorization. Founder-controlled gates remain mandatory.
+
 ## Canonical AI Architecture
 
 The **master AI specification** consolidates the complete AI architecture, resilience model, privacy/security boundaries, memory integrity, context architecture, routing, model/provider independence, evaluation, observability, offline continuity, agent-readiness, v1 scope, and implementation invariants:
