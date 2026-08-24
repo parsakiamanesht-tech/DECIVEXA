@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MemoryUseCase } from "./memory.use-case";
+import { MemoryNotFoundError, MemoryUseCase, MemoryValidationError } from "./memory.use-case";
 import type { MemoryRecord, MemoryRecordVersion } from "../../core/memory/memory-record.model";
 import type {
   AppendMemoryLifecycleVersionInput,
@@ -397,5 +397,238 @@ test("a lifecycle-only transition preserves value kind, value, and confirmation 
     assert.equal(original.value.valueKind, "content");
     assert.equal(original.value.value, "a memory to be corrected later");
     assert.equal(original.value.userConfirmed, false);
+  }
+});
+
+// Memory Narrow Retrieval Increment (Founder Build Authorization) - the
+// following tests exercise the already-existing get/getVersion behavior
+// against the exact categories the approved Scope Contract requires:
+// authentication, unknown-resource not-found, version validation,
+// explicit-lifecycle retrieval, envelope/content separation, and
+// anti-poisoning field preservation. No production code changes were
+// required to satisfy any of these - get/getVersion already behaved
+// correctly; this closes a test-coverage gap only.
+
+test("get fails without an authenticated user", async () => {
+  const repository = new FakeMemoryRecordRepository();
+  const useCase = new MemoryUseCase(repository);
+
+  const result = await useCase.get("some-record-id", createRequestContext("r1"));
+
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.ok(result.error instanceof MemoryValidationError);
+  }
+});
+
+test("getVersion fails without an authenticated user", async () => {
+  const repository = new FakeMemoryRecordRepository();
+  const useCase = new MemoryUseCase(repository);
+
+  const result = await useCase.getVersion("some-record-id", 1, createRequestContext("r1"));
+
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.ok(result.error instanceof MemoryValidationError);
+  }
+});
+
+test("get returns not-found for a record id that was never created", async () => {
+  const repository = new FakeMemoryRecordRepository();
+  const useCase = new MemoryUseCase(repository);
+
+  const result = await useCase.get("never-created-record-id", createRequestContext("r1", "user-a"));
+
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.ok(result.error instanceof MemoryNotFoundError);
+  }
+});
+
+test("getVersion rejects a non-integer version number", async () => {
+  const repository = new FakeMemoryRecordRepository();
+  const useCase = new MemoryUseCase(repository);
+
+  const created = await useCase.create(
+    { provenance: "observed", observedAt: new Date(), acceptedAt: new Date(), confidence: null },
+    createRequestContext("r1", "user-a"),
+  );
+  assert.equal(created.ok, true);
+  const recordId = repository.lastCreateInput!.recordId;
+
+  const result = await useCase.getVersion(recordId, 1.5, createRequestContext("r2", "user-a"));
+
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.ok(result.error instanceof MemoryValidationError);
+  }
+});
+
+test("getVersion rejects a version number less than 1", async () => {
+  const repository = new FakeMemoryRecordRepository();
+  const useCase = new MemoryUseCase(repository);
+
+  const created = await useCase.create(
+    { provenance: "observed", observedAt: new Date(), acceptedAt: new Date(), confidence: null },
+    createRequestContext("r1", "user-a"),
+  );
+  assert.equal(created.ok, true);
+  const recordId = repository.lastCreateInput!.recordId;
+
+  const result = await useCase.getVersion(recordId, 0, createRequestContext("r2", "user-a"));
+
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.ok(result.error instanceof MemoryValidationError);
+  }
+});
+
+test("getVersion returns not-found for a version number that does not exist", async () => {
+  const repository = new FakeMemoryRecordRepository();
+  const useCase = new MemoryUseCase(repository);
+
+  const created = await useCase.create(
+    { provenance: "observed", observedAt: new Date(), acceptedAt: new Date(), confidence: null },
+    createRequestContext("r1", "user-a"),
+  );
+  assert.equal(created.ok, true);
+  const recordId = repository.lastCreateInput!.recordId;
+
+  const result = await useCase.getVersion(recordId, 99, createRequestContext("r2", "user-a"));
+
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.ok(result.error instanceof MemoryNotFoundError);
+  }
+});
+
+test("get returns only the envelope fields, never Memory content", async () => {
+  const repository = new FakeMemoryRecordRepository();
+  const useCase = new MemoryUseCase(repository);
+
+  const created = await useCase.create(
+    {
+      provenance: "declared",
+      observedAt: new Date(),
+      acceptedAt: new Date(),
+      confidence: 0.8,
+      valueKind: "content",
+      value: "a value that must never leak through get()",
+    },
+    createRequestContext("r1", "user-a"),
+  );
+  assert.equal(created.ok, true);
+  const recordId = repository.lastCreateInput!.recordId;
+
+  const result = await useCase.get(recordId, createRequestContext("r2", "user-a"));
+
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    const envelope = result.value as unknown as Record<string, unknown>;
+    assert.deepEqual(Object.keys(envelope).sort(), ["createdAt", "id", "updatedAt", "userId"]);
+    for (const field of [
+      "value",
+      "valueKind",
+      "provenance",
+      "confidence",
+      "userConfirmed",
+      "lifecycle",
+      "observedAt",
+      "acceptedAt",
+    ]) {
+      assert.equal(field in envelope, false, `get() must not expose "${field}"`);
+    }
+  }
+});
+
+test("getVersion explicitly retrieves a version whose own lifecycle is 'deleted'", async () => {
+  const repository = new FakeMemoryRecordRepository();
+  const useCase = new MemoryUseCase(repository);
+
+  const created = await useCase.create(
+    { provenance: "observed", observedAt: new Date(), acceptedAt: new Date(), confidence: null },
+    createRequestContext("r1", "user-a"),
+  );
+  assert.equal(created.ok, true);
+  const recordId = repository.lastCreateInput!.recordId;
+
+  const deleted = await useCase.appendLifecycleVersion(
+    { recordId, expectedVersion: 1, lifecycle: "deleted" },
+    createRequestContext("r2", "user-a"),
+  );
+  assert.equal(deleted.ok, true);
+
+  // The deleted version itself - not just the version preceding it - must
+  // remain individually retrievable when explicitly addressed: lifecycle
+  // is a stored state attribute, never an access-control filter.
+  const result = await useCase.getVersion(recordId, 2, createRequestContext("r3", "user-a"));
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.value.lifecycle, "deleted");
+  }
+});
+
+test("getVersion returns provenance, confidence, userConfirmed, lifecycle, and valueKind exactly as stored", async () => {
+  const repository = new FakeMemoryRecordRepository();
+  const useCase = new MemoryUseCase(repository);
+
+  const created = await useCase.create(
+    {
+      provenance: "declared",
+      observedAt: new Date(),
+      acceptedAt: new Date(),
+      confidence: 0.62,
+      valueKind: "content",
+      value: "the user prefers async written updates over calls",
+    },
+    createRequestContext("r1", "user-a"),
+  );
+  assert.equal(created.ok, true);
+  const recordId = repository.lastCreateInput!.recordId;
+
+  const result = await useCase.getVersion(recordId, 1, createRequestContext("r2", "user-a"));
+
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.value.provenance, "declared");
+    assert.equal(result.value.confidence, 0.62);
+    // High confidence, directly-declared provenance: still never implies
+    // confirmation - each dimension is returned independently, never
+    // derived from another (TD-06 §13 anti-poisoning invariant).
+    assert.equal(result.value.userConfirmed, false);
+    assert.equal(result.value.lifecycle, "active");
+    assert.equal(result.value.valueKind, "content");
+  }
+});
+
+test("getVersion returns an opaque, unresolved reference value with no target lookup", async () => {
+  const repository = new FakeMemoryRecordRepository();
+  const useCase = new MemoryUseCase(repository);
+
+  const created = await useCase.create(
+    {
+      provenance: "observed",
+      observedAt: new Date(),
+      acceptedAt: new Date(),
+      confidence: null,
+      valueKind: "reference",
+      value: "some-opaque-referenced-identifier",
+    },
+    createRequestContext("r1", "user-a"),
+  );
+  assert.equal(created.ok, true);
+  const recordId = repository.lastCreateInput!.recordId;
+
+  const result = await useCase.getVersion(recordId, 1, createRequestContext("r2", "user-a"));
+
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.value.valueKind, "reference");
+    // The stored string is returned byte-for-byte, with no resolution,
+    // dereferencing, or target lookup of any kind - "reference" values
+    // remain opaque at this application layer (reference-target typing/
+    // resolution remains a separately deferred decision).
+    assert.equal(result.value.value, "some-opaque-referenced-identifier");
+    assert.equal(typeof result.value.value, "string");
   }
 });
