@@ -26,6 +26,13 @@ export interface ModelRegistrationInput {
   readonly modelId: string;
   readonly providerId: string;
   readonly eligible: boolean;
+  // Increment 2A: model-specific capability/limit metadata, reusing the
+  // existing provider-level types rather than a duplicate schema. This is
+  // additive relative to Increment 1's ModelRegistrationInput and exists
+  // so a future Router (Increment 2B) can evaluate capability/limit
+  // requirements at the model level, not only the provider level.
+  readonly capabilities: ProviderCapabilities;
+  readonly limits: ProviderLimits;
 }
 
 export interface ModelRegistryEntry extends ModelRegistrationInput {}
