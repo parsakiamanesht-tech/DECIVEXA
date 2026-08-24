@@ -10,9 +10,31 @@ The canonical Founder-approved synthesis of DECIVEXA's philosophy, purpose, visi
 
 **[DECIVEXA — Master Philosophy, Vision & Intelligence Architecture](./docs/DECIVEXA_MASTER_ARCHITECTURE_AND_VISION.md)**
 
-This document is the current **architecture-intent baseline** for the project. Future architecture, product, UX, AI, data, security, performance, and implementation decisions must be evaluated against it.
+## Canonical AI Architecture
 
-### Core non-negotiables
+The **master AI specification** consolidates the complete AI architecture, resilience model, privacy/security boundaries, memory integrity, context architecture, routing, model/provider independence, evaluation, observability, offline continuity, agent-readiness, v1 scope, and implementation invariants:
+
+**[DECIVEXA AI Architecture — Master Specification v1](./docs/architecture/DECIVEXA_AI_ARCHITECTURE_MASTER_SPEC_V1.md)**
+
+The conceptual architecture is defined in:
+
+**[DECIVEXA Intelligence Architecture v1](./docs/architecture/DECIVEXA_INTELLIGENCE_ARCHITECTURE_V1.md)**
+
+Its execution boundary for Claude Code and implementation agents is:
+
+**[DECIVEXA AI Implementation Contract v1](./docs/architecture/DECIVEXA_AI_IMPLEMENTATION_CONTRACT_V1.md)**
+
+Its failure and resilience requirements are defined in:
+
+**[DECIVEXA AI Failure & Resilience Matrix v1](./docs/architecture/DECIVEXA_AI_FAILURE_AND_RESILIENCE_MATRIX_V1.md)**
+
+Its completeness and implementation acceptance criteria are defined in:
+
+**[DECIVEXA AI v1 Traceability & Acceptance Matrix](./docs/architecture/DECIVEXA_AI_V1_TRACEABILITY_AND_ACCEPTANCE.md)**
+
+These documents establish the AI foundation as a **Provider-agnostic, capability-centric, intelligence-owned** subsystem. DECIVEXA must not become dependent on a single AI provider, model, cloud region, or network path.
+
+## Core non-negotiables
 
 - **Same Goal ≠ Same Path.** The path belongs to the person, not merely to the goal.
 - **Living Human Model.** DECIVEXA continuously learns from evidence and updates its understanding of the person.
@@ -22,13 +44,15 @@ This document is the current **architecture-intent baseline** for the project. F
 - **Zero-Trust Privacy.** Modules and AI receive only the minimum necessary context for an authorized purpose.
 - **Fluid Experience.** Backend intelligence must not make the product feel slow, heavy, or blocked.
 - **AI Independence.** AI enhances DECIVEXA but essential system functionality must remain useful without continuous AI availability.
+- **No Intelligence Single Point of Failure.** Model/provider/network failure must not become product failure.
+- **Provider-Agnostic, Capability-Centric, Intelligence-Owned.** DECIVEXA owns its intelligence state; models and providers are replaceable execution infrastructure.
 - **Human Agency.** DECIVEXA augments human capability; it must not replace user agency or permanently label the user.
 
 ## Project Governance
 
 Material changes to product direction, architecture, scope, implementation, technology, schemas, security, branding, or other significant project decisions require explicit Founder approval before execution.
 
-The Master Architecture & Vision document is a reference baseline, not an authorization to implement every described capability immediately. Implementation remains phase- and gate-controlled.
+The Master Architecture & Vision document and Intelligence Architecture documents are reference and implementation baselines, not authorization to implement every future capability immediately. Implementation remains phase- and gate-controlled.
 
 ## Architectural Direction
 
