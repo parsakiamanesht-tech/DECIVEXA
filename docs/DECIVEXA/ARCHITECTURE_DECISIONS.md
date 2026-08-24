@@ -1261,3 +1261,243 @@ must open as a separate, explicitly authorized Founder gate.
 
 No future implementation or schema gate may treat this ADR as
 implementation authorization.
+
+---
+
+## ADR-006 — Founder Directive: Complete AI Architecture Is a V1 Requirement, Not a V2 Deferral
+
+**Authoritative identity:** `docs/DECIVEXA/ARCHITECTURE_DECISIONS.md`
+§ADR-006.
+
+### 1. Title
+
+Founder Directive: Mandatory Complete AI Architecture in DECIVEXA V1 —
+Essential AI Capabilities Must Not Be Deferred to V2 Without Explicit
+Founder Approval.
+
+### 2. Status
+
+FOUNDER-APPROVED — DIRECTIVE OF RECORD — NOT IMPLEMENTATION-AUTHORIZED.
+
+This directive establishes a permanent V1 scope requirement. It does not
+itself authorize any implementation, and does not remove, replace, or
+bypass any existing Founder Gate. Every implementation step this
+directive touches still requires its own separate, explicit Founder
+Implementation Authorization Gate, exactly as ADR-005 §11 and the
+existing gate sequence already require.
+
+### 3. Date
+
+2026-08-24
+
+### 4. Founder
+
+Parsa Kiamanesh
+
+### 5. Decision (verbatim Founder requirement, undiminished)
+
+> "DECIVEXA Version 1 MUST contain the complete, end-to-end, fully
+> architected and implemented AI system required by the DECIVEXA Vision
+> and canonical architecture. Essential AI capabilities must not be
+> deferred to Version 2 or future versions without explicit Founder
+> approval."
+
+This is NON-NEGOTIABLE for V1. DECIVEXA is an AI-native system; the AI
+architecture is a first-class foundation of V1, not an optional layer
+added on top of a non-AI system. Complete AI architecture is a V1
+requirement, not a V2 roadmap item.
+
+### 6. What "Complete AI" Means
+
+Not merely a Provider Adapter, an AI Gateway, a Model Router, or a
+single LLM integration. "Complete AI in V1" means the AI architecture is
+designed and implemented end-to-end, as one coherent system, across all
+layers, contracts, boundaries, data flows, orchestration, intelligence,
+safety, privacy, memory interaction, observability, and resilience
+required to realize the DECIVEXA Vision. The following interpretations
+are explicitly rejected as contrary to this directive: that a Provider
+Adapter alone is sufficient; that an AI Gateway alone is sufficient;
+that a Model Router alone is sufficient; that a single LLM integration
+is sufficient; that more complex AI pieces may simply move to V2; that
+Personal AI Coach, Context Engine, Memory AI, or Intelligence
+Orchestration may simply be added "later."
+
+Three distinct levels must all be reached, not just the first:
+(1) architecture defined; (2) architecture implemented; (3) architecture
+integrated and operational — with required test coverage, tested failure
+modes, tested security/privacy, enforced AI boundaries, and operational
+core AI capabilities.
+
+### 7. Scope (representative, non-exhaustive — governed by DECIVEXA's
+canonical Vision and architecture, not limited to this list)
+
+AI Provider Abstraction; Provider Adapters; Provider Independence; AI
+Gateway; AI Runtime; Model Router; Capability Registry; Capability
+Orchestration; Context Engine; Context Assembly; Personal Context
+Intelligence; Personal Intelligence integration; Memory ↔ AI
+architecture; Memory intelligence pipeline; AI-generated memory
+handling; truth/confidence/provenance handling where architecturally
+required; Policy Engine; Risk Engine; Privacy/Data Router; Intelligence
+Firewall; AI security boundaries; prompt/context construction
+architecture; structured-output architecture; tool/function-calling
+architecture; AI error normalization; AI resilience; timeout handling;
+retry policies; rate limiting; circuit breaking where required;
+failover; provider switching; model selection; capability-aware model
+selection; AI observability; AI telemetry; AI request/correlation
+tracing; AI evaluation architecture; AI quality measurement; AI safety
+controls; AI privacy controls; AI data minimization; AI cost/resource
+awareness; AI governance; AI policy enforcement; Personal AI Coach
+architecture; Decision AI architecture; Growth Navigation intelligence;
+Progress Intelligence; Learning Intelligence; Human Understanding
+integration; Personal Development Model integration; AI interaction
+with Goals; AI interaction with Daily execution; AI interaction with
+Health/Money/Learning/Business/Relationship systems where
+architecturally required; Agent architecture where required by DECIVEXA
+Vision; Voice architecture where required by the V1 AI architecture;
+Predictive Intelligence where required by the V1 architecture;
+AI-assisted recommendations; AI personalization; AI learning from user
+context; AI feedback loops; AI evaluation and validation; AI
+failure/recovery behavior; AI auditability; AI trust architecture. Where
+a canonical architecture document identifies a further AI capability or
+layer necessary to realize V1, that capability is in scope even if not
+named above.
+
+### 8. No Future Deferral Without Founder Approval
+
+From this point forward, whenever an AI capability the canonical
+architecture requires for V1 is encountered, it must not be
+unilaterally deferred to V2, "future," "later," or a backlog item. If a
+capability is judged V1-required but its scope is large, its
+architecture is incomplete, a dependency is missing, implementation is
+difficult, or a Founder decision is required, this must be reported
+explicitly and execution must STOP for that Founder decision — it must
+never be silently pushed to V2 merely to reduce complexity.
+
+### 9. Relationship to the Existing "v1 Scope Guard" and "Explicitly
+Deferred" Architecture Text — Explicit Supersession, Not Silent Override
+
+[EVIDENCE] `docs/architecture/DECIVEXA_AI_IMPLEMENTATION_CONTRACT_V1.md`
+§17 "v1 Scope Guard" currently reads: *"Do not implement full autonomous
+agents, Digital Twin, broad self-hosted frontier inference, advanced
+predictive intelligence, or autonomous architectural self-modification
+merely because this architecture enables them. Implement only the
+interfaces and safe extension points required by v1. Deferred
+capabilities require their own Founder-controlled gate before material
+implementation."* [EVIDENCE] `docs/architecture/DECIVEXA_INTELLIGENCE_ARCHITECTURE_V1.md`
+§37 "v1 Implementation Boundary" similarly separates "Required in v1"
+from "Explicitly deferred but architecturally enabled," and explicitly
+lists Agents, Voice, and Predictive Intelligence among items historically
+treated as deferred-but-enabled rather than V1-required.
+
+This ADR does **not** silently contradict that text and does not
+pretend the tension does not exist. This ADR is the explicit,
+independently-authorized Founder decision that **expands V1 scope**
+relative to those two sections specifically for the capabilities named
+in §7 above (including Agent architecture, Voice architecture, and
+Predictive Intelligence, each qualified "where required by DECIVEXA
+Vision/the V1 architecture"). Those two sections' general v1-scope-guard
+discipline — do not build a capability merely because the architecture
+makes it possible, and any deferred capability still needs its own
+Founder-controlled implementation gate — **remains fully in force** for
+everything this ADR does not name, and every capability named in §7
+still requires its own separate Founder Implementation Authorization
+Gate before any code is written, exactly per §2 above and ADR-005 §11.
+Nothing here is a blanket implementation authorization; it is a scope
+mandate that later, gate-by-gate implementation authorizations must
+honor rather than narrow back to V2 on their own initiative.
+
+Per CLAUDE.md's Authority Hierarchy: preserve Founder decisions;
+preserve Architecture Freeze constraints; treat conceptual documents as
+evidence, not automatic authorization; if a conflict affects an
+architectural boundary that cannot safely be deferred, stop and request
+the Founder decision rather than guessing. Here, the Founder decision
+has already been given, explicitly, in the interactive governance
+conversation that produced this ADR — it is recorded, not guessed.
+
+### 10. AI Architecture Completeness Gate (required before V1 closes)
+
+Before V1 is considered complete, an independent AI Architecture
+Completeness Audit must verify, at minimum, whether: every AI layer the
+Vision requires has been built; AI Runtime, Gateway, Model Router, and
+Capability architecture are complete; Context architecture is complete;
+Memory/AI integration is complete; Policy/Risk/Privacy architecture and
+the Intelligence Firewall are complete; provider independence is
+genuinely operational (not merely documented); Personal AI Coach and
+Decision AI are operational; Growth/Progress/Learning Intelligence
+architecture is operational; AI observability and resilience exist;
+security/privacy requirements are operational; AI testing is
+sufficient; AI failure handling is complete; AI evaluation exists; and
+no essential AI capability has been moved to V2 without a recorded,
+explicit Founder approval. Any "no" answer must be recorded with its
+reason and current status — not silently omitted.
+
+### 11. Founder Intent (verbatim)
+
+> "DECIVEXA V1 is not a non-AI system with an AI layer added later."
+> "DECIVEXA V1 is an AI-native system."
+> "The AI architecture is a first-class foundation of V1."
+> "Complete AI architecture is a V1 requirement, not a V2 roadmap item."
+> "No essential AI architectural capability may be deferred to V2
+> without explicit Founder approval."
+
+### 12. Relationship to Governance
+
+This directive does not remove or bypass any existing Founder Gate.
+The AI Architecture Planning Gate, AI Implementation Authorization Gate,
+AI Audit Gate, AI Commit Authorization Gate, and AI Integration Gate
+must each treat this directive as a governing requirement going forward.
+This directive alone is not implementation authorization; every
+implementation still requires its own Founder Authorization Gate.
+
+No ADR, architecture document, backlog item, implementation note, or
+future roadmap document may reduce, limit, remove, or defer this
+requirement to V2 without explicit Founder approval. If another
+document conflicts with this directive, the conflict must be surfaced
+as a governance conflict and a Founder decision requested — it must not
+be silently resolved by Claude Code.
+
+### 13. Traceability
+
+```
+Founder Directive (this ADR)
+  → Canonical DECIVEXA Architecture
+      (docs/DECIVEXA_MASTER_ARCHITECTURE_AND_VISION.md,
+       docs/DECIVEXA-CANONICAL-SYSTEM-MAP.md)
+  → AI Architecture
+      (the 7 documents ratified by ADR-005:
+       docs/architecture/ADR-001-AI-PROVIDER-INDEPENDENCE-AND-RESILIENCE.md,
+       docs/architecture/DECIVEXA_AI_FAILURE_AND_RESILIENCE_MATRIX_V1.md,
+       docs/architecture/DECIVEXA_AI_IMPLEMENTATION_CONTRACT_V1.md,
+       docs/architecture/DECIVEXA_INTELLIGENCE_ARCHITECTURE_V1.md,
+       docs/architecture/DECIVEXA_AI_ARCHITECTURE_MASTER_SPEC_V1.md,
+       docs/architecture/DECIVEXA_AI_V1_TRACEABILITY_AND_ACCEPTANCE.md,
+       docs/architecture/DECIVEXA_AI_ARCHITECTURE_CONFORMANCE_AUDIT_V1.md)
+  → V1 AI Implementation
+      (each increment under its own separate Founder Implementation
+       Authorization Gate — e.g. the AI Provider Adapter Foundation,
+       apps/api/src/infrastructure/ai/)
+  → AI Tests
+  → AI Completeness Audit (§10 above)
+```
+
+### 14. Required Reading for Future Sessions
+
+Any Claude Code session working on AI, Intelligence, LLM, Provider,
+Memory-AI, Personal Intelligence, Decision AI, Coach, Agents, Context,
+Model Routing, AI Gateway, or any related AI capability must: (1) find
+and read this ADR first; (2) read the canonical AI architecture
+documents (§13 above); (3) check current AI implementation status;
+(4) align its work with the V1 AI completeness requirement in §5-§8;
+(5) never unilaterally defer an essential AI capability to V2; (6) STOP
+and request a Founder decision whenever one is genuinely required, per
+§8.
+
+### 15. Non-Authorization Statement
+
+This ADR records a permanent V1 scope requirement. It does not itself
+authorize any implementation, schema change, migration, AI Gateway
+construction, provider integration, Memory change, or any other
+material implementation activity. Each capability named in §7 still
+requires its own separate, explicit Founder Implementation Authorization
+Gate — following the same gate sequence already established for the AI
+Provider Adapter Foundation — before any code is written.

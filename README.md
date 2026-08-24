@@ -34,6 +34,8 @@ Its completeness and implementation acceptance criteria are defined in:
 
 These documents establish the AI foundation as a **Provider-agnostic, capability-centric, intelligence-owned** subsystem. DECIVEXA must not become dependent on a single AI provider, model, cloud region, or network path.
 
+The governing V1 scope requirement for all of the above — that DECIVEXA's AI architecture must be complete, end-to-end, and production-grade in Version 1, with no essential capability deferred to V2 without explicit Founder approval — is recorded in **[ADR-006](./docs/DECIVEXA/ARCHITECTURE_DECISIONS.md)**.
+
 ## Core non-negotiables
 
 - **Same Goal ≠ Same Path.** The path belongs to the person, not merely to the goal.
