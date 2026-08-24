@@ -10,15 +10,26 @@ The canonical Founder-approved synthesis of DECIVEXA's philosophy, purpose, visi
 
 **[DECIVEXA — Master Philosophy, Vision & Intelligence Architecture](./docs/DECIVEXA_MASTER_ARCHITECTURE_AND_VISION.md)**
 
-## Goal Growth Intelligence — Architecture Candidate v1
+## Goal Growth Intelligence — Architecture Candidate v2
 
-The living Goal Tree / Goal Growth concept is formally documented as an architecture candidate in the following specification set:
+The Living Goal Tree / Goal Growth concept is formally documented and has undergone a second deep architecture reconciliation and strict document audit.
+
+### Core specification set
 
 1. **[Goal Growth Intelligence Master Specification v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_INTELLIGENCE_MASTER_SPEC_V1.md)** — product/domain architecture, principles, lifecycle, graph/tree model, intelligence, adaptation, governance, V1 scope and invariants.
 2. **[Goal Growth Domain Model v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_DOMAIN_MODEL_V1.md)** — canonical entities, relationships, state machines, events, domain services, application use cases and invariants.
 3. **[Goal Growth AI & Intelligence Contract v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_AI_AND_INTELLIGENCE_CONTRACT_V1.md)** — AI boundary, evidence discipline, structured proposals, validation, governance, failure behavior and evaluation.
 4. **[Goal Growth Persistence & API Specification v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_PERSISTENCE_AND_API_SPEC_V1.md)** — PostgreSQL direction, conceptual tables, transaction/concurrency rules, API resources, authorization, audit and read models.
 5. **[Goal Growth Implementation Handoff to Claude Code v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_IMPLEMENTATION_HANDOFF_TO_CLAUDE_CODE_V1.md)** — execution boundary, implementation sequence, tests, stop conditions and definition of done.
+6. **[Goal Growth Traceability & Acceptance Matrix v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_TRACEABILITY_AND_ACCEPTANCE_V1.md)** — integration and acceptance baseline.
+7. **[ADR-GGI-001](./docs/DECIVEXA/ADR-GGI-001-LIVING-GOAL-TREE-AND-GOAL-GROWTH-MODEL.md)** — canonical architectural decision: Tree is a projection of the Goal Growth Model.
+
+### Second-pass reconciliation and hardening
+
+8. **[85 FIS + 70 Goal-Growth Reconciliation v2](./docs/architecture/DECIVEXA_GOAL_GROWTH_85_FIS_AND_70_EXTENSION_RECONCILIATION_V2.md)** — source discipline, capability reconciliation, ownership/collision analysis and freeze blockers.
+9. **[Goal Growth Architecture Hardening v2](./docs/architecture/DECIVEXA_GOAL_GROWTH_ARCHITECTURE_HARDENING_V2.md)** — canonical ownership, aggregate/version boundaries, concurrency, idempotency, outbox, tree stability, privacy, degraded mode and implementation invariants.
+10. **[Goal Growth Strict Document Audit v2](./docs/architecture/DECIVEXA_GOAL_GROWTH_DOCUMENT_AUDIT_V2.md)** — adversarial review of the first document set and identified gaps.
+11. **[Goal Growth Freeze Readiness v2](./docs/architecture/DECIVEXA_GOAL_GROWTH_FREEZE_READINESS_V2.md)** — formal gate record and remaining blockers before Architecture Freeze.
 
 **Important:** These documents are architecture proposals and implementation guidance. They do **not** constitute Build Authorization. Founder-controlled gates remain mandatory.
 
