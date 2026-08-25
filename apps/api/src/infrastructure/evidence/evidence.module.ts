@@ -18,5 +18,6 @@ import { AuthModule } from "../auth/auth.module";
       inject: [DatabaseService],
     },
   ],
+  exports: [EvidenceUseCase],
 })
 export class EvidenceModule {}

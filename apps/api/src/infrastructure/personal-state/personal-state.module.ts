@@ -18,5 +18,6 @@ import { AuthModule } from "../auth/auth.module";
       inject: [DatabaseService],
     },
   ],
+  exports: [PersonalStateUseCase],
 })
 export class PersonalStateModule {}
