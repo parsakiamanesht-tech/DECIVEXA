@@ -9,7 +9,9 @@ import { CapabilityRegistry } from "../ai/capability/capability-registry";
 import { PERSONAL_STATE_INTERPRET_CAPABILITY } from "../ai/capability/personal-state-interpret.capability";
 import { ModelRegistry } from "../ai/registry/model-registry";
 import { ProviderRegistry } from "../ai/registry/provider-registry";
+import { toProviderRegistrationInput } from "../ai/registry/register-provider-adapter";
 import { ModelRouter } from "../ai/router/model-router";
+import { OpenAiCompatibleProviderAdapter } from "../ai/adapters/openai-compatible-provider.adapter";
 
 // AI Infrastructure / AIRuntime Production-Wiring Validation module
 // (Founder Authorization: "AI INFRASTRUCTURE / AIRUNTIME PRODUCTION-WIRING
@@ -30,13 +32,37 @@ import { ModelRouter } from "../ai/router/model-router";
 // boundary - performs the composition.
 //
 // CapabilityRegistry is seeded with exactly one capability
-// (personal-state.interpret). ModelRegistry/ProviderRegistry are
-// deliberately left unseeded: registering a model/provider is not
-// authorized by this increment. A real call therefore correctly and
-// honestly throws NoEligibleCandidateError (mapped to a 503 by
-// AIRuntimeController) until a future, separately authorized increment
-// registers an approved model/provider - this is expected behavior for
-// an infrastructure-validation-only increment, not a defect.
+// (personal-state.interpret).
+//
+// Gate 3 (Founder Implementation Authorization: "GATE 3 — METADATA
+// REGISTRATION ONLY"): ModelRegistry/ProviderRegistry are now seeded
+// with exactly one provider metadata entry and one model metadata
+// entry, registered via the existing, already-tested
+// toProviderRegistrationInput() snapshot mechanism
+// (../ai/registry/register-provider-adapter.ts) - metadata
+// registration only, using the repository's existing abstractions
+// unchanged. The OpenAiCompatibleProviderAdapter instance constructed
+// below exists solely to snapshot its synchronous, side-effect-free
+// getCapabilities()/getLimits() accessors (see that file's own header
+// comment: "Neither of those accessors performs I/O or invokes the
+// provider"; register-provider-adapter.spec.ts asserts exactly this
+// pattern with zero fetch calls) - it is never stored, never passed to
+// KeyedProviderResolver (whose production map remains empty, unchanged
+// by this gate), and .generate()/.healthCheck() are never called on it.
+// Its config is an explicit, hard-coded, credential-free literal;
+// resolveOpenAiCompatibleProviderConfig() is never called, so no
+// AI_PROVIDER_ENDPOINT/AI_PROVIDER_API_KEY/AI_PROVIDER_TIMEOUT_MS
+// environment variable is read anywhere in this path (Gate 3 §7). The
+// registered modelId ("decivexa-infra-validation-placeholder-model")
+// matches AIRuntimeController's existing, unmodified CANDIDATE_MODEL_IDS
+// literal exactly - without that match, route() would still fail even
+// with metadata registered, since the controller (forbidden file, not
+// touched by this gate) only ever requests that one candidate id. A
+// real call now correctly returns a real RoutingResult instead of
+// NoEligibleCandidateError - infrastructure/metadata wiring only:
+// AIRuntime.execute() is still never invoked from anywhere in this
+// module or its controller, and no AIProvider instance is ever resolved
+// or invoked as a result of this registration.
 //
 // AIRuntime.execute() is never invoked from anywhere in this module or
 // its controller. No PolicyEngine, RiskEngine, selector, or provider
@@ -56,8 +82,12 @@ import { ModelRouter } from "../ai/router/model-router";
 // application/ai-context/ and therefore needs a token), exactly
 // mirroring how CapabilityRegistry/ModelRouter are already bound above.
 // Constructed with an empty, immutable Map: no AIProvider instance is
-// constructed, no provider/model is registered, and execute() remains
-// unreachable from any controller - this gate establishes wiring only.
+// resolved by KeyedProviderResolver, and execute() remains unreachable
+// from any controller - this gate establishes wiring only. (Gate 3,
+// below, later added provider/model *metadata* registration to
+// ModelRegistry/ProviderRegistry - a distinct, separately authorized
+// concern from this resolver's own, still-empty map; see the Gate 3
+// comment above the ModelRouter provider entry.)
 // AIRuntime's constructor signature, its optional-dependency guard, and
 // its route()/execute() behavior are all untouched by this gate; the
 // previously recorded "optional fourth AIRuntime dependency"
@@ -76,7 +106,28 @@ import { ModelRouter } from "../ai/router/model-router";
     },
     {
       provide: ModelRouter,
-      useFactory: () => new ModelRouter(new ModelRegistry(), new ProviderRegistry()),
+      useFactory: () => {
+        const modelRegistry = new ModelRegistry();
+        const providerRegistry = new ProviderRegistry();
+
+        const providerId = "openai-compatible";
+        const metadataOnlyAdapter = new OpenAiCompatibleProviderAdapter({
+          endpoint: "unused-metadata-snapshot-only",
+          apiKey: null,
+          timeoutMs: 1,
+        });
+        const providerRegistrationInput = toProviderRegistrationInput(providerId, metadataOnlyAdapter, true);
+        providerRegistry.register(providerRegistrationInput);
+        modelRegistry.register({
+          modelId: "decivexa-infra-validation-placeholder-model",
+          providerId,
+          eligible: true,
+          capabilities: providerRegistrationInput.capabilities,
+          limits: providerRegistrationInput.limits,
+        });
+
+        return new ModelRouter(modelRegistry, providerRegistry);
+      },
     },
     {
       provide: KeyedProviderResolver,

@@ -125,7 +125,19 @@ test("real production wiring: Controller -> AIRuntime -> CapabilityRegistry -> C
   await moduleRef.close();
 });
 
-test("production wiring without a seeded model/provider correctly and honestly fails routing (no fabricated success) - the expected, documented behavior of this increment's real AppModule configuration", async () => {
+// Gate 3 (Founder Implementation Authorization: "GATE 3 — METADATA
+// REGISTRATION ONLY") superseded this test's original premise
+// (production ModelRouter was unseeded, so routing always, correctly,
+// failed with a 503). Production ModelRouter is now seeded with exactly
+// one real provider/model metadata entry (ai-runtime.module.ts), so this
+// same, unmodified request now correctly returns a real RoutingResult
+// instead. This test deliberately does NOT override ModelRouter (unlike
+// the test above it) - the point is to prove the real, unmodified
+// production DI wiring itself now resolves real metadata end-to-end.
+// This is routing-metadata verification only: route() is called, never
+// execute(); no AIProvider.generate()/healthCheck() is invoked; no
+// network call occurs.
+test("production wiring, now seeded with Gate 3 provider/model metadata, correctly returns a real RoutingResult without any ModelRouter override - the expected, documented behavior of this gate's real AppModule configuration", async () => {
   const moduleRef = await Test.createTestingModule({ imports: [AIRuntimeModule] })
     .overrideProvider(DatabaseService)
     .useValue({ client: {} as DatabaseClient })
@@ -136,13 +148,13 @@ test("production wiring without a seeded model/provider correctly and honestly f
   const controller = moduleRef.get(AIRuntimeController);
   const authenticatedRequest = { context: createRequestContext("request-1", FIXTURE_PERSONAL_STATE.userId) };
 
-  await assert.rejects(
-    () => controller.routeInterpret(authenticatedRequest),
-    (error: unknown) => {
-      assert.equal((error as { status?: number }).status, 503);
-      return true;
-    },
-  );
+  const result = await controller.routeInterpret(authenticatedRequest);
+
+  assert.equal(result.capabilityId, "personal-state.interpret");
+  assert.equal(result.stage, "routed");
+  assert.equal(result.routing.modelId, "decivexa-infra-validation-placeholder-model");
+  assert.equal(result.routing.providerId, "openai-compatible");
+  assert.match(result.note, /no ai output was generated/i);
 
   await moduleRef.close();
 });

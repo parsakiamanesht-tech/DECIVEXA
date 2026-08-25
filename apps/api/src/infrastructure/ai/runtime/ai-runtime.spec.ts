@@ -849,10 +849,17 @@ test("ai-runtime.ts never registers a model or provider itself (structural)", as
 // Gate 2a (Founder Authorization Amendment: "GATE 2A — RESOLVE
 // STRUCTURAL TEST CONFLICT") superseded this test's original
 // three-argument expectation, which encoded the pre-Gate-2a
-// architecture. This is the single, explicitly authorized amendment to
-// this file: only the obsolete three-argument assertion is replaced;
-// every other guard below is preserved or strengthened, never weakened.
-test("ai-runtime.module.ts (production wiring) constructs AIRuntime with KeyedProviderResolver as its fourth argument, backed by an empty provider map, and registers no model/provider (structural — Gate 2a)", async () => {
+// architecture. Gate 3 (Founder Implementation Authorization: "GATE 3 —
+// METADATA REGISTRATION ONLY") supersedes this test's two
+// "must not register" assertions, which encoded the pre-Gate-3
+// unseeded-registry architecture, and its blanket
+// "no OpenAiCompatibleProviderAdapter reference" assertion, which is no
+// longer accurate now that the adapter is legitimately constructed for
+// metadata-snapshot purposes only. Every other guard below is preserved
+// or strengthened, never weakened; the replacement assertions below
+// verify the newly authorized metadata-registration behavior precisely
+// rather than merely dropping the old checks.
+test("ai-runtime.module.ts (production wiring) constructs AIRuntime with KeyedProviderResolver as its fourth argument, backed by an empty provider map, and registers exactly one provider/model metadata entry via the existing snapshot mechanism (structural — Gate 3)", async () => {
   const { readFile } = await import("node:fs/promises");
   const { join } = await import("node:path");
   const source = await readFile(join(process.cwd(), "src", "infrastructure", "ai-runtime", "ai-runtime.module.ts"), "utf8");
@@ -864,12 +871,46 @@ test("ai-runtime.module.ts (production wiring) constructs AIRuntime with KeyedPr
   assert.match(
     source,
     /new KeyedProviderResolver\(new Map\(\)\)/,
-    "production wiring must construct KeyedProviderResolver with an empty, unpopulated Map",
+    "production wiring must construct KeyedProviderResolver with an empty, unpopulated Map (Gate 3 §6: resolver-map population remains deferred to a separate future authorization)",
   );
-  assert.equal(source.includes("modelRegistry.register("), false, "production wiring must not register a model");
-  assert.equal(source.includes("providerRegistry.register("), false, "production wiring must not register a provider");
-  assert.equal(source.includes("OpenAiCompatibleProviderAdapter"), false, "production wiring must not construct a concrete provider adapter");
+  // Gate 3: exactly one provider and one model metadata entry, never
+  // more, registered via the existing toProviderRegistrationInput()
+  // snapshot mechanism only - no invented registration shape.
+  const providerRegisterMatches = source.match(/providerRegistry\.register\(/g) ?? [];
+  const modelRegisterMatches = source.match(/modelRegistry\.register\(/g) ?? [];
+  assert.equal(providerRegisterMatches.length, 1, "production wiring must register exactly one provider metadata entry (Gate 3)");
+  assert.equal(modelRegisterMatches.length, 1, "production wiring must register exactly one model metadata entry (Gate 3)");
+  assert.match(
+    source,
+    /toProviderRegistrationInput\(/,
+    "provider metadata must be built via the existing toProviderRegistrationInput() snapshot mechanism (Gate 3 §4), not an invented shape",
+  );
+  assert.match(
+    source,
+    /modelId:\s*"decivexa-infra-validation-placeholder-model"/,
+    "the registered model id must match AIRuntimeController's existing, unmodified CANDIDATE_MODEL_IDS literal, or route() would still fail even with metadata registered",
+  );
+  // The adapter instance exists only to snapshot metadata - it must
+  // never be passed to KeyedProviderResolver's map and must never have
+  // .generate()/.healthCheck() actually called on it anywhere in this
+  // file (checked as real call syntax, never a bare substring match,
+  // since this file's own explanatory comments legitimately discuss
+  // ".generate()"/".healthCheck()" in prose).
+  assert.equal(/\w+\.generate\(/.test(source), false, "production wiring must never call .generate() on any provider instance");
+  assert.equal(/\w+\.healthCheck\(/.test(source), false, "production wiring must never call .healthCheck() on any provider instance");
+  assert.doesNotMatch(source, /new KeyedProviderResolver\(new Map\(\[/, "KeyedProviderResolver's production map must remain empty (Gate 3 §6)");
   assert.equal(source.includes("ProviderResolutionPort"), false, "production wiring must not introduce a Symbol-token DI pattern for provider resolution");
+  // Checked via import lines only (never a bare substring match), since
+  // this file's own explanatory comments legitimately name
+  // resolveOpenAiCompatibleProviderConfig() in prose: without an import
+  // of it, calling it is impossible, which is the actual guarantee
+  // Gate 3 §7 requires.
+  const importLines = source.match(/^import .*$/gm) ?? [];
+  assert.equal(
+    importLines.some((line) => line.includes("resolveOpenAiCompatibleProviderConfig")),
+    false,
+    "production wiring must never import resolveOpenAiCompatibleProviderConfig() - no credential/environment read anywhere in this path (Gate 3 §7)",
+  );
   assert.equal(source.includes("process.env"), false, "production wiring must not read provider credentials/configuration");
   assert.equal(source.includes("fetch("), false, "production wiring must perform no network operation");
 });
