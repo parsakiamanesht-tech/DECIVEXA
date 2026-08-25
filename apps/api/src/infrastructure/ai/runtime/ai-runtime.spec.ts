@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { AIRuntime, minimizeContext } from "./ai-runtime";
 import {
-  AIRuntimeExecutionNotAvailableError,
   ContextResolutionFailedError,
   InvalidAITaskRequestError,
   ProviderResolutionFailedError,
@@ -69,7 +68,24 @@ function fakeContextResolutionPort(result: ContextResolutionResult) {
   return { port, calls };
 }
 
-function setUp(contextResolutionResult: ContextResolutionResult = { status: "resolution_failure" }, providerResolutionPort?: ProviderResolutionPort) {
+// providerResolutionPort is AIRuntime's fourth, REQUIRED constructor
+// dependency (Gate 2b). When a test does not care about it (every
+// route()-only test below — the resolver is never reached before
+// ModelRouter.select()/Policy Authorization/Context Resolution reject
+// the request, or route() simply never calls it at all), setUp() falls
+// back to this trivial, always-empty, in-memory port — the same "empty
+// map" shape Gate 2a wired into production, never a real provider,
+// never network I/O. Tests that care about specific resolution behavior
+// (the execute()-pipeline tests below) supply their own
+// fakeProviderResolutionPort(...) explicitly, unchanged.
+function emptyProviderResolutionPort(): ProviderResolutionPort {
+  return { resolve: async () => undefined };
+}
+
+function setUp(
+  contextResolutionResult: ContextResolutionResult = { status: "resolution_failure" },
+  providerResolutionPort: ProviderResolutionPort = emptyProviderResolutionPort(),
+) {
   const capabilityRegistry = new CapabilityRegistry();
   const modelRegistry = new ModelRegistry();
   const providerRegistry = new ProviderRegistry();
@@ -81,11 +97,6 @@ function setUp(contextResolutionResult: ContextResolutionResult = { status: "res
   });
   const modelRouter = new ModelRouter(modelRegistry, providerRegistry);
   const { port: contextResolutionPort, calls: contextResolutionCalls } = fakeContextResolutionPort(contextResolutionResult);
-  // providerResolutionPort is AIRuntime's fourth, OPTIONAL constructor
-  // dependency (First Controlled Execution increment §2/§9). Omitting it
-  // here (as every pre-existing test does, unchanged) exactly mirrors
-  // ai-runtime.module.ts's real, untouched production factory, which
-  // also supplies only three arguments.
   const runtime = new AIRuntime(capabilityRegistry, modelRouter, contextResolutionPort, providerResolutionPort);
   return { capabilityRegistry, modelRegistry, providerRegistry, modelRouter, runtime, contextResolutionCalls };
 }
@@ -317,22 +328,33 @@ test("route's result carries only routing-selection metadata, never an authoriza
 // report, not re-asserted here as further runtime tests since there is
 // nothing else to invoke.
 
-// Q. the execution boundary produces a dedicated, typed error rather
-// than silently continuing when no ProviderResolutionPort is supplied —
-// exactly the production case, since ai-runtime.module.ts's real
-// factory still constructs AIRuntime with only three arguments (First
-// Controlled Execution increment §2/§9: "production wiring MUST NOT be
-// added"). execute() is now async (its signature changed from `(): never`
-// to `(request): Promise<GenerateResult>`), so this is asserted with
-// assert.rejects rather than a synchronous assert.throws.
-test("execute rejects with AIRuntimeExecutionNotAvailableError when no ProviderResolutionPort is configured (the production case) and never completes execution", async () => {
-  const { runtime } = setUp();
-
-  await assert.rejects(
-    () => runtime.execute({ capabilityId: "personal-state.interpret", candidateModelIds: ["model-a"], context: CONTEXT }),
-    AIRuntimeExecutionNotAvailableError,
-  );
-});
+// Q. [Gate 2b — Founder Implementation Authorization "PROVIDER
+// RESOLUTION GATE 2B", Option B] This test previously verified that
+// execute() throws AIRuntimeExecutionNotAvailableError when no
+// ProviderResolutionPort is configured, by calling setUp() with the
+// argument omitted. That premise was valid before Gate 2a: production
+// wiring (ai-runtime.module.ts) then supplied only three constructor
+// arguments, so "no port configured" genuinely was "the production
+// case," and providerResolutionPort was still an optional constructor
+// parameter, so omitting it in a test was itself type-safe. Gate 2a made
+// the "production case" framing obsolete: production wiring has, since
+// then, supplied a real KeyedProviderResolver (backed by an empty map)
+// as the fourth argument — the guard's condition stopped describing
+// production even though the parameter remained optional and the test
+// could still construct the omitted-argument state. Gate 2b removes the
+// second half of that gap: providerResolutionPort is now a required
+// constructor parameter (see ai-runtime.ts), so no type-safe caller —
+// production or test — can construct an AIRuntime instance that omits
+// it. The `if (!this.providerResolutionPort)` guard and
+// AIRuntimeExecutionNotAvailableError itself are deliberately retained,
+// unmodified, in ai-runtime.ts/runtime.errors.ts (Gate 2b §4: removing
+// existing runtime behavior is a separate, not-yet-authorized semantic
+// change) — but the state they guard against is no longer constructible
+// without bypassing TypeScript's type system (`as any` or similar),
+// which this suite does not do. No meaningful runtime-observable
+// replacement test exists for this exact premise, so per Gate 2b §6
+// Option B this test is removed rather than kept testing a state that
+// can no longer legitimately arise.
 
 // --- Runtime Context Resolution increment ---
 

@@ -52,17 +52,28 @@ import type { AITaskRequest, NormalizedAITask } from "./runtime.types";
 // runs the existing structural Output Validation
 // (../validation/output-validation.ts, unmodified) followed by a new,
 // equally narrow, metadata-only Output Policy Validation
-// (../policy/output-policy-validation.ts). providerResolutionPort is
-// deliberately the constructor's fourth, OPTIONAL dependency: production
-// wiring (ai-runtime.module.ts) supplies only the first three, unchanged,
-// so execute() remains unusable in production — exactly as required —
-// while still being fully real and testable in isolation.
+// (../policy/output-policy-validation.ts). providerResolutionPort is the
+// constructor's fourth, REQUIRED dependency (Founder Implementation
+// Authorization: "Provider Resolution Gate 2b" — closing the previously
+// tracked "optional fourth AIRuntime dependency" architectural risk).
+// Production wiring (ai-runtime.module.ts, Gate 2a) already supplies a
+// real KeyedProviderResolver, backed by an empty, immutable provider
+// map, as this argument, so this change requires no modification to
+// that file. execute() still cannot successfully invoke any real
+// provider in production — not because the dependency is absent, but
+// because ModelRouter.select() fails first on the still-empty
+// ModelRegistry/ProviderRegistry (Gate 3, not this gate) and, even were
+// that bypassed, the resolver's map is still empty. The defensive
+// `if (!this.providerResolutionPort)` guard below is retained unmodified
+// even though no type-safe caller can now trigger it — removing
+// existing runtime behavior is a separate, not-yet-authorized semantic
+// change (Gate 2b §4).
 export class AIRuntime {
   constructor(
     private readonly capabilityRegistry: CapabilityRegistry,
     private readonly modelRouter: ModelRouter,
     private readonly contextResolutionPort: ContextResolutionPort,
-    private readonly providerResolutionPort?: ProviderResolutionPort,
+    private readonly providerResolutionPort: ProviderResolutionPort,
   ) {}
 
   async route(request: AITaskRequest): Promise<RoutingResult> {
@@ -92,7 +103,8 @@ export class AIRuntime {
     if (!this.providerResolutionPort) {
       throw new AIRuntimeExecutionNotAvailableError(
         "AIRuntime execution is not available: no ProviderResolutionPort was supplied to this AIRuntime instance " +
-          "(production wiring intentionally omits one — First Controlled Execution increment §2/§9).",
+          "(this constructor argument is required as of Gate 2b; reaching this branch means an AIRuntime instance " +
+          "was constructed outside TypeScript's type checking).",
       );
     }
 
