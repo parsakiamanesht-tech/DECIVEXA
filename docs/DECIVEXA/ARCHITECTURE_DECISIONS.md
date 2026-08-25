@@ -1842,3 +1842,186 @@ Voice Input V1 implementation remains separately gated. Concrete STT
 provider/model selection remains an implementation-stage decision within
 the approved provider-agnostic architecture. No implementation may begin
 under authority of this ADR alone.
+
+## ADR-009 — Context Engine Boundary Ownership and Runtime Context Resolution Wiring
+
+**Authoritative identity:** `docs/DECIVEXA/ARCHITECTURE_DECISIONS.md`
+§ADR-009.
+
+### 1. Title
+
+Context Engine Boundary Ownership and Runtime Context Resolution Wiring —
+Application-Owned Context Boundary; Narrow, Deterministic AIRuntime ↔
+AIContext Dependency-Inversion Seam.
+
+### 2. Status
+
+FOUNDER-APPROVED — ARCHITECTURALLY DECIDED — GOVERNANCE REGISTRATION OF
+AN ALREADY-IMPLEMENTED, ALREADY-ACCEPTED INCREMENT.
+
+Unlike ADR-005 through ADR-008, this ADR is registered after the
+corresponding implementation (commits `aff8882`, `5126e32`, `ee1aae6`)
+was already Founder-authorized, implemented, tested, committed, pushed,
+and formally accepted. It records decisions already made and already
+executed; it does not itself authorize any further implementation.
+
+### 3. Date
+
+2026-08-25
+
+### 4. Founder
+
+Parsa Kiamanesh
+
+### 5. Decision Context
+
+Following the Increment 4 (Policy/Risk/Context/Firewall/Evaluation)
+read-only readiness audit, a dedicated Context Engine Boundary readiness
+audit found that AIRuntime had no sanctioned mechanism to obtain context
+from Memory/Evidence/Personal Intelligence/Personal State without
+violating infrastructure/ai's established isolation invariant.
+
+The Founder resolved this in two decisions: first, that the Context
+boundary is application-owned (this section, §6); second, following an
+architecture-options analysis, six binding sub-decisions governing
+exactly how AIRuntime connects to that boundary (§7).
+
+### 6. Foundational Decision — Context Boundary Ownership
+
+The DECIVEXA Context boundary is application-owned, implemented as the
+dedicated `apps/api/src/application/ai-context/` module.
+
+Intended dependency direction:
+
+```
+AIRuntime
+    ↓
+Application-owned Context Boundary
+    ↓
+Existing Application Use-Cases
+    ↓
+Core Repository Ports
+    ↓
+Infrastructure Persistence
+```
+
+Explicitly not authorized as:
+
+- a direct `infrastructure/ai → core` dependency;
+- a direct `infrastructure/ai → infrastructure/persistence` dependency;
+- a new independent architectural layer;
+- a domain-owned Context port;
+- direct repository access from AI infrastructure.
+
+**Zero-import rule:** `infrastructure/ai/` must not directly import:
+
+- `core/`
+- `application/`
+- `domain/`
+- `infrastructure/persistence/`
+- `MemoryModule`
+- `EvidenceModule`
+- `PersonalIntelligenceModule`
+- `PersonalStateModule`
+
+### 7. Six Binding Sub-Decisions
+
+**1. Context Declaration Model.** `requiredContext: readonly string[]`
+(`AICapabilityRegistrationInput`) remains unchanged. The existing
+`core/resource/` reference→resolver→discriminated-result pattern is
+reused structurally only — never imported, modified, or extended. AI
+context resolution remains semantically distinct from workspace-resource
+resolution. `ResourceType` is never extended with an AI-context member.
+
+**2. Record Selection.** Resolver-owned selection consuming a
+task-derived, invocation-specific selector. Capability declarations must
+never contain hard-coded, user-specific, or invocation-specific record
+identifiers. The resolver owns mapping a semantic requirement to a
+concrete reference.
+
+**3. Runtime Identity.** The existing `RequestContext` remains the sole
+identity mechanism. `AITaskRequest` may carry it (added as `context:
+RequestContext`). No second identity/session/runtime-principal
+abstraction is authorized.
+
+**4. Dependency Boundary.** Application-owned implementation behind an
+infrastructure-owned port. Direct `AIRuntime → AIContextService` is
+never authorized. `infrastructure/ai/` isolation remains intact except
+for the two narrowly-sanctioned type imports represented by the
+implementation record: `context/request-context`, and the Context
+Resolution port itself as the dependency-inversion seam.
+
+**5. Multi-context Semantics.** Zero `requiredContext` → no acquisition
+attempted, deterministic. Exactly one → the only cardinality authorized
+for the first increment. A missing/unresolvable required context must
+produce a deterministic typed failure — never silently disappear, never
+fabricate an empty or substitute context. Authorization failure must
+remain distinguishable from ordinary absence wherever the existing
+architecture already supports that distinction. Provenance must remain
+preserved end-to-end.
+
+**6. Deferred Systems.** Explicitly out of scope, not to be inferred or
+invented under this ADR:
+
+- multi-context ordering;
+- parallel/sequential acquisition;
+- aggregation;
+- partial availability;
+- advanced duplicate handling;
+- context budgets;
+- relevance scoring;
+- temporal filtering;
+- minimization policy;
+- redaction policy;
+- privacy classification;
+- PolicyEngine;
+- RiskEngine;
+- provider eligibility;
+- trust classification;
+- the full canonical Context Engine.
+
+### 8. Relationship to Prior Architecture
+
+Operationalizes a narrow, honest subset of Implementation Contract V1
+§3's `ContextProvider/ContextEngine` and `AIRuntime` "obtain authorized
+context" responsibility — not the full canonical contract. Consistent
+with, and does not reopen, ADR-007 §7 ("AI cannot grant itself
+permission"): the resolver introduced under §7.2 above selects, it never
+authorizes, and every context acquisition still terminates in the
+pre-existing, unmodified, user-scoped source use-case/repository
+authorization path.
+
+### 9. Implementation Record
+
+Already executed, not authorized by this ADR:
+
+- `aff8882` — Context Boundary Compatibility Remediation (§6 foundational
+  decision, initial `application/ai-context/` module).
+- `5126e32` — App Module wiring of `AIContextModule`.
+- `ee1aae6` — Runtime Context Resolution (§7's six sub-decisions):
+  `ContextResolutionPort`/`ContextResolutionAdapter`, `AITaskRequest`
+  extended with `context: RequestContext`, `AIRuntime.route()`'s
+  zero/one/more-than-one context-acquisition behavior, deterministic
+  failure taxonomy (`unsupported_label`/`missing_selector`/`not_found`/
+  `unauthorized`/`resolution_failure`).
+- Independently reviewed and formally ACCEPTED (Runtime Context
+  Resolution Acceptance Report, this session).
+
+### 10. Non-Effects
+
+This ADR does NOT authorize: a real selector/record-identifier data
+channel (still absent — every current call site supplies `selector:
+null`); wiring `AIRuntime` into any production consumer, module, or HTTP
+surface; any of the §7.6 deferred systems; any change to
+`core/resource/*`; any change to `AIContextService`; any change to
+`ai-context.types.ts`; any change to `ai-context.errors.ts`; any schema,
+migration, or dependency change. It registers governance history; it
+grants no new implementation authority.
+
+### 11. Implementation Gate Requirement
+
+Any further work in this area — the selector data channel, Policy/Risk
+Engine, or completion of the full Context Engine (§7.6) — remains
+separately gated and requires its own explicit Founder decision and
+Implementation Authorization. No implementation may begin under
+authority of this ADR alone.
