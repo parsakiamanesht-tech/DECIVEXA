@@ -9,9 +9,10 @@ import { EvidenceModule } from './infrastructure/evidence/evidence.module';
 import { PersonalIntelligenceModule } from './application/personal-intelligence/personal-intelligence.module';
 import { MemoryModule } from './application/memory/memory.module';
 import { AIContextModule } from './application/ai-context/ai-context.module';
+import { AIRuntimeModule } from './infrastructure/ai-runtime/ai-runtime.module';
 
 @Module({
-  imports: [ApplicationModule.register([PersistenceModule]), AuthModule, PersonalStateModule, EvidenceModule, PersonalIntelligenceModule, MemoryModule, AIContextModule],
+  imports: [ApplicationModule.register([PersistenceModule]), AuthModule, PersonalStateModule, EvidenceModule, PersonalIntelligenceModule, MemoryModule, AIContextModule, AIRuntimeModule],
   controllers: [HealthController],
   providers: [PersistenceService],
   exports: [PersistenceService],
