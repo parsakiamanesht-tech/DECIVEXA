@@ -1,14 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AIRuntime } from "./ai-runtime";
+import { AIRuntime, minimizeContext } from "./ai-runtime";
 import {
   AIRuntimeExecutionNotAvailableError,
   ContextResolutionFailedError,
   InvalidAITaskRequestError,
+  ProviderResolutionFailedError,
   UnsupportedContextCardinalityError,
 } from "./runtime.errors";
 import type { ContextResolutionPort, ContextResolutionRequest, ContextResolutionResult } from "./context-resolution.port";
+import type { ProviderResolutionPort } from "./provider-resolution.port";
 import { PolicyAuthorizationDeniedError } from "../policy/policy.errors";
+import { OutputPolicyValidationDeniedError } from "../policy/output-policy-validation";
+import { OutputValidationRejectedError } from "../validation/validation.errors";
 import { CapabilityRegistry } from "../capability/capability-registry";
 import { UnknownCapabilityError, IneligibleCapabilityError } from "../capability/capability.errors";
 import type { AICapabilityRegistrationInput } from "../capability/capability.types";
@@ -18,7 +22,9 @@ import { ModelRouter } from "../router/model-router";
 import { NoEligibleCandidateError } from "../router/router.errors";
 import { OpenAiCompatibleProviderAdapter } from "../adapters/openai-compatible-provider.adapter";
 import type { OpenAiCompatibleProviderConfig } from "../config/openai-compatible-provider.config";
-import type { ProviderCapabilities, ProviderLimits } from "../provider/ai-provider.types";
+import { TimeoutError } from "../errors/ai-provider.errors";
+import type { AIProvider } from "../provider/ai-provider.interface";
+import type { GenerateRequest, GenerateResult, ProviderCapabilities, ProviderLimits } from "../provider/ai-provider.types";
 import { createRequestContext } from "../../../context/request-context";
 
 const BASE_CAPABILITIES: ProviderCapabilities = { streaming: false, structuredOutput: false, embeddings: false, contextWindow: null };
@@ -63,7 +69,7 @@ function fakeContextResolutionPort(result: ContextResolutionResult) {
   return { port, calls };
 }
 
-function setUp(contextResolutionResult: ContextResolutionResult = { status: "resolution_failure" }) {
+function setUp(contextResolutionResult: ContextResolutionResult = { status: "resolution_failure" }, providerResolutionPort?: ProviderResolutionPort) {
   const capabilityRegistry = new CapabilityRegistry();
   const modelRegistry = new ModelRegistry();
   const providerRegistry = new ProviderRegistry();
@@ -75,8 +81,48 @@ function setUp(contextResolutionResult: ContextResolutionResult = { status: "res
   });
   const modelRouter = new ModelRouter(modelRegistry, providerRegistry);
   const { port: contextResolutionPort, calls: contextResolutionCalls } = fakeContextResolutionPort(contextResolutionResult);
-  const runtime = new AIRuntime(capabilityRegistry, modelRouter, contextResolutionPort);
+  // providerResolutionPort is AIRuntime's fourth, OPTIONAL constructor
+  // dependency (First Controlled Execution increment §2/§9). Omitting it
+  // here (as every pre-existing test does, unchanged) exactly mirrors
+  // ai-runtime.module.ts's real, untouched production factory, which
+  // also supplies only three arguments.
+  const runtime = new AIRuntime(capabilityRegistry, modelRouter, contextResolutionPort, providerResolutionPort);
   return { capabilityRegistry, modelRegistry, providerRegistry, modelRouter, runtime, contextResolutionCalls };
+}
+
+// A test-local, in-memory-only AIProvider fake (Founder Implementation
+// Authorization §8: "an equivalent test-local fake AIProvider"). Never
+// performs I/O; records every GenerateRequest it receives so tests can
+// assert on the exact provider-facing payload (privacy boundary tests
+// M/N below).
+function fakeProvider(generateImpl: (request: GenerateRequest) => Promise<GenerateResult>) {
+  const calls: GenerateRequest[] = [];
+  const provider: AIProvider = {
+    generate: async (request) => {
+      calls.push(request);
+      return generateImpl(request);
+    },
+    healthCheck: async () => ({ available: true, latencyMs: 0, errorSignal: null }),
+    getCapabilities: () => BASE_CAPABILITIES,
+    getLimits: () => BASE_LIMITS,
+  };
+  return { provider, calls };
+}
+
+// A test-local, in-memory ProviderResolutionPort implementation (Founder
+// Implementation Authorization §9: "The test implementation may use an
+// in-memory map... This map must exist only in test infrastructure").
+// Never registered anywhere in production (ai-runtime.module.ts and
+// app.module.ts remain untouched).
+function fakeProviderResolutionPort(providers: Record<string, AIProvider>): { port: ProviderResolutionPort; calls: string[] } {
+  const calls: string[] = [];
+  const port: ProviderResolutionPort = {
+    resolve: async (providerId) => {
+      calls.push(providerId);
+      return providers[providerId];
+    },
+  };
+  return { port, calls };
 }
 
 // A. deterministic routing result
@@ -271,12 +317,21 @@ test("route's result carries only routing-selection metadata, never an authoriza
 // report, not re-asserted here as further runtime tests since there is
 // nothing else to invoke.
 
-// Q. the execution/future boundary produces a dedicated,
-// not-yet-available error rather than silently continuing
-test("execute throws AIRuntimeExecutionNotAvailableError and never completes execution", () => {
+// Q. the execution boundary produces a dedicated, typed error rather
+// than silently continuing when no ProviderResolutionPort is supplied —
+// exactly the production case, since ai-runtime.module.ts's real
+// factory still constructs AIRuntime with only three arguments (First
+// Controlled Execution increment §2/§9: "production wiring MUST NOT be
+// added"). execute() is now async (its signature changed from `(): never`
+// to `(request): Promise<GenerateResult>`), so this is asserted with
+// assert.rejects rather than a synchronous assert.throws.
+test("execute rejects with AIRuntimeExecutionNotAvailableError when no ProviderResolutionPort is configured (the production case) and never completes execution", async () => {
   const { runtime } = setUp();
 
-  assert.throws(() => runtime.execute(), AIRuntimeExecutionNotAvailableError);
+  await assert.rejects(
+    () => runtime.execute({ capabilityId: "personal-state.interpret", candidateModelIds: ["model-a"], context: CONTEXT }),
+    AIRuntimeExecutionNotAvailableError,
+  );
 });
 
 // --- Runtime Context Resolution increment ---
@@ -478,4 +533,303 @@ test("policy-authorization.ts and its wiring into ai-runtime.ts never reference 
   for (const source of [runtimeSource, policySource]) {
     assert.equal(source.includes("OpenAiCompatibleProviderAdapter"), false, "must not reference the provider adapter");
   }
+});
+
+// --- First Controlled Execution increment ---
+//
+// Founder Implementation Authorization: "First Controlled Execution,
+// Narrow Test-Only Scope". All provider instances below are test-local
+// (a hand-written fakeProvider(), or the real OpenAiCompatibleProviderAdapter
+// constructed with a fake fetchImpl per the existing established test
+// convention) — never a real network call, never a real credential, and
+// never registered anywhere in production (see the ai-runtime.module.ts
+// structural test at the end of this section).
+
+const FULL_PERSONAL_STATE_DATA = {
+  id: "ps-1",
+  userId: "user-1",
+  timezone: "UTC",
+  locale: "en-US",
+  availability: "available",
+  provenance: "declared",
+  revision: 3,
+  createdAt: new Date("2026-01-01T00:00:00.000Z"),
+  updatedAt: new Date("2026-01-02T00:00:00.000Z"),
+};
+
+// A. + L. successful execution through a test-grade provider, passing
+// both structural and output Policy Validation.
+test("execute: successful personal-state.interpret execution through a test-grade provider, passing both validation stages", async () => {
+  const { provider, calls: providerCalls } = fakeProvider(async () => ({ text: "interpreted", finishReason: "stop" }));
+  const { port: providerResolutionPort, calls: resolutionCalls } = fakeProviderResolutionPort({ "openai-compatible": provider });
+  const { capabilityRegistry, modelRegistry, runtime } = setUp(
+    { status: "resolved", context: { label: "personal-state", data: FULL_PERSONAL_STATE_DATA } },
+    providerResolutionPort,
+  );
+  capabilityRegistry.register(eligibleCapability("personal-state.interpret", { requiredContext: ["personal-state"] }));
+  modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
+
+  const result = await runtime.execute({ capabilityId: "personal-state.interpret", candidateModelIds: ["model-a"], context: CONTEXT });
+
+  assert.deepEqual(result, { text: "interpreted", finishReason: "stop" });
+  assert.equal(providerCalls.length, 1);
+  // Provider resolution is keyed by the routed providerId, not modelId.
+  assert.deepEqual(resolutionCalls, ["openai-compatible"]);
+});
+
+// B. + O. wrong / unregistered capability cannot reach provider resolution or invocation.
+test("execute: a capability id other than personal-state.interpret is rejected before any provider is resolved", async () => {
+  const { provider, calls: providerCalls } = fakeProvider(async () => ({ text: "x", finishReason: "stop" }));
+  const { port: providerResolutionPort, calls: resolutionCalls } = fakeProviderResolutionPort({ "openai-compatible": provider });
+  const { capabilityRegistry, modelRegistry, runtime } = setUp(undefined, providerResolutionPort);
+  capabilityRegistry.register(eligibleCapability("some-other-capability"));
+  modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
+
+  await assert.rejects(
+    () => runtime.execute({ capabilityId: "some-other-capability", candidateModelIds: ["model-a"], context: CONTEXT }),
+    PolicyAuthorizationDeniedError,
+  );
+  assert.equal(resolutionCalls.length, 0);
+  assert.equal(providerCalls.length, 0);
+});
+
+test("execute: an unregistered capability id is rejected before any provider is resolved", async () => {
+  const { provider, calls: providerCalls } = fakeProvider(async () => ({ text: "x", finishReason: "stop" }));
+  const { port: providerResolutionPort, calls: resolutionCalls } = fakeProviderResolutionPort({ "openai-compatible": provider });
+  const { runtime } = setUp(undefined, providerResolutionPort);
+
+  await assert.rejects(
+    () => runtime.execute({ capabilityId: "does-not-exist", candidateModelIds: ["model-a"], context: CONTEXT }),
+    UnknownCapabilityError,
+  );
+  assert.equal(resolutionCalls.length, 0);
+  assert.equal(providerCalls.length, 0);
+});
+
+// C. + D. policy denial (missing authenticated user) prevents provider resolution/invocation.
+test("execute: a missing authenticated user is rejected before any provider is resolved", async () => {
+  const { provider, calls: providerCalls } = fakeProvider(async () => ({ text: "x", finishReason: "stop" }));
+  const { port: providerResolutionPort, calls: resolutionCalls } = fakeProviderResolutionPort({ "openai-compatible": provider });
+  const { capabilityRegistry, modelRegistry, runtime } = setUp(
+    { status: "resolved", context: { label: "personal-state", data: FULL_PERSONAL_STATE_DATA } },
+    providerResolutionPort,
+  );
+  capabilityRegistry.register(eligibleCapability("personal-state.interpret", { requiredContext: ["personal-state"] }));
+  modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
+  const unauthenticatedContext = createRequestContext("request-unauth");
+
+  await assert.rejects(
+    () => runtime.execute({ capabilityId: "personal-state.interpret", candidateModelIds: ["model-a"], context: unauthenticatedContext }),
+    PolicyAuthorizationDeniedError,
+  );
+  assert.equal(resolutionCalls.length, 0);
+  assert.equal(providerCalls.length, 0);
+});
+
+// E. wrong risk classification is rejected before any provider is resolved.
+test("execute: a risk classification other than informational-read-only is rejected before any provider is resolved", async () => {
+  const { provider, calls: providerCalls } = fakeProvider(async () => ({ text: "x", finishReason: "stop" }));
+  const { port: providerResolutionPort, calls: resolutionCalls } = fakeProviderResolutionPort({ "openai-compatible": provider });
+  const { capabilityRegistry, modelRegistry, runtime } = setUp(
+    { status: "resolved", context: { label: "personal-state", data: FULL_PERSONAL_STATE_DATA } },
+    providerResolutionPort,
+  );
+  capabilityRegistry.register(eligibleCapability("personal-state.interpret", { requiredContext: ["personal-state"], riskClassification: "high-risk" }));
+  modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
+
+  await assert.rejects(
+    () => runtime.execute({ capabilityId: "personal-state.interpret", candidateModelIds: ["model-a"], context: CONTEXT }),
+    PolicyAuthorizationDeniedError,
+  );
+  assert.equal(resolutionCalls.length, 0);
+  assert.equal(providerCalls.length, 0);
+});
+
+// F. + G. ineligible model / ineligible provider are rejected by the
+// existing, unmodified ModelRouter eligibility filtering, before any
+// provider is resolved.
+test("execute: an ineligible model is rejected by ModelRouter before any provider is resolved", async () => {
+  const { provider, calls: providerCalls } = fakeProvider(async () => ({ text: "x", finishReason: "stop" }));
+  const { port: providerResolutionPort, calls: resolutionCalls } = fakeProviderResolutionPort({ "openai-compatible": provider });
+  const { capabilityRegistry, modelRegistry, runtime } = setUp(
+    { status: "resolved", context: { label: "personal-state", data: FULL_PERSONAL_STATE_DATA } },
+    providerResolutionPort,
+  );
+  capabilityRegistry.register(eligibleCapability("personal-state.interpret", { requiredContext: ["personal-state"] }));
+  modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: false, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
+
+  await assert.rejects(
+    () => runtime.execute({ capabilityId: "personal-state.interpret", candidateModelIds: ["model-a"], context: CONTEXT }),
+    NoEligibleCandidateError,
+  );
+  assert.equal(resolutionCalls.length, 0);
+  assert.equal(providerCalls.length, 0);
+});
+
+test("execute: an ineligible provider is rejected by ModelRouter before any provider is resolved", async () => {
+  const { provider, calls: providerCalls } = fakeProvider(async () => ({ text: "x", finishReason: "stop" }));
+  const { port: providerResolutionPort, calls: resolutionCalls } = fakeProviderResolutionPort({ "ineligible-provider": provider });
+  const { capabilityRegistry, modelRegistry, providerRegistry, runtime } = setUp(
+    { status: "resolved", context: { label: "personal-state", data: FULL_PERSONAL_STATE_DATA } },
+    providerResolutionPort,
+  );
+  capabilityRegistry.register(eligibleCapability("personal-state.interpret", { requiredContext: ["personal-state"] }));
+  providerRegistry.register({ providerId: "ineligible-provider", capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS, eligible: false });
+  modelRegistry.register({ modelId: "model-b", providerId: "ineligible-provider", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
+
+  await assert.rejects(
+    () => runtime.execute({ capabilityId: "personal-state.interpret", candidateModelIds: ["model-b"], context: CONTEXT }),
+    NoEligibleCandidateError,
+  );
+  assert.equal(resolutionCalls.length, 0);
+  assert.equal(providerCalls.length, 0);
+});
+
+// H. provider-instance resolution failure is typed and deterministic.
+test("execute: a provider resolution failure (no AIProvider instance for the routed providerId) is typed and deterministic", async () => {
+  const { port: providerResolutionPort } = fakeProviderResolutionPort({});
+  const { capabilityRegistry, modelRegistry, runtime } = setUp(
+    { status: "resolved", context: { label: "personal-state", data: FULL_PERSONAL_STATE_DATA } },
+    providerResolutionPort,
+  );
+  capabilityRegistry.register(eligibleCapability("personal-state.interpret", { requiredContext: ["personal-state"] }));
+  modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
+
+  await assert.rejects(
+    () => runtime.execute({ capabilityId: "personal-state.interpret", candidateModelIds: ["model-a"], context: CONTEXT }),
+    ProviderResolutionFailedError,
+  );
+});
+
+// I. provider timeout/error propagates through the existing, real,
+// unmodified adapter's normalized error model — exercised with a fake
+// fetchImpl (the established test convention), never real network I/O.
+test("execute: a provider timeout propagates through the existing adapter's typed error, unmodified", async () => {
+  const config: OpenAiCompatibleProviderConfig = { endpoint: "http://localhost:8000/v1", apiKey: null, timeoutMs: 1000 };
+  const adapter = new OpenAiCompatibleProviderAdapter(config, async () => {
+    const abortError = new Error("aborted");
+    abortError.name = "AbortError";
+    throw abortError;
+  });
+  const { port: providerResolutionPort } = fakeProviderResolutionPort({ "openai-compatible": adapter });
+  const { capabilityRegistry, modelRegistry, runtime } = setUp(
+    { status: "resolved", context: { label: "personal-state", data: FULL_PERSONAL_STATE_DATA } },
+    providerResolutionPort,
+  );
+  capabilityRegistry.register(eligibleCapability("personal-state.interpret", { requiredContext: ["personal-state"] }));
+  modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
+
+  await assert.rejects(
+    () => runtime.execute({ capabilityId: "personal-state.interpret", candidateModelIds: ["model-a"], context: CONTEXT }),
+    TimeoutError,
+  );
+});
+
+// J. a malformed provider result is rejected by the existing, unmodified
+// structural Output Validation.
+test("execute: a malformed provider result is rejected by structural Output Validation", async () => {
+  const { provider } = fakeProvider(async () => ({ text: "", finishReason: "stop" }));
+  const { port: providerResolutionPort } = fakeProviderResolutionPort({ "openai-compatible": provider });
+  const { capabilityRegistry, modelRegistry, runtime } = setUp(
+    { status: "resolved", context: { label: "personal-state", data: FULL_PERSONAL_STATE_DATA } },
+    providerResolutionPort,
+  );
+  capabilityRegistry.register(eligibleCapability("personal-state.interpret", { requiredContext: ["personal-state"] }));
+  modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
+
+  await assert.rejects(
+    () => runtime.execute({ capabilityId: "personal-state.interpret", candidateModelIds: ["model-a"], context: CONTEXT }),
+    OutputValidationRejectedError,
+  );
+});
+
+// K. output Policy Validation rejection, after structural validation
+// already succeeded.
+test("execute: output Policy Validation denies when humanApprovalRequired is true, after structural validation already succeeded", async () => {
+  const { provider } = fakeProvider(async () => ({ text: "interpreted", finishReason: "stop" }));
+  const { port: providerResolutionPort } = fakeProviderResolutionPort({ "openai-compatible": provider });
+  const { capabilityRegistry, modelRegistry, runtime } = setUp(
+    { status: "resolved", context: { label: "personal-state", data: FULL_PERSONAL_STATE_DATA } },
+    providerResolutionPort,
+  );
+  capabilityRegistry.register(eligibleCapability("personal-state.interpret", { requiredContext: ["personal-state"], humanApprovalRequired: true }));
+  modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
+
+  await assert.rejects(
+    () => runtime.execute({ capabilityId: "personal-state.interpret", candidateModelIds: ["model-a"], context: CONTEXT }),
+    OutputPolicyValidationDeniedError,
+  );
+});
+
+// M. + N. the provider-facing payload contains exactly
+// timezone/locale/availability and never id/userId/revision/provenance/
+// createdAt/updatedAt.
+test("execute: the provider-facing payload contains only timezone/locale/availability, and never id/userId/revision/provenance/createdAt/updatedAt", async () => {
+  const { provider, calls: providerCalls } = fakeProvider(async () => ({ text: "interpreted", finishReason: "stop" }));
+  const { port: providerResolutionPort } = fakeProviderResolutionPort({ "openai-compatible": provider });
+  const { capabilityRegistry, modelRegistry, runtime } = setUp(
+    { status: "resolved", context: { label: "personal-state", data: FULL_PERSONAL_STATE_DATA } },
+    providerResolutionPort,
+  );
+  capabilityRegistry.register(eligibleCapability("personal-state.interpret", { requiredContext: ["personal-state"] }));
+  modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
+
+  await runtime.execute({ capabilityId: "personal-state.interpret", candidateModelIds: ["model-a"], context: CONTEXT });
+
+  assert.equal(providerCalls.length, 1);
+  const message = providerCalls[0]?.messages[0];
+  assert.equal(message?.role, "user");
+  const payload = JSON.parse(message!.content) as Record<string, unknown>;
+  assert.deepEqual(Object.keys(payload).sort(), ["availability", "locale", "timezone"]);
+  assert.equal(payload.timezone, FULL_PERSONAL_STATE_DATA.timezone);
+  assert.equal(payload.locale, FULL_PERSONAL_STATE_DATA.locale);
+  assert.equal(payload.availability, FULL_PERSONAL_STATE_DATA.availability);
+  for (const forbidden of ["id", "userId", "revision", "provenance", "createdAt", "updatedAt"]) {
+    assert.equal(Object.prototype.hasOwnProperty.call(payload, forbidden), false, `payload must not contain ${forbidden}`);
+  }
+});
+
+// Direct unit coverage of minimizeContext() itself, independent of the
+// full execute() pipeline.
+test("minimizeContext narrows personal-state data to exactly {timezone, locale, availability}", () => {
+  const minimized = minimizeContext("personal-state", FULL_PERSONAL_STATE_DATA);
+  assert.deepEqual(minimized, { timezone: "UTC", locale: "en-US", availability: "available" });
+});
+
+test("minimizeContext leaves any other context label's data unchanged (pass-through) — no other context type is expanded or narrowed", () => {
+  const data = { anything: "goes" };
+  assert.deepEqual(minimizeContext("memory", data), data);
+});
+
+// P. + Q. no real network I/O and no provider credential/endpoint
+// reading occurs anywhere in ai-runtime.ts.
+test("ai-runtime.ts never performs real network I/O and never reads AI_PROVIDER_ENDPOINT, AI_PROVIDER_API_KEY, or process.env (structural)", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const source = await readFile(join(process.cwd(), "src", "infrastructure", "ai", "runtime", "ai-runtime.ts"), "utf8");
+  const forbidden = ["fetch(", "AI_PROVIDER_ENDPOINT", "AI_PROVIDER_API_KEY", "process.env", "OpenAiCompatibleProviderAdapter"];
+  for (const symbol of forbidden) {
+    assert.equal(source.includes(symbol), false, `ai-runtime.ts must not reference ${symbol}`);
+  }
+});
+
+// R. + S. no production model/provider registration is introduced
+// anywhere, and ai-runtime.module.ts (the production wiring file) is
+// untouched by this increment — it still constructs AIRuntime with
+// exactly three arguments.
+test("ai-runtime.ts never registers a model or provider itself (structural)", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const source = await readFile(join(process.cwd(), "src", "infrastructure", "ai", "runtime", "ai-runtime.ts"), "utf8");
+  assert.equal(source.includes(".register("), false, "ai-runtime.ts must never call .register(");
+});
+
+test("ai-runtime.module.ts (production wiring) remains untouched by this increment — still constructs AIRuntime with exactly three arguments and registers no model/provider (structural)", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const source = await readFile(join(process.cwd(), "src", "infrastructure", "ai-runtime", "ai-runtime.module.ts"), "utf8");
+  assert.match(source, /new AIRuntime\(capabilityRegistry, modelRouter, contextResolutionPort\)/, "production wiring must still construct AIRuntime with exactly three arguments");
+  assert.equal(source.includes("modelRegistry.register("), false, "production wiring must not register a model");
+  assert.equal(source.includes("providerRegistry.register("), false, "production wiring must not register a provider");
+  assert.equal(source.includes("ProviderResolutionPort"), false, "production wiring must not reference ProviderResolutionPort");
 });

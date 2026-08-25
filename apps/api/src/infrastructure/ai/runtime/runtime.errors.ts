@@ -29,5 +29,14 @@ export class UnsupportedContextCardinalityError extends Error {}
 // Founder Implementation Authorization §9, §11). This error exists so
 // the routing-only boundary is explicit and typed rather than silently
 // absent or silently bypassed — reaching it must never be mistaken for a
-// completed execution step.
+// completed execution step. Also raised by execute() when no
+// ProviderResolutionPort was supplied to this AIRuntime instance (the
+// production wiring case — First Controlled Execution increment §2/§9:
+// production AIRuntime construction intentionally omits one).
 export class AIRuntimeExecutionNotAvailableError extends Error {}
+
+// Raised when ProviderResolutionPort.resolve() cannot find an AIProvider
+// instance for a routed providerId (First Controlled Execution
+// increment). This is a resolution-boundary failure, never a
+// provider-execution failure — the provider itself was never reached.
+export class ProviderResolutionFailedError extends Error {}
