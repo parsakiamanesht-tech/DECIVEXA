@@ -47,8 +47,11 @@ import { OpenAiCompatibleProviderAdapter } from "../ai/adapters/openai-compatibl
 // comment: "Neither of those accessors performs I/O or invokes the
 // provider"; register-provider-adapter.spec.ts asserts exactly this
 // pattern with zero fetch calls) - it is never stored, never passed to
-// KeyedProviderResolver (whose production map remains empty, unchanged
-// by this gate), and .generate()/.healthCheck() are never called on it.
+// KeyedProviderResolver (whose production map was still empty as of
+// this gate; Gate 4, below, later populated it with a separate,
+// independent AIProvider instance - a distinct, separately authorized
+// concern from this metadata-only instance), and .generate()/
+// .healthCheck() are never called on it.
 // Its config is an explicit, hard-coded, credential-free literal;
 // resolveOpenAiCompatibleProviderConfig() is never called, so no
 // AI_PROVIDER_ENDPOINT/AI_PROVIDER_API_KEY/AI_PROVIDER_TIMEOUT_MS
@@ -81,17 +84,31 @@ import { OpenAiCompatibleProviderAdapter } from "../ai/adapters/openai-compatibl
 // which lives across the ADR-009 zero-import boundary in
 // application/ai-context/ and therefore needs a token), exactly
 // mirroring how CapabilityRegistry/ModelRouter are already bound above.
-// Constructed with an empty, immutable Map: no AIProvider instance is
-// resolved by KeyedProviderResolver, and execute() remains unreachable
-// from any controller - this gate establishes wiring only. (Gate 3,
-// below, later added provider/model *metadata* registration to
-// ModelRegistry/ProviderRegistry - a distinct, separately authorized
-// concern from this resolver's own, still-empty map; see the Gate 3
-// comment above the ModelRouter provider entry.)
 // AIRuntime's constructor signature, its optional-dependency guard, and
 // its route()/execute() behavior are all untouched by this gate; the
 // previously recorded "optional fourth AIRuntime dependency"
-// architectural risk remains explicitly OPEN.
+// architectural risk was later closed by Gate 2b (constructor parameter
+// made required).
+//
+// Gate 4 (Founder Implementation Authorization: "GATE 4 — PROVIDER
+// INSTANCE CONSTRUCTION + RESOLVER MAP POPULATION"): KeyedProviderResolver's
+// production map is no longer empty - it now contains exactly one
+// AIProvider instance, keyed "openai-compatible", constructed below
+// with the same explicit, hard-coded, credential-free config literal
+// pattern Gate 3 already established for its (separate, independent)
+// metadata-snapshot instance above. resolveOpenAiCompatibleProviderConfig()
+// is never called here either, so no AI_PROVIDER_ENDPOINT/
+// AI_PROVIDER_API_KEY/AI_PROVIDER_TIMEOUT_MS environment variable is
+// read. KeyedProviderResolver itself (../ai/runtime/provider-instance-resolver.ts)
+// is completely unmodified - still pure keyed lookup, Gate 1. This
+// establishes provider instance construction + provider resolution
+// enablement only, NOT execution authorization: nothing in this module
+// calls .generate()/.healthCheck(), and AIRuntime.execute() remains
+// unreachable from any controller (AIRuntimeController, unmodified,
+// still exposes only route()). ModelRouter.select() still fails first
+// for any candidate other than the one Gate 3 registered, and even for
+// that one, execute() is simply never invoked by anything in this
+// module or its controller.
 @Module({
   imports: [AuthModule, AIContextModule],
   controllers: [AIRuntimeController],
@@ -131,7 +148,14 @@ import { OpenAiCompatibleProviderAdapter } from "../ai/adapters/openai-compatibl
     },
     {
       provide: KeyedProviderResolver,
-      useFactory: () => new KeyedProviderResolver(new Map()),
+      useFactory: () => {
+        const resolvableProvider = new OpenAiCompatibleProviderAdapter({
+          endpoint: "unused-provider-resolution-only",
+          apiKey: null,
+          timeoutMs: 1,
+        });
+        return new KeyedProviderResolver(new Map([["openai-compatible", resolvableProvider]]));
+      },
     },
     {
       provide: AIRuntime,

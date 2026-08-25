@@ -4,6 +4,8 @@ import { Test } from "@nestjs/testing";
 import { AIRuntimeModule } from "./ai-runtime.module";
 import { AIRuntime } from "../ai/runtime/ai-runtime";
 import { AIRuntimeController } from "../ai/runtime/ai-runtime.controller";
+import { KeyedProviderResolver } from "../ai/runtime/provider-instance-resolver";
+import { OpenAiCompatibleProviderAdapter } from "../ai/adapters/openai-compatible-provider.adapter";
 import { CapabilityRegistry } from "../ai/capability/capability-registry";
 import { PERSONAL_STATE_INTERPRET_CAPABILITY } from "../ai/capability/personal-state-interpret.capability";
 import { ModelRouter } from "../ai/router/model-router";
@@ -121,6 +123,39 @@ test("real production wiring: Controller -> AIRuntime -> CapabilityRegistry -> C
   assert.equal(result.routing.modelId, "decivexa-infra-validation-placeholder-model");
   assert.equal(result.routing.providerId, "test-provider");
   assert.match(result.note, /no ai output was generated/i);
+
+  await moduleRef.close();
+});
+
+// Gate 4 (Founder Implementation Authorization: "GATE 4 — PROVIDER
+// INSTANCE CONSTRUCTION + RESOLVER MAP POPULATION"): proves, through
+// real production DI (no override), that KeyedProviderResolver now
+// resolves a real AIProvider-shaped instance for "openai-compatible".
+// This test deliberately never calls .generate()/.healthCheck() on the
+// resolved instance - it only checks that those methods exist as
+// functions (the AIProvider interface shape), which proves resolution
+// without crossing the execution/network boundary. resolve() itself is
+// a pure Map.get() (KeyedProviderResolver, unmodified since Gate 1), so
+// no network call or credential read is possible from this test either.
+test("AIRuntimeModule resolves KeyedProviderResolver with a real, credential-free AIProvider instance for \"openai-compatible\", without invoking generate()/healthCheck() - Gate 4", async () => {
+  const moduleRef = await Test.createTestingModule({ imports: [AIRuntimeModule] })
+    .overrideProvider(DatabaseService)
+    .useValue({ client: {} as DatabaseClient })
+    .compile();
+
+  const resolver = moduleRef.get(KeyedProviderResolver);
+  assert.ok(resolver instanceof KeyedProviderResolver);
+
+  const resolved = await resolver.resolve("openai-compatible");
+  assert.ok(resolved, 'resolver.resolve("openai-compatible") must return a defined AIProvider instance');
+  assert.ok(resolved instanceof OpenAiCompatibleProviderAdapter, "the resolved instance must be a real OpenAiCompatibleProviderAdapter");
+  assert.equal(typeof resolved!.generate, "function", "the resolved instance must expose the AIProvider interface's generate()");
+  assert.equal(typeof resolved!.healthCheck, "function", "the resolved instance must expose the AIProvider interface's healthCheck()");
+  assert.equal(typeof resolved!.getCapabilities, "function", "the resolved instance must expose the AIProvider interface's getCapabilities()");
+  assert.equal(typeof resolved!.getLimits, "function", "the resolved instance must expose the AIProvider interface's getLimits()");
+
+  const resolvedMissing = await resolver.resolve("some-other-provider-id");
+  assert.equal(resolvedMissing, undefined, "an unmapped providerId must still return undefined");
 
   await moduleRef.close();
 });
