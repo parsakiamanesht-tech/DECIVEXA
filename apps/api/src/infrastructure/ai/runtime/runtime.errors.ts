@@ -1,8 +1,25 @@
-// Normalized AIRuntime boundary errors (Increment 3B).
+// Normalized AIRuntime boundary errors (Increment 3B; extended by the
+// Runtime Context Resolution increment).
 
 // Raised when an AITaskRequest fails structural (shape-only) validation
 // — never a semantic/natural-language judgment. See runtime.types.ts.
 export class InvalidAITaskRequestError extends Error {}
+
+// Raised when a capability's single required context item cannot be
+// resolved — i.e. the ContextResolutionPort returned any status other
+// than "resolved" (unsupported label, missing selector, not found,
+// unauthorized, or a residual resolution failure). AIRuntime never
+// converts a non-"resolved" outcome into success and never fabricates a
+// substitute context — see context-resolution.port.ts.
+export class ContextResolutionFailedError extends Error {}
+
+// Raised when a capability declares more than one requiredContext item.
+// Multi-context resolution (ordering, aggregation, parallel/sequential
+// acquisition, deduplication, partial availability) is explicitly out of
+// scope for this increment (Founder Implementation Authorization §11) —
+// this error makes that boundary explicit and typed rather than silently
+// processing only the first declared item.
+export class UnsupportedContextCardinalityError extends Error {}
 
 // Raised by any AIRuntime method that would require infrastructure this
 // repository does not yet implement or Founder-authorize: obtaining

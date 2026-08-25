@@ -1,7 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { AIRuntime } from "./ai-runtime";
-import { AIRuntimeExecutionNotAvailableError, InvalidAITaskRequestError } from "./runtime.errors";
+import {
+  AIRuntimeExecutionNotAvailableError,
+  ContextResolutionFailedError,
+  InvalidAITaskRequestError,
+  UnsupportedContextCardinalityError,
+} from "./runtime.errors";
+import type { ContextResolutionPort, ContextResolutionRequest, ContextResolutionResult } from "./context-resolution.port";
 import { CapabilityRegistry } from "../capability/capability-registry";
 import { UnknownCapabilityError, IneligibleCapabilityError } from "../capability/capability.errors";
 import type { AICapabilityRegistrationInput } from "../capability/capability.types";
@@ -12,9 +18,11 @@ import { NoEligibleCandidateError } from "../router/router.errors";
 import { OpenAiCompatibleProviderAdapter } from "../adapters/openai-compatible-provider.adapter";
 import type { OpenAiCompatibleProviderConfig } from "../config/openai-compatible-provider.config";
 import type { ProviderCapabilities, ProviderLimits } from "../provider/ai-provider.types";
+import { createRequestContext } from "../../../context/request-context";
 
 const BASE_CAPABILITIES: ProviderCapabilities = { streaming: false, structuredOutput: false, embeddings: false, contextWindow: null };
 const BASE_LIMITS: ProviderLimits = { maxOutputTokens: null, maxInputTokens: null, requestsPerMinute: null };
+const CONTEXT = createRequestContext("request-1", "user-1");
 
 function eligibleCapability(
   capabilityId: string,
@@ -40,7 +48,21 @@ function eligibleCapability(
   };
 }
 
-function setUp() {
+// A fake ContextResolutionPort that must never be reached by any
+// existing (zero-requiredContext) fixture; when it is reached, it
+// records the call and returns a caller-supplied result.
+function fakeContextResolutionPort(result: ContextResolutionResult) {
+  const calls: ContextResolutionRequest[] = [];
+  const port: ContextResolutionPort = {
+    resolve: async (request) => {
+      calls.push(request);
+      return result;
+    },
+  };
+  return { port, calls };
+}
+
+function setUp(contextResolutionResult: ContextResolutionResult = { status: "resolution_failure" }) {
   const capabilityRegistry = new CapabilityRegistry();
   const modelRegistry = new ModelRegistry();
   const providerRegistry = new ProviderRegistry();
@@ -51,18 +73,19 @@ function setUp() {
     eligible: true,
   });
   const modelRouter = new ModelRouter(modelRegistry, providerRegistry);
-  const runtime = new AIRuntime(capabilityRegistry, modelRouter);
-  return { capabilityRegistry, modelRegistry, providerRegistry, modelRouter, runtime };
+  const { port: contextResolutionPort, calls: contextResolutionCalls } = fakeContextResolutionPort(contextResolutionResult);
+  const runtime = new AIRuntime(capabilityRegistry, modelRouter, contextResolutionPort);
+  return { capabilityRegistry, modelRegistry, providerRegistry, modelRouter, runtime, contextResolutionCalls };
 }
 
 // A. deterministic routing result
-test("route returns the same result for the same request", () => {
+test("route returns the same result for the same request", async () => {
   const { capabilityRegistry, modelRegistry, runtime } = setUp();
   capabilityRegistry.register(eligibleCapability("goal-clarification"));
   modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
 
-  const first = runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["model-a"] });
-  const second = runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["model-a"] });
+  const first = await runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["model-a"], context: CONTEXT });
+  const second = await runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["model-a"], context: CONTEXT });
 
   assert.deepEqual(first, second);
 });
@@ -71,38 +94,38 @@ test("route returns the same result for the same request", () => {
 // routing even though a fully eligible model exists — proving the
 // Runtime actually consults the CapabilityRegistry rather than skipping
 // straight to model selection)
-test("route rejects a registered but ineligible capability before consulting the Router", () => {
+test("route rejects a registered but ineligible capability before consulting the Router", async () => {
   const { capabilityRegistry, modelRegistry, runtime } = setUp();
   capabilityRegistry.register(eligibleCapability("retired-capability", { eligible: false }));
   modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
 
-  assert.throws(
-    () => runtime.route({ capabilityId: "retired-capability", candidateModelIds: ["model-a"] }),
+  await assert.rejects(
+    () => runtime.route({ capabilityId: "retired-capability", candidateModelIds: ["model-a"], context: CONTEXT }),
     IneligibleCapabilityError,
   );
 });
 
 // C. unknown capability produces a dedicated typed error
-test("route throws UnknownCapabilityError for an unregistered capability", () => {
+test("route throws UnknownCapabilityError for an unregistered capability", async () => {
   const { modelRegistry, runtime } = setUp();
   modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
 
-  assert.throws(
-    () => runtime.route({ capabilityId: "does-not-exist", candidateModelIds: ["model-a"] }),
+  await assert.rejects(
+    () => runtime.route({ capabilityId: "does-not-exist", candidateModelIds: ["model-a"], context: CONTEXT }),
     UnknownCapabilityError,
   );
 });
 
 // structural: malformed request shape produces a dedicated typed error
-test("route throws InvalidAITaskRequestError for a structurally invalid request", () => {
+test("route throws InvalidAITaskRequestError for a structurally invalid request", async () => {
   const { runtime } = setUp();
 
-  assert.throws(
-    () => runtime.route({ capabilityId: "", candidateModelIds: ["model-a"] }),
+  await assert.rejects(
+    () => runtime.route({ capabilityId: "", candidateModelIds: ["model-a"], context: CONTEXT }),
     InvalidAITaskRequestError,
   );
-  assert.throws(
-    () => runtime.route({ capabilityId: "goal-clarification", candidateModelIds: [] }),
+  await assert.rejects(
+    () => runtime.route({ capabilityId: "goal-clarification", candidateModelIds: [], context: CONTEXT }),
     InvalidAITaskRequestError,
   );
 });
@@ -113,7 +136,7 @@ test("route throws InvalidAITaskRequestError for a structurally invalid request"
 // declarative metadata (high quality threshold, tight latency/cost
 // targets) must not silently exclude a model that a fabricated mapping
 // would have rejected.
-test("routing requirements derived from a capability never fabricate a technical constraint", () => {
+test("routing requirements derived from a capability never fabricate a technical constraint", async () => {
   const { capabilityRegistry, modelRegistry, runtime } = setUp();
   capabilityRegistry.register(
     eligibleCapability("decision-support", {
@@ -128,13 +151,13 @@ test("routing requirements derived from a capability never fabricate a technical
   // was not turned into an invented RoutingRequirements constraint.
   modelRegistry.register({ modelId: "minimal-model", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
 
-  const result = runtime.route({ capabilityId: "decision-support", candidateModelIds: ["minimal-model"] });
+  const result = await runtime.route({ capabilityId: "decision-support", candidateModelIds: ["minimal-model"], context: CONTEXT });
 
   assert.equal(result.modelId, "minimal-model");
 });
 
 // E. ModelRouter.select() is invoked exactly once per Runtime invocation
-test("route invokes ModelRouter.select exactly once", () => {
+test("route invokes ModelRouter.select exactly once", async () => {
   const { capabilityRegistry, modelRegistry, modelRouter, runtime } = setUp();
   capabilityRegistry.register(eligibleCapability("goal-clarification"));
   modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
@@ -146,37 +169,37 @@ test("route invokes ModelRouter.select exactly once", () => {
     return originalSelect(...args);
   };
 
-  runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["model-a"] });
+  await runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["model-a"], context: CONTEXT });
 
   assert.equal(selectCalls, 1);
 });
 
 // F. Runtime returns the Router selection without rewriting Router
 // behavior (including propagating the Router's own NoEligibleCandidateError)
-test("route returns exactly what ModelRouter.select would return for the same candidates", () => {
+test("route returns exactly what ModelRouter.select would return for the same candidates", async () => {
   const { capabilityRegistry, modelRegistry, providerRegistry, modelRouter, runtime } = setUp();
   capabilityRegistry.register(eligibleCapability("goal-clarification"));
   modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
 
   const directResult = new ModelRouter(modelRegistry, providerRegistry).select(["model-a"]);
-  const runtimeResult = runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["model-a"] });
+  const runtimeResult = await runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["model-a"], context: CONTEXT });
 
   assert.deepEqual(runtimeResult, directResult);
 });
 
-test("route propagates ModelRouter's NoEligibleCandidateError unchanged", () => {
+test("route propagates ModelRouter's NoEligibleCandidateError unchanged", async () => {
   const { capabilityRegistry, runtime } = setUp();
   capabilityRegistry.register(eligibleCapability("goal-clarification"));
 
-  assert.throws(
-    () => runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["unknown-model"] }),
+  await assert.rejects(
+    () => runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["unknown-model"], context: CONTEXT }),
     NoEligibleCandidateError,
   );
 });
 
 // G-L, R. no provider execution (generate/stream/structuredOutput/embed/
 // healthCheck) and no network I/O anywhere in the routing pipeline
-test("route never invokes any provider adapter method, including healthCheck", () => {
+test("route never invokes any provider adapter method, including healthCheck", async () => {
   let calls = 0;
   const config: OpenAiCompatibleProviderConfig = { endpoint: "http://localhost:8000/v1", apiKey: null, timeoutMs: 1000 };
   const adapter = new OpenAiCompatibleProviderAdapter(config, async () => {
@@ -200,18 +223,18 @@ test("route never invokes any provider adapter method, including healthCheck", (
   });
   capabilityRegistry.register(eligibleCapability("goal-clarification"));
 
-  runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["tracked-model"] });
+  await runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["tracked-model"], context: CONTEXT });
 
   assert.equal(calls, 0);
 });
 
 // M. no authorization/approval field exists in the Runtime result
-test("route's result carries only routing-selection metadata, never an authorization/approval field", () => {
+test("route's result carries only routing-selection metadata, never an authorization/approval field", async () => {
   const { capabilityRegistry, modelRegistry, runtime } = setUp();
   capabilityRegistry.register(eligibleCapability("goal-clarification"));
   modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
 
-  const result = runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["model-a"] });
+  const result = await runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["model-a"], context: CONTEXT });
 
   assert.deepEqual(Object.keys(result).sort(), ["capabilities", "limits", "modelId", "providerId"]);
 });
@@ -224,19 +247,20 @@ test("route's result carries only routing-selection metadata, never an authoriza
 //
 // Structural: this file and ai-runtime.ts import only from
 // ../capability/**, ../registry/**, ../router/**, ../provider/**,
-// ../adapters/**, ../config/**, and ./runtime.types|errors — never from
-// core/, application/, or domain/, and never from a PolicyEngine/
-// RiskEngine module (neither exists in the repository). No controller or
-// route is created anywhere in this increment. ModelRouter is
-// constructed and called here with its existing, unmodified
-// constructor/select signature (see the "F" tests above, which cross-
-// check AIRuntime's result against a direct, separately-constructed
-// ModelRouter instance) — model-router.ts, router.types.ts, and
-// router.errors.ts are not modified by this increment, and
-// ../router/model-router.spec.ts's own suite remains the regression
-// authority for Router behavior. Verified via the boundary/security
-// audit in the implementation report, not re-asserted here as further
-// runtime tests since there is nothing else to invoke.
+// ../adapters/**, ../config/**, ./runtime.types|errors,
+// ./context-resolution.port, and ../../../context/request-context (the
+// one Founder-sanctioned exception, Runtime Context Resolution
+// increment Decision 3) — never from core/, application/, or domain/,
+// and never from a PolicyEngine/RiskEngine module (neither exists in
+// the repository). No controller or route is created anywhere in this
+// increment. ModelRouter is constructed and called here with its
+// existing, unmodified constructor/select signature (see the "F" tests
+// above) — model-router.ts, router.types.ts, and router.errors.ts are
+// not modified by this increment, and ../router/model-router.spec.ts's
+// own suite remains the regression authority for Router behavior.
+// Verified via the boundary/security audit in the implementation
+// report, not re-asserted here as further runtime tests since there is
+// nothing else to invoke.
 
 // Q. the execution/future boundary produces a dedicated,
 // not-yet-available error rather than silently continuing
@@ -244,4 +268,103 @@ test("execute throws AIRuntimeExecutionNotAvailableError and never completes exe
   const { runtime } = setUp();
 
   assert.throws(() => runtime.execute(), AIRuntimeExecutionNotAvailableError);
+});
+
+// --- Runtime Context Resolution increment ---
+
+// Zero-context capability: no acquisition attempted, deterministic,
+// port never invoked.
+test("route does not invoke the context resolution port for a zero-requiredContext capability", async () => {
+  const { capabilityRegistry, modelRegistry, runtime, contextResolutionCalls } = setUp();
+  capabilityRegistry.register(eligibleCapability("goal-clarification", { requiredContext: [] }));
+  modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
+
+  await runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["model-a"], context: CONTEXT });
+
+  assert.deepEqual(contextResolutionCalls, []);
+});
+
+// One-context capability, port resolves successfully: routing proceeds.
+test("route invokes the context resolution port exactly once for a one-requiredContext capability and proceeds on success", async () => {
+  const { capabilityRegistry, modelRegistry, runtime, contextResolutionCalls } = setUp({
+    status: "resolved",
+    context: { label: "personal-state", data: { id: "ps1" } },
+  });
+  capabilityRegistry.register(eligibleCapability("goal-clarification", { requiredContext: ["personal-state"] }));
+  modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
+
+  const result = await runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["model-a"], context: CONTEXT });
+
+  assert.equal(result.modelId, "model-a");
+  assert.equal(contextResolutionCalls.length, 1);
+  assert.deepEqual(contextResolutionCalls[0], { context: CONTEXT, label: "personal-state", selector: null });
+});
+
+// RequestContext is forwarded to the port unchanged (same reference).
+test("route forwards RequestContext to the context resolution port unchanged", async () => {
+  const { capabilityRegistry, modelRegistry, runtime, contextResolutionCalls } = setUp({
+    status: "resolved",
+    context: { label: "memory", data: {} },
+  });
+  capabilityRegistry.register(eligibleCapability("goal-clarification", { requiredContext: ["memory"] }));
+  modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
+
+  await runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["model-a"], context: CONTEXT });
+
+  assert.strictEqual(contextResolutionCalls[0]?.context, CONTEXT);
+});
+
+// Every non-"resolved" port outcome fails deterministically and is never
+// converted into a successful routing result.
+for (const failingResult of [
+  { status: "unsupported_label", label: "goal-state" },
+  { status: "missing_selector", label: "memory" },
+  { status: "not_found" },
+  { status: "unauthorized" },
+  { status: "resolution_failure" },
+] as const) {
+  test(`route throws ContextResolutionFailedError and never selects a model when the port returns "${failingResult.status}"`, async () => {
+    const { capabilityRegistry, modelRegistry, runtime } = setUp(failingResult);
+    capabilityRegistry.register(eligibleCapability("goal-clarification", { requiredContext: ["memory"] }));
+    modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
+
+    await assert.rejects(
+      () => runtime.route({ capabilityId: "goal-clarification", candidateModelIds: ["model-a"], context: CONTEXT }),
+      ContextResolutionFailedError,
+    );
+  });
+}
+
+// More than one requiredContext item is explicitly unsupported, never
+// silently narrowed to "process only the first item."
+test("route throws UnsupportedContextCardinalityError for a capability declaring more than one requiredContext item, without invoking the port", async () => {
+  const { capabilityRegistry, modelRegistry, runtime, contextResolutionCalls } = setUp();
+  capabilityRegistry.register(
+    eligibleCapability("multi-context-capability", { requiredContext: ["memory", "evidence"] }),
+  );
+  modelRegistry.register({ modelId: "model-a", providerId: "openai-compatible", eligible: true, capabilities: BASE_CAPABILITIES, limits: BASE_LIMITS });
+
+  await assert.rejects(
+    () => runtime.route({ capabilityId: "multi-context-capability", candidateModelIds: ["model-a"], context: CONTEXT }),
+    UnsupportedContextCardinalityError,
+  );
+  assert.deepEqual(contextResolutionCalls, []);
+});
+
+// Structural: AIRuntime never references AIContextService, any use-case,
+// or a repository directly — it depends only on the port contract.
+// Mirrors the established convention in
+// foundation/resource-persistence-boundaries.spec.ts (process.cwd()-
+// relative path, no import.meta).
+test("ai-runtime.ts never imports AIContextService, a use-case, or a repository", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const source = await readFile(
+    join(process.cwd(), "src", "infrastructure", "ai", "runtime", "ai-runtime.ts"),
+    "utf8",
+  );
+  const forbidden = ["AIContextService", "UseCase", "Repository", "application/ai-context"];
+  for (const symbol of forbidden) {
+    assert.equal(source.includes(symbol), false, `ai-runtime.ts must not reference ${symbol}`);
+  }
 });

@@ -287,13 +287,24 @@ async function collectImportSpecifiers(file: string): Promise<string[]> {
   return specifiers;
 }
 
-test("ai-context source files never import core/, infrastructure/persistence, domain/, or infrastructure/ai directly", async () => {
+// Runtime Context Resolution increment (Founder-approved Decision 4):
+// application/ai-context is the sanctioned *implementer* of
+// infrastructure/ai/runtime's ContextResolutionPort — the one
+// dependency-inversion exception to the otherwise-absolute
+// "no infrastructure/ai import" rule below. Only this exact specifier is
+// exempted; every other infrastructure/ai import remains forbidden, and
+// the exemption does not apply to the frozen AIContextService/types/
+// errors files (which do not, and must not, import it).
+const SANCTIONED_PORT_IMPORT = "infrastructure/ai/runtime/context-resolution.port";
+
+test("ai-context source files never import core/, infrastructure/persistence, domain/, or infrastructure/ai directly (except the sanctioned ContextResolutionPort import)", async () => {
   const files = await collectSourceFiles();
   const forbidden = ["core/", "infrastructure/persistence", "domain/", "infrastructure/ai", "drizzle-orm"];
 
   for (const file of files) {
     const specifiers = await collectImportSpecifiers(file);
     for (const specifier of specifiers) {
+      if (specifier.includes(SANCTIONED_PORT_IMPORT)) continue;
       for (const dependency of forbidden) {
         assert.equal(
           specifier.includes(dependency),

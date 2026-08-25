@@ -1,16 +1,24 @@
-// AIRuntime routing-only skeleton types (Increment 3B).
+import type { RequestContext } from "../../../context/request-context";
+
+// AIRuntime routing-only skeleton types (Increment 3B; extended by the
+// Runtime Context Resolution increment).
 //
-// Deliberately minimal: this increment's authorized pipeline is
-// normalize task shape → resolve capability → derive RoutingRequirements
-// → ModelRouter.select() → return the routing result (Increment 3
-// Founder Implementation Authorization §4). Nothing here may imply
-// context authorization, policy evaluation, risk evaluation, or
-// execution — see runtime.errors.ts for the dedicated boundary error
-// that guards against silently implying those steps happened.
+// This increment's authorized pipeline is normalize task shape →
+// resolve capability → obtain (at most one, declaratively-required)
+// context → derive RoutingRequirements → ModelRouter.select() → return
+// the routing result. Nothing here may imply policy evaluation, risk
+// evaluation, or provider execution — see runtime.errors.ts for the
+// dedicated boundary error that guards against silently implying those
+// steps happened.
 
 export interface AITaskRequest {
   readonly capabilityId: string;
   readonly candidateModelIds: readonly string[];
+  // Runtime Identity (Founder-approved Model A): the caller supplies the
+  // existing, unmodified RequestContext — the sole identity mechanism in
+  // this repository. No second identity/session/execution-context
+  // abstraction is introduced.
+  readonly context: RequestContext;
 }
 
 // Structurally identical to AITaskRequest today because normalization in
@@ -23,4 +31,5 @@ export interface AITaskRequest {
 export interface NormalizedAITask {
   readonly capabilityId: string;
   readonly candidateModelIds: readonly string[];
+  readonly context: RequestContext;
 }
