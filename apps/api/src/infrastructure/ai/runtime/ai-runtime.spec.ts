@@ -824,12 +824,30 @@ test("ai-runtime.ts never registers a model or provider itself (structural)", as
   assert.equal(source.includes(".register("), false, "ai-runtime.ts must never call .register(");
 });
 
-test("ai-runtime.module.ts (production wiring) remains untouched by this increment — still constructs AIRuntime with exactly three arguments and registers no model/provider (structural)", async () => {
+// Gate 2a (Founder Authorization Amendment: "GATE 2A — RESOLVE
+// STRUCTURAL TEST CONFLICT") superseded this test's original
+// three-argument expectation, which encoded the pre-Gate-2a
+// architecture. This is the single, explicitly authorized amendment to
+// this file: only the obsolete three-argument assertion is replaced;
+// every other guard below is preserved or strengthened, never weakened.
+test("ai-runtime.module.ts (production wiring) constructs AIRuntime with KeyedProviderResolver as its fourth argument, backed by an empty provider map, and registers no model/provider (structural — Gate 2a)", async () => {
   const { readFile } = await import("node:fs/promises");
   const { join } = await import("node:path");
   const source = await readFile(join(process.cwd(), "src", "infrastructure", "ai-runtime", "ai-runtime.module.ts"), "utf8");
-  assert.match(source, /new AIRuntime\(capabilityRegistry, modelRouter, contextResolutionPort\)/, "production wiring must still construct AIRuntime with exactly three arguments");
+  assert.match(
+    source,
+    /new AIRuntime\(\s*capabilityRegistry,\s*modelRouter,\s*contextResolutionPort,\s*providerResolutionResolver,?\s*\)/,
+    "production wiring must construct AIRuntime with KeyedProviderResolver as its fourth argument (Gate 2a)",
+  );
+  assert.match(
+    source,
+    /new KeyedProviderResolver\(new Map\(\)\)/,
+    "production wiring must construct KeyedProviderResolver with an empty, unpopulated Map",
+  );
   assert.equal(source.includes("modelRegistry.register("), false, "production wiring must not register a model");
   assert.equal(source.includes("providerRegistry.register("), false, "production wiring must not register a provider");
-  assert.equal(source.includes("ProviderResolutionPort"), false, "production wiring must not reference ProviderResolutionPort");
+  assert.equal(source.includes("OpenAiCompatibleProviderAdapter"), false, "production wiring must not construct a concrete provider adapter");
+  assert.equal(source.includes("ProviderResolutionPort"), false, "production wiring must not introduce a Symbol-token DI pattern for provider resolution");
+  assert.equal(source.includes("process.env"), false, "production wiring must not read provider credentials/configuration");
+  assert.equal(source.includes("fetch("), false, "production wiring must perform no network operation");
 });

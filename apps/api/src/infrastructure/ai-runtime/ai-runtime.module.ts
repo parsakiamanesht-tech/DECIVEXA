@@ -4,6 +4,7 @@ import { AIContextModule } from "../../application/ai-context/ai-context.module"
 import { CONTEXT_RESOLUTION_PORT, type ContextResolutionPort } from "../ai/runtime/context-resolution.port";
 import { AIRuntime } from "../ai/runtime/ai-runtime";
 import { AIRuntimeController } from "../ai/runtime/ai-runtime.controller";
+import { KeyedProviderResolver } from "../ai/runtime/provider-instance-resolver";
 import { CapabilityRegistry } from "../ai/capability/capability-registry";
 import { PERSONAL_STATE_INTERPRET_CAPABILITY } from "../ai/capability/personal-state-interpret.capability";
 import { ModelRegistry } from "../ai/registry/model-registry";
@@ -44,6 +45,23 @@ import { ModelRouter } from "../ai/router/model-router";
 // CapabilityRegistry/ModelRouter are wired via factory providers rather
 // than @Injectable()/class providers, so no decorator changes were
 // needed to any of those three existing, tested files.
+//
+// Gate 2a (Founder Authorization Amendment: "GATE 2A — RESOLVE
+// STRUCTURAL TEST CONFLICT"): wires the already-implemented
+// KeyedProviderResolver (Gate 1) into production DI as AIRuntime's
+// fourth, still-OPTIONAL constructor argument. Bound by its own
+// concrete class, not a Symbol token - it lives inside
+// infrastructure/ai/ (unlike CONTEXT_RESOLUTION_PORT's implementation,
+// which lives across the ADR-009 zero-import boundary in
+// application/ai-context/ and therefore needs a token), exactly
+// mirroring how CapabilityRegistry/ModelRouter are already bound above.
+// Constructed with an empty, immutable Map: no AIProvider instance is
+// constructed, no provider/model is registered, and execute() remains
+// unreachable from any controller - this gate establishes wiring only.
+// AIRuntime's constructor signature, its optional-dependency guard, and
+// its route()/execute() behavior are all untouched by this gate; the
+// previously recorded "optional fourth AIRuntime dependency"
+// architectural risk remains explicitly OPEN.
 @Module({
   imports: [AuthModule, AIContextModule],
   controllers: [AIRuntimeController],
@@ -61,10 +79,18 @@ import { ModelRouter } from "../ai/router/model-router";
       useFactory: () => new ModelRouter(new ModelRegistry(), new ProviderRegistry()),
     },
     {
+      provide: KeyedProviderResolver,
+      useFactory: () => new KeyedProviderResolver(new Map()),
+    },
+    {
       provide: AIRuntime,
-      useFactory: (capabilityRegistry: CapabilityRegistry, modelRouter: ModelRouter, contextResolutionPort: ContextResolutionPort) =>
-        new AIRuntime(capabilityRegistry, modelRouter, contextResolutionPort),
-      inject: [CapabilityRegistry, ModelRouter, CONTEXT_RESOLUTION_PORT],
+      useFactory: (
+        capabilityRegistry: CapabilityRegistry,
+        modelRouter: ModelRouter,
+        contextResolutionPort: ContextResolutionPort,
+        providerResolutionResolver: KeyedProviderResolver,
+      ) => new AIRuntime(capabilityRegistry, modelRouter, contextResolutionPort, providerResolutionResolver),
+      inject: [CapabilityRegistry, ModelRouter, CONTEXT_RESOLUTION_PORT, KeyedProviderResolver],
     },
   ],
 })
