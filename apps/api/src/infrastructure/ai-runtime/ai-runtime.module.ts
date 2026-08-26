@@ -12,6 +12,10 @@ import { ProviderRegistry } from "../ai/registry/provider-registry";
 import { toProviderRegistrationInput } from "../ai/registry/register-provider-adapter";
 import { ModelRouter } from "../ai/router/model-router";
 import { OpenAiCompatibleProviderAdapter } from "../ai/adapters/openai-compatible-provider.adapter";
+import { GATE7_CONTROLLED_EXECUTION_CAPABILITY } from "../ai/capability/gate7-controlled-execution.capability";
+import { GATE7_MODEL_ID, GATE7_PROVIDER_ID } from "../ai/gate7/gate7-identifiers";
+import { LazyGate7ProviderResolver } from "../ai/gate7/gate7-lazy-provider-resolver";
+import { Gate7CompositeProviderResolver } from "../ai/gate7/gate7-composite-provider-resolver";
 
 // AI Infrastructure / AIRuntime Production-Wiring Validation module
 // (Founder Authorization: "AI INFRASTRUCTURE / AIRUNTIME PRODUCTION-WIRING
@@ -109,6 +113,33 @@ import { OpenAiCompatibleProviderAdapter } from "../ai/adapters/openai-compatibl
 // for any candidate other than the one Gate 3 registered, and even for
 // that one, execute() is simply never invoked by anything in this
 // module or its controller.
+//
+// Gate 7 (Founder Implementation Authorization: "GATE 7 — DECISION-SCOPED
+// PREREQUISITE IMPLEMENTATION"): CapabilityRegistry now also seeds
+// GATE7_CONTROLLED_EXECUTION_CAPABILITY (FD-1(B) - a new, distinct
+// capability; PERSONAL_STATE_INTERPRET_CAPABILITY remains completely
+// unmodified). ModelRouter's registries now also carry a SECOND,
+// independent metadata-only provider/model pair keyed by
+// GATE7_PROVIDER_ID/GATE7_MODEL_ID (../ai/gate7/gate7-identifiers.ts),
+// constructed with the same credential-free inert literal pattern Gate 3
+// established - the existing Gate 3/4 "openai-compatible" entries are
+// untouched. AIRuntime's fourth constructor argument is now a
+// Gate7CompositeProviderResolver (../ai/gate7/gate7-composite-provider-resolver.ts)
+// instead of a directly-injected KeyedProviderResolver: it delegates to
+// the existing, completely unmodified KeyedProviderResolver for any
+// providerId already in its map (still just "openai-compatible", still
+// eagerly populated with the same Gate 4 inert instance), and to the new
+// LazyGate7ProviderResolver (../ai/gate7/gate7-lazy-provider-resolver.ts)
+// for GATE7_PROVIDER_ID only. LazyGate7ProviderResolver performs zero
+// configuration reads at construction/bootstrap time (FD-3(B): lazy
+// resolution) - resolveOpenAiCompatibleProviderConfig() and the Gate-7
+// FD-5 security checks are only ever called from inside its resolve(),
+// which nothing in this module or its controller invokes. AI_PROVIDER_*
+// and every AI_PROVIDER_GATE7_* environment variable therefore remain
+// unread by this module exactly as before. No credential is introduced,
+// no real network call occurs, and execute() remains unreachable from
+// any controller in this repository - this gate closes prerequisite
+// architectural gaps only; State D remains CLOSED.
 @Module({
   imports: [AuthModule, AIContextModule],
   controllers: [AIRuntimeController],
@@ -118,6 +149,7 @@ import { OpenAiCompatibleProviderAdapter } from "../ai/adapters/openai-compatibl
       useFactory: () => {
         const registry = new CapabilityRegistry();
         registry.register(PERSONAL_STATE_INTERPRET_CAPABILITY);
+        registry.register(GATE7_CONTROLLED_EXECUTION_CAPABILITY);
         return registry;
       },
     },
@@ -143,6 +175,26 @@ import { OpenAiCompatibleProviderAdapter } from "../ai/adapters/openai-compatibl
           limits: providerRegistrationInput.limits,
         });
 
+        // Gate 7: a second, independent metadata-only provider/model
+        // pair, isolated to GATE7_PROVIDER_ID/GATE7_MODEL_ID. Same
+        // credential-free inert literal pattern as above; this adapter
+        // instance is also never stored and never has .generate()/
+        // .healthCheck() called on it - metadata snapshot only.
+        const gate7MetadataOnlyAdapter = new OpenAiCompatibleProviderAdapter({
+          endpoint: "unused-gate7-metadata-snapshot-only",
+          apiKey: null,
+          timeoutMs: 1,
+        });
+        const gate7ProviderRegistrationInput = toProviderRegistrationInput(GATE7_PROVIDER_ID, gate7MetadataOnlyAdapter, true);
+        providerRegistry.register(gate7ProviderRegistrationInput);
+        modelRegistry.register({
+          modelId: GATE7_MODEL_ID,
+          providerId: GATE7_PROVIDER_ID,
+          eligible: true,
+          capabilities: gate7ProviderRegistrationInput.capabilities,
+          limits: gate7ProviderRegistrationInput.limits,
+        });
+
         return new ModelRouter(modelRegistry, providerRegistry);
       },
     },
@@ -157,15 +209,28 @@ import { OpenAiCompatibleProviderAdapter } from "../ai/adapters/openai-compatibl
         return new KeyedProviderResolver(new Map([["openai-compatible", resolvableProvider]]));
       },
     },
+    // Gate 7: LazyGate7ProviderResolver has an all-defaulted constructor
+    // (env defaults to process.env, fetchImpl defaults to the platform
+    // fetch - see gate7-lazy-provider-resolver.ts), so NestJS's bare-class
+    // provider shorthand instantiates it with zero eager configuration
+    // reads, exactly like the existing bare-class providers elsewhere in
+    // this repository.
+    LazyGate7ProviderResolver,
+    {
+      provide: Gate7CompositeProviderResolver,
+      useFactory: (keyedResolver: KeyedProviderResolver, gate7Resolver: LazyGate7ProviderResolver) =>
+        new Gate7CompositeProviderResolver(keyedResolver, gate7Resolver),
+      inject: [KeyedProviderResolver, LazyGate7ProviderResolver],
+    },
     {
       provide: AIRuntime,
       useFactory: (
         capabilityRegistry: CapabilityRegistry,
         modelRouter: ModelRouter,
         contextResolutionPort: ContextResolutionPort,
-        providerResolutionResolver: KeyedProviderResolver,
+        providerResolutionResolver: Gate7CompositeProviderResolver,
       ) => new AIRuntime(capabilityRegistry, modelRouter, contextResolutionPort, providerResolutionResolver),
-      inject: [CapabilityRegistry, ModelRouter, CONTEXT_RESOLUTION_PORT, KeyedProviderResolver],
+      inject: [CapabilityRegistry, ModelRouter, CONTEXT_RESOLUTION_PORT, Gate7CompositeProviderResolver],
     },
   ],
 })

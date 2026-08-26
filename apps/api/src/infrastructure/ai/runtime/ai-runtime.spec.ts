@@ -882,10 +882,20 @@ test("ai-runtime.module.ts (production wiring) constructs AIRuntime with KeyedPr
   // Gate 3: exactly one provider and one model metadata entry, never
   // more, registered via the existing toProviderRegistrationInput()
   // snapshot mechanism only - no invented registration shape.
+  // Gate 7 (Founder Implementation Authorization: "GATE 7 —
+  // DECISION-SCOPED PREREQUISITE IMPLEMENTATION", conflict resolution
+  // §1-§2): supersedes this test's "exactly one" provider/model
+  // registration counts. Production wiring now additionally registers
+  // one isolated Gate-7 provider/model metadata entry
+  // (decivexa-gate7-controlled-openai-compatible /
+  // decivexa-gate7-controlled-execution-model), required so the new,
+  // separately authorized gate7.controlled-execution capability can
+  // route at all - alongside, never replacing, the original Gate 3 entry
+  // asserted below.
   const providerRegisterMatches = source.match(/providerRegistry\.register\(/g) ?? [];
   const modelRegisterMatches = source.match(/modelRegistry\.register\(/g) ?? [];
-  assert.equal(providerRegisterMatches.length, 1, "production wiring must register exactly one provider metadata entry (Gate 3)");
-  assert.equal(modelRegisterMatches.length, 1, "production wiring must register exactly one model metadata entry (Gate 3)");
+  assert.equal(providerRegisterMatches.length, 2, "production wiring must register exactly two provider metadata entries (Gate 3 + Gate 7)");
+  assert.equal(modelRegisterMatches.length, 2, "production wiring must register exactly two model metadata entries (Gate 3 + Gate 7)");
   assert.match(
     source,
     /toProviderRegistrationInput\(/,
@@ -905,8 +915,13 @@ test("ai-runtime.module.ts (production wiring) constructs AIRuntime with KeyedPr
   // as real call syntax, never a bare substring match, since this
   // file's own explanatory comments legitimately discuss
   // ".generate()"/".healthCheck()" in prose).
+  // Gate 7: a third, independent, credential-free
+  // OpenAiCompatibleProviderAdapter construction - the Gate-7 metadata
+  // snapshot instance in ai-runtime.module.ts's ModelRouter factory - is
+  // now also present, alongside the original Gate 3 metadata + Gate 4
+  // resolution instances asserted below.
   const adapterConstructions = source.match(/new OpenAiCompatibleProviderAdapter\(/g) ?? [];
-  assert.equal(adapterConstructions.length, 2, "production wiring must construct exactly two OpenAiCompatibleProviderAdapter instances (Gate 3 metadata + Gate 4 resolution)");
+  assert.equal(adapterConstructions.length, 3, "production wiring must construct exactly three OpenAiCompatibleProviderAdapter instances (Gate 3 metadata + Gate 4 resolution + Gate 7 metadata)");
   assert.match(
     source,
     /new OpenAiCompatibleProviderAdapter\(\{\s*endpoint:\s*"[^"]+",\s*apiKey:\s*null,\s*timeoutMs:\s*\d+,?\s*\}\)/,
@@ -926,6 +941,25 @@ test("ai-runtime.module.ts (production wiring) constructs AIRuntime with KeyedPr
     false,
     "production wiring must never import resolveOpenAiCompatibleProviderConfig() - no credential/environment read anywhere in this path (Gate 3 §7 / Gate 4 §5)",
   );
-  assert.equal(source.includes("process.env"), false, "production wiring must not read provider credentials/configuration");
+  // Gate 7 (Founder Implementation Authorization: "GATE 7 —
+  // DECISION-SCOPED PREREQUISITE IMPLEMENTATION", second conflict
+  // resolution, Option B): process.env is a bare global reference, not an
+  // import, so the import-line-scoped technique above does not directly
+  // apply - the equivalent false-positive-resistant technique is to
+  // exclude comment lines before checking for a real process.env
+  // reference, since this file's own Gate 7 explanatory comments now
+  // legitimately name "process.env" in prose (the LazyGate7ProviderResolver
+  // registration comment). This still fails if any actual (non-comment)
+  // line reads process.env - the architectural invariant (production
+  // wiring never directly reads process.env; real configuration is
+  // resolved lazily, only inside gate7-provider-config.ts /
+  // openai-compatible-provider.config.ts, never inline here) is preserved
+  // exactly, not weakened.
+  const nonCommentLines = source.split("\n").filter((line) => !/^\s*\/\//.test(line));
+  assert.equal(
+    nonCommentLines.some((line) => line.includes("process.env")),
+    false,
+    "production wiring must not directly read process.env - real configuration is resolved lazily through the authorized configuration path, never inline here",
+  );
   assert.equal(source.includes("fetch("), false, "production wiring must perform no network operation");
 });

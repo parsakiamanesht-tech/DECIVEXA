@@ -53,6 +53,37 @@ test("authorizePolicy denies any risk classification other than informational-re
   assert.deepEqual(result, { status: "denied", reason: "unauthorized_risk_classification" });
 });
 
+// Founder Implementation Authorization: "GATE 7 — DECISION-SCOPED
+// PREREQUISITE IMPLEMENTATION", §8: proves the allow-list extension
+// admits exactly the new Gate-7 capability id, while every other
+// previously-established behavior above (personal-state.interpret still
+// authorized/denied exactly as before) remains unmodified.
+
+test("authorizePolicy authorizes the new Gate-7 capability id for an authenticated user", () => {
+  const result = authorizePolicy(authorizedCapability({ capabilityId: "gate7.controlled-execution" }), AUTHENTICATED_CONTEXT);
+  assert.deepEqual(result, { status: "authorized" });
+});
+
+test("authorizePolicy still denies an unrelated capability id after the Gate-7 extension", () => {
+  const result = authorizePolicy(authorizedCapability({ capabilityId: "memory.summarize" }), AUTHENTICATED_CONTEXT);
+  assert.deepEqual(result, { status: "denied", reason: "unauthorized_capability" });
+});
+
+test("authorizePolicy denies an empty/unknown capability id after the Gate-7 extension", () => {
+  const result = authorizePolicy(authorizedCapability({ capabilityId: "" }), AUTHENTICATED_CONTEXT);
+  assert.deepEqual(result, { status: "denied", reason: "unauthorized_capability" });
+});
+
+test("authorizePolicy denies the new Gate-7 capability id when its risk classification is not informational-read-only", () => {
+  const result = authorizePolicy(authorizedCapability({ capabilityId: "gate7.controlled-execution", riskClassification: "high-risk" }), AUTHENTICATED_CONTEXT);
+  assert.deepEqual(result, { status: "denied", reason: "unauthorized_risk_classification" });
+});
+
+test("authorizePolicy denies the new Gate-7 capability id for an unauthenticated request", () => {
+  const result = authorizePolicy(authorizedCapability({ capabilityId: "gate7.controlled-execution" }), UNAUTHENTICATED_CONTEXT);
+  assert.deepEqual(result, { status: "denied", reason: "missing_authenticated_user" });
+});
+
 // Structural check, mirroring the existing repository convention: this
 // narrow boundary must never reach a provider, a repository, or the
 // application layer - it is a pure, local, synchronous decision.

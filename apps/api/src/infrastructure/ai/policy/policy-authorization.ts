@@ -5,15 +5,24 @@ import type { RequestContext } from "../../../context/request-context";
 // (Founder Implementation Authorization: "Policy Authorization + Narrow
 // Provider Eligibility + Structural Output Validation").
 //
-// This is NOT a PolicyEngine. It is a single, explicit allow-list check
-// for exactly one capability (personal-state.interpret), reusing
-// metadata that already exists on AICapabilityRegistrationInput - no
-// new taxonomy, no region/compliance/retention/autonomy/tool-permission
+// This is NOT a PolicyEngine. It is a single, explicit allow-list check,
+// reusing metadata that already exists on AICapabilityRegistrationInput -
+// no new taxonomy, no region/compliance/retention/autonomy/tool-permission
 // policy, no rule engine, no configuration language, no
 // Founder-configurable policy. Any future capability, or any future
 // generalization of this boundary, requires its own separate Founder
 // authorization - this file must not silently grow to cover either.
-const AUTHORIZED_CAPABILITY_ID = "personal-state.interpret";
+//
+// Founder Implementation Authorization: "GATE 7 — DECISION-SCOPED
+// PREREQUISITE IMPLEMENTATION", §8: extended from a single authorized
+// capability id to an explicit two-entry allow-list -
+// personal-state.interpret (unchanged behavior) plus
+// gate7.controlled-execution (new, FD-1(B)). This remains a narrow,
+// explicit allow-list, never a wildcard: any capability id other than
+// these two is still denied exactly as before, and the risk-classification
+// check below is unchanged - both authorized capabilities must still
+// independently declare AUTHORIZED_RISK_CLASSIFICATION.
+const AUTHORIZED_CAPABILITY_IDS: ReadonlySet<string> = new Set(["personal-state.interpret", "gate7.controlled-execution"]);
 const AUTHORIZED_RISK_CLASSIFICATION = "informational-read-only";
 
 export type PolicyAuthorizationDenialReason =
@@ -33,7 +42,7 @@ export function authorizePolicy(
   capability: AICapabilityRegistryEntry,
   context: RequestContext,
 ): PolicyAuthorizationResult {
-  if (capability.capabilityId !== AUTHORIZED_CAPABILITY_ID) {
+  if (!AUTHORIZED_CAPABILITY_IDS.has(capability.capabilityId)) {
     return { status: "denied", reason: "unauthorized_capability" };
   }
   if (!capability.eligible) {
