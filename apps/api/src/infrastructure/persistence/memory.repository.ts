@@ -6,6 +6,7 @@ import type { MemoryRecord, MemoryRecordVersion } from "../../core/memory/memory
 import type {
   AppendMemoryLifecycleVersionInput,
   CreateMemoryRecordInput,
+  DeleteMemoryRecordInput,
   MemoryRecordRepository,
 } from "../../core/memory/memory-record.repository";
 
@@ -200,6 +201,112 @@ export class DrizzleMemoryRecordRepository implements MemoryRecordRepository {
         .returning();
 
       return row ? toDomainVersion(row) : null;
+    } catch (error) {
+      if (isUniqueViolation(error)) return null;
+      throw error;
+    }
+  }
+
+  /**
+   * Genuinely removes the record's readable content (Founder Build
+   * Authorization, "IMPORTANT DELETION RULE") - distinct from
+   * appendLifecycleVersion, which only ever copies the value slot
+   * forward unchanged and is no longer accepted for "deleted" (see
+   * MemoryUseCase.appendLifecycleVersion).
+   *
+   * Two steps inside one transaction:
+   *
+   * 1. Append a new version row exactly like appendLifecycleVersion's
+   *    INSERT ... SELECT / optimistic-concurrency pattern (same
+   *    expectedVersion + NOT EXISTS-newer-version guard, same
+   *    unique-violation-as-conflict handling), except valueKind/value are
+   *    explicitly NULL literals here, never copied forward from the
+   *    prior version - this is the one intentional divergence from the
+   *    copy-forward mechanism, and it exists specifically so the new
+   *    "current" version carries no readable content.
+   * 2. Null valueKind/value on every EXISTING version row for this
+   *    record (an UPDATE across the whole version history) so no prior
+   *    version retains readable content either - a soft-delete flag that
+   *    leaves prior versions' content fully readable does not satisfy
+   *    this requirement. Provenance, lifecycle, timestamps, and row
+   *    existence are left untouched on those prior rows: the fact that a
+   *    version existed, when, and under what provenance/lifecycle
+   *    remains auditable - only the content itself is removed.
+   *
+   * If step 1 finds no matching row (wrong expectedVersion, wrong owner,
+   * or a concurrent append already won), the whole transaction is rolled
+   * back and null is returned - step 2 never runs against a record whose
+   * deletion was not actually accepted, so no content is ever nulled
+   * without a corresponding, real "deleted" version being recorded.
+   */
+  async deleteRecordContent(
+    input: DeleteMemoryRecordInput,
+  ): Promise<MemoryRecordVersion | null> {
+    try {
+      return await this.db.transaction(async (tx) => {
+        const [row] = await tx
+          .insert(memoryRecordVersions)
+          .select((qb) =>
+            qb
+              .select({
+                id: sql<string>`${input.versionId}`.as("id"),
+                recordId: memoryRecordVersions.recordId,
+                userId: memoryRecordVersions.userId,
+                version: sql<number>`${memoryRecordVersions.version} + 1`.as("version"),
+                provenance: memoryRecordVersions.provenance,
+                lifecycle: sql<string>`'deleted'`.as("lifecycle"),
+                observedAt: memoryRecordVersions.observedAt,
+                acceptedAt: memoryRecordVersions.acceptedAt,
+                confidence: memoryRecordVersions.confidence,
+                // Deliberately NULL, never copied forward - this is the
+                // one field pair where deletion diverges from
+                // appendLifecycleVersion's copy-forward semantics.
+                valueKind: sql<string | null>`null`.as("value_kind"),
+                value: sql<string | null>`null`.as("value"),
+                userConfirmed: memoryRecordVersions.userConfirmed,
+                createdAt: sql<Date>`${input.now}`.as("created_at"),
+              })
+              .from(memoryRecordVersions)
+              .where(
+                and(
+                  eq(memoryRecordVersions.recordId, input.recordId),
+                  eq(memoryRecordVersions.userId, input.userId),
+                  eq(memoryRecordVersions.version, input.expectedVersion),
+                  notExists(
+                    qb
+                      .select({ one: sql`1` })
+                      .from(newerVersion)
+                      .where(
+                        and(
+                          eq(newerVersion.recordId, input.recordId),
+                          gt(newerVersion.version, input.expectedVersion),
+                        ),
+                      ),
+                  ),
+                ),
+              ),
+          )
+          .returning();
+
+        if (!row) return null;
+
+        // Step 2: purge content from every existing version row for this
+        // record, including the one just inserted (a no-op for it, since
+        // it was already inserted with NULL content) and every version
+        // that predates it - genuine removal, not merely a new version
+        // that happens to have no value while old ones still do.
+        await tx
+          .update(memoryRecordVersions)
+          .set({ valueKind: null, value: null })
+          .where(
+            and(
+              eq(memoryRecordVersions.recordId, input.recordId),
+              eq(memoryRecordVersions.userId, input.userId),
+            ),
+          );
+
+        return toDomainVersion(row);
+      });
     } catch (error) {
       if (isUniqueViolation(error)) return null;
       throw error;

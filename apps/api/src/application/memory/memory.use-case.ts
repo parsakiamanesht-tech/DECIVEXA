@@ -95,6 +95,20 @@ export class MemoryUseCase {
     if (!Number.isInteger(input.expectedVersion) || input.expectedVersion < 1) {
       return failure(new MemoryValidationError("Invalid expectedVersion"));
     }
+    // Correction and deletion are different operations (Founder Build
+    // Authorization, "IMPORTANT DELETION RULE"). This generic path copies
+    // the value slot forward unchanged (see the repository's own
+    // documented copy-forward semantics) - correct for a lifecycle-only
+    // marking like "corrected", but wrong for "deleted", which must
+    // genuinely remove readable content, not merely relabel it. "deleted"
+    // is therefore rejected here; callers must use deleteRecord instead.
+    if (input.lifecycle === "deleted") {
+      return failure(
+        new MemoryValidationError(
+          "Use deleteRecord for genuine deletion; appendLifecycleVersion does not remove content",
+        ),
+      );
+    }
     try {
       const version = await this.repository.appendLifecycleVersion({
         userId: context.userId,
@@ -108,6 +122,36 @@ export class MemoryUseCase {
       return success(version);
     } catch (error) {
       return failure(error instanceof Error ? error : new Error("Invalid memory lifecycle transition"));
+    }
+  }
+
+  // Genuine deletion (Founder Build Authorization, "IMPORTANT DELETION
+  // RULE"): distinct from appendLifecycleVersion. Removes the record's
+  // current AND every prior version's readable content, while preserving
+  // the version envelope (provenance, timestamps, the "deleted" lifecycle
+  // marker) for audit purposes - a status flag that leaves the original
+  // content fully readable/queryable does not satisfy this requirement.
+  async deleteRecord(
+    recordId: string,
+    expectedVersion: number,
+    context: RequestContext,
+  ): Promise<Result<MemoryRecordVersion>> {
+    if (!context.userId) return failure(new MemoryValidationError("Authenticated user required"));
+    if (!Number.isInteger(expectedVersion) || expectedVersion < 1) {
+      return failure(new MemoryValidationError("Invalid expectedVersion"));
+    }
+    try {
+      const version = await this.repository.deleteRecordContent({
+        userId: context.userId,
+        recordId,
+        versionId: randomUUID(),
+        expectedVersion,
+        now: new Date(),
+      });
+      if (!version) return failure(new MemoryConflictError("Version conflict or memory record not found"));
+      return success(version);
+    } catch (error) {
+      return failure(error instanceof Error ? error : new Error("Invalid memory deletion"));
     }
   }
 }

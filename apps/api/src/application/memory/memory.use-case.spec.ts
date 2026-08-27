@@ -1,10 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { MemoryNotFoundError, MemoryUseCase, MemoryValidationError } from "./memory.use-case";
+import { MemoryConflictError, MemoryNotFoundError, MemoryUseCase, MemoryValidationError } from "./memory.use-case";
 import type { MemoryRecord, MemoryRecordVersion } from "../../core/memory/memory-record.model";
 import type {
   AppendMemoryLifecycleVersionInput,
   CreateMemoryRecordInput,
+  DeleteMemoryRecordInput,
   MemoryRecordRepository,
 } from "../../core/memory/memory-record.repository";
 import { createRequestContext } from "../../context/request-context";
@@ -14,6 +15,7 @@ class FakeMemoryRecordRepository implements MemoryRecordRepository {
   private readonly versions = new Map<string, MemoryRecordVersion[]>();
   public lastCreateInput: CreateMemoryRecordInput | undefined;
   public lastAppendInput: AppendMemoryLifecycleVersionInput | undefined;
+  public lastDeleteInput: DeleteMemoryRecordInput | undefined;
 
   async findByIdForUser(userId: string, id: string): Promise<MemoryRecord | null> {
     const found = this.records.get(id);
@@ -88,6 +90,38 @@ class FakeMemoryRecordRepository implements MemoryRecordRepository {
     list.push(next);
     this.versions.set(input.recordId, list);
     return next;
+  }
+
+  async deleteRecordContent(
+    input: DeleteMemoryRecordInput,
+  ): Promise<MemoryRecordVersion | null> {
+    this.lastDeleteInput = input;
+    const list = this.versions.get(input.recordId) ?? [];
+    const latest = list[list.length - 1];
+    if (!latest || latest.version !== input.expectedVersion || latest.userId !== input.userId) return null;
+    const deletedVersion: MemoryRecordVersion = {
+      id: input.versionId,
+      recordId: input.recordId,
+      version: input.expectedVersion + 1,
+      userId: input.userId,
+      provenance: latest.provenance,
+      lifecycle: "deleted",
+      observedAt: latest.observedAt,
+      acceptedAt: latest.acceptedAt,
+      confidence: latest.confidence,
+      // Deliberately NULL, never copied forward - mirrors the real
+      // repository's one intentional divergence from copy-forward.
+      valueKind: null,
+      value: null,
+      userConfirmed: latest.userConfirmed,
+      createdAt: input.now,
+    };
+    // Mirrors the real repository's step 2: null content on every
+    // existing version row for this record, not just the new one.
+    const purged: MemoryRecordVersion[] = list.map((v) => ({ ...v, valueKind: null, value: null }));
+    purged.push(deletedVersion);
+    this.versions.set(input.recordId, purged);
+    return deletedVersion;
   }
 }
 
@@ -186,7 +220,7 @@ test("a lifecycle correction generates a fresh version ID distinct from the init
   assert.notEqual(repository.lastAppendInput!.versionId, initialVersionId);
 });
 
-test("deletion uses the lifecycle-version mechanism rather than removing history", async () => {
+test("appendLifecycleVersion rejects 'deleted' - genuine deletion requires deleteRecord", async () => {
   const repository = new FakeMemoryRecordRepository();
   const useCase = new MemoryUseCase(repository);
 
@@ -197,19 +231,155 @@ test("deletion uses the lifecycle-version mechanism rather than removing history
   assert.equal(created.ok, true);
   const recordId = repository.lastCreateInput!.recordId;
 
-  const deleted = await useCase.appendLifecycleVersion(
+  const result = await useCase.appendLifecycleVersion(
     { recordId, expectedVersion: 1, lifecycle: "deleted" },
     createRequestContext("r2", "user-a"),
   );
 
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.ok(result.error instanceof MemoryValidationError);
+  // Rejected before ever reaching the repository - no version was appended.
+  assert.equal(repository.lastAppendInput, undefined);
+});
+
+test("deleteRecord genuinely removes readable content: the new version carries no value", async () => {
+  const repository = new FakeMemoryRecordRepository();
+  const useCase = new MemoryUseCase(repository);
+
+  const created = await useCase.create(
+    {
+      provenance: "observed",
+      observedAt: new Date(),
+      acceptedAt: new Date(),
+      confidence: null,
+      valueKind: "content",
+      value: "sensitive memory content to be deleted",
+    },
+    createRequestContext("r1", "user-a"),
+  );
+  assert.equal(created.ok, true);
+  const recordId = repository.lastCreateInput!.recordId;
+
+  const deleted = await useCase.deleteRecord(recordId, 1, createRequestContext("r2", "user-a"));
+
   assert.equal(deleted.ok, true);
-  // The original active version (1) must still be retrievable - the use-case
-  // never overwrites or removes it, only appends a new "deleted" version (2).
-  const originalStillPresent = await useCase.getVersion(recordId, 1, createRequestContext("r3", "user-a"));
-  assert.equal(originalStillPresent.ok, true);
-  if (originalStillPresent.ok) {
-    assert.equal(originalStillPresent.value.lifecycle, "active");
+  if (deleted.ok) {
+    assert.equal(deleted.value.lifecycle, "deleted");
+    assert.equal(deleted.value.valueKind, null);
+    assert.equal(deleted.value.value, null);
   }
+});
+
+test("deleteRecord genuinely removes content from every PRIOR version, not just the new one", async () => {
+  const repository = new FakeMemoryRecordRepository();
+  const useCase = new MemoryUseCase(repository);
+
+  const created = await useCase.create(
+    {
+      provenance: "observed",
+      observedAt: new Date(),
+      acceptedAt: new Date(),
+      confidence: null,
+      valueKind: "content",
+      value: "sensitive memory content to be deleted",
+    },
+    createRequestContext("r1", "user-a"),
+  );
+  assert.equal(created.ok, true);
+  const recordId = repository.lastCreateInput!.recordId;
+
+  const deleted = await useCase.deleteRecord(recordId, 1, createRequestContext("r2", "user-a"));
+  assert.equal(deleted.ok, true);
+
+  // The ORIGINAL version (1) - not just the new "deleted" version (2) -
+  // must also have its content nulled. A soft-delete flag that leaves
+  // prior versions' content fully readable does not satisfy this
+  // requirement.
+  const original = await useCase.getVersion(recordId, 1, createRequestContext("r3", "user-a"));
+  assert.equal(original.ok, true);
+  if (original.ok) {
+    assert.equal(original.value.valueKind, null);
+    assert.equal(original.value.value, null);
+    // Envelope/provenance/timestamps remain - only content is removed,
+    // preserving audit/history semantics per TD-07-MEMORY-PROVENANCE.
+    assert.equal(original.value.lifecycle, "active");
+    assert.equal(original.value.provenance, "observed");
+  }
+});
+
+test("deleteRecord preserves the version envelope and audit trail - the record and its deletion event remain queryable", async () => {
+  const repository = new FakeMemoryRecordRepository();
+  const useCase = new MemoryUseCase(repository);
+
+  const created = await useCase.create(
+    { provenance: "observed", observedAt: new Date(), acceptedAt: new Date(), confidence: null },
+    createRequestContext("r1", "user-a"),
+  );
+  assert.equal(created.ok, true);
+  const recordId = repository.lastCreateInput!.recordId;
+
+  await useCase.deleteRecord(recordId, 1, createRequestContext("r2", "user-a"));
+
+  // The record itself, and the deletion event, remain queryable - this is
+  // erasure of content, not erasure of the fact that a record existed and
+  // was deleted.
+  const record = await useCase.get(recordId, createRequestContext("r3", "user-a"));
+  assert.equal(record.ok, true);
+
+  const deletionEvent = await useCase.getVersion(recordId, 2, createRequestContext("r4", "user-a"));
+  assert.equal(deletionEvent.ok, true);
+  if (deletionEvent.ok) assert.equal(deletionEvent.value.lifecycle, "deleted");
+});
+
+test("deleteRecord fails without an authenticated user", async () => {
+  const repository = new FakeMemoryRecordRepository();
+  const useCase = new MemoryUseCase(repository);
+
+  const result = await useCase.deleteRecord("some-record-id", 1, createRequestContext("r1"));
+
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.ok(result.error instanceof MemoryValidationError);
+});
+
+test("deleteRecord rejects an invalid expectedVersion", async () => {
+  const repository = new FakeMemoryRecordRepository();
+  const useCase = new MemoryUseCase(repository);
+
+  const result = await useCase.deleteRecord("some-record-id", 0, createRequestContext("r1", "user-a"));
+
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.ok(result.error instanceof MemoryValidationError);
+});
+
+test("deleteRecord with a stale expectedVersion is rejected as a conflict, and content is NOT purged", async () => {
+  const repository = new FakeMemoryRecordRepository();
+  const useCase = new MemoryUseCase(repository);
+
+  const created = await useCase.create(
+    {
+      provenance: "observed",
+      observedAt: new Date(),
+      acceptedAt: new Date(),
+      confidence: null,
+      valueKind: "content",
+      value: "must survive a rejected deletion attempt",
+    },
+    createRequestContext("r1", "user-a"),
+  );
+  assert.equal(created.ok, true);
+  const recordId = repository.lastCreateInput!.recordId;
+
+  const result = await useCase.deleteRecord(recordId, 99, createRequestContext("r2", "user-a"));
+
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.ok(result.error instanceof MemoryConflictError);
+
+  // A rejected/conflicting deletion must never have purged content -
+  // mirrors the real repository's transactional guarantee (step 2 never
+  // runs unless step 1's INSERT actually matched a row).
+  const stillPresent = await useCase.getVersion(recordId, 1, createRequestContext("r3", "user-a"));
+  assert.equal(stillPresent.ok, true);
+  if (stillPresent.ok) assert.equal(stillPresent.value.value, "must survive a rejected deletion attempt");
 });
 
 test("expectedVersion is passed through unchanged for the optimistic-concurrency check", async () => {
@@ -243,7 +413,7 @@ test("a stale expectedVersion is rejected as a conflict rather than silently app
   const recordId = repository.lastCreateInput!.recordId;
 
   const result = await useCase.appendLifecycleVersion(
-    { recordId, expectedVersion: 99, lifecycle: "deleted" },
+    { recordId, expectedVersion: 99, lifecycle: "corrected" },
     createRequestContext("r2", "user-a"),
   );
 
@@ -552,10 +722,7 @@ test("getVersion explicitly retrieves a version whose own lifecycle is 'deleted'
   assert.equal(created.ok, true);
   const recordId = repository.lastCreateInput!.recordId;
 
-  const deleted = await useCase.appendLifecycleVersion(
-    { recordId, expectedVersion: 1, lifecycle: "deleted" },
-    createRequestContext("r2", "user-a"),
-  );
+  const deleted = await useCase.deleteRecord(recordId, 1, createRequestContext("r2", "user-a"));
   assert.equal(deleted.ok, true);
 
   // The deleted version itself - not just the version preceding it - must
