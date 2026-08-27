@@ -1,0 +1,29 @@
+# SAFE PLACEHOLDER FILE — copy to a local, untracked "production.tfvars"
+# and replace every value below before running `terraform plan`. This
+# example file must never contain a real project ID, real digest, or any
+# secret.
+#
+# Applying this file requires that the GitHub "production" Environment
+# (required reviewer: Parsa Kiamanesh) already exists — see
+# ../README.md "External prerequisites". This Terraform configuration does
+# not create or verify that GitHub-side control; it only assumes its
+# `environment` OIDC claim in workload_identity.tf's trust condition.
+
+project_id  = "REPLACE_WITH_PRODUCTION_GCP_PROJECT_ID"
+region      = "europe-west3"
+environment = "production"
+
+github_repository                  = "parsakiamanesht-tech/DECIVEXA"
+github_deploy_branch                = "main"
+github_production_environment_name = "production"
+
+artifact_registry_repository_id = "decivexa-ai-gateway"
+
+gateway_image_digest = "sha256:REPLACE_WITH_REAL_IMAGE_DIGEST_0000000000000000000000000000000000000000000000000000"
+
+# Empty by design — fail closed. Do not populate until a provider/endpoint
+# decision is Founder-approved (Increment 011, not this increment).
+allowed_provider_egress_hosts = []
+
+runtime_service_account_id = "decivexa-gw-runtime"
+deploy_service_account_id  = "decivexa-gw-deploy"

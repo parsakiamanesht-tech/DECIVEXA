@@ -2,11 +2,11 @@
   "name": "@decivexa/ai-gateway",
   "private": true,
   "version": "0.1.0",
-  "description": "DECIVEXA Zone-3 AI Gateway — Increment 014 Phases A–D plus Increment 017 native node:http runtime (container-ready HTTP layer; no real credential, endpoint, GCP resource, or deployment).",
+  "description": "DECIVEXA Zone-3 AI Gateway — Increment 014 Phases A–D, Increment 017 native node:http runtime, plus Increment 020 OpenAI provider adapter (container-ready HTTP layer; no real credential, endpoint, GCP resource, or deployment).",
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && node --test dist/errors/gateway.errors.spec.js dist/correlation/correlation-id.spec.js dist/contract/request.types.spec.js dist/contract/response.types.spec.js dist/authorization/gateway-policy.spec.js dist/auth/workload-authentication.spec.js dist/provider/transport-limits.spec.js dist/provider/provider-adapter.interface.spec.js dist/rate-limit/workload-rate-limiter.spec.js dist/concurrency/workload-concurrency-guard.spec.js dist/audit/gateway-audit-record.spec.js dist/orchestration/gateway-request-handler.spec.js dist/server.spec.js",
+    "test": "npm run build && node --test dist/errors/gateway.errors.spec.js dist/correlation/correlation-id.spec.js dist/contract/request.types.spec.js dist/contract/response.types.spec.js dist/authorization/gateway-policy.spec.js dist/auth/workload-authentication.spec.js dist/provider/transport-limits.spec.js dist/provider/provider-adapter.interface.spec.js dist/provider/openai-gateway-provider.config.spec.js dist/provider/openai-gateway-provider.spec.js dist/rate-limit/workload-rate-limiter.spec.js dist/concurrency/workload-concurrency-guard.spec.js dist/audit/gateway-audit-record.spec.js dist/orchestration/gateway-request-handler.spec.js dist/server.spec.js",
     "start": "node dist/server.js"
   },
   "dependencies": {},

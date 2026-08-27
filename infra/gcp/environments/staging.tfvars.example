@@ -1,0 +1,25 @@
+# SAFE PLACEHOLDER FILE — copy to a local, untracked "staging.tfvars" and
+# replace every value below before running `terraform plan`. This example
+# file must never contain a real project ID, real digest, or any secret.
+
+project_id  = "REPLACE_WITH_STAGING_GCP_PROJECT_ID"
+region      = "europe-west3"
+environment = "staging"
+
+github_repository                  = "parsakiamanesht-tech/DECIVEXA"
+github_deploy_branch                = "main"
+github_production_environment_name = "production" # staging deploys still federate against the same repo/branch condition; see workload_identity.tf for the exact trust condition this implies
+
+artifact_registry_repository_id = "decivexa-ai-gateway"
+
+# No default is provided for gateway_image_digest anywhere in this
+# configuration (see variables.tf) — supply the real digest of a built,
+# pushed image here, never "latest" or any other mutable tag.
+gateway_image_digest = "sha256:REPLACE_WITH_REAL_IMAGE_DIGEST_0000000000000000000000000000000000000000000000000000"
+
+# Empty by design — fail closed. Do not populate until a provider/endpoint
+# decision is Founder-approved (Increment 011, not this increment).
+allowed_provider_egress_hosts = []
+
+runtime_service_account_id = "decivexa-gw-runtime"
+deploy_service_account_id  = "decivexa-gw-deploy"
