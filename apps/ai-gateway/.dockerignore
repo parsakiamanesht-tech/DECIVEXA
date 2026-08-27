@@ -1,0 +1,26 @@
+# Increment 017 — reviewed deliberately for what the production image
+# actually needs, not copied verbatim from .gitignore (that file governs
+# source control, a different concern than a Docker build context).
+
+node_modules
+dist
+
+# Test output / build metadata never needed inside the image.
+*.tsbuildinfo
+coverage
+
+# Local environment / secret material must never enter the build
+# context at all, even though nothing in this repository currently
+# writes one.
+.env
+.env.*
+*.pem
+*.key
+
+# VCS metadata.
+.git
+.gitignore
+
+# Documentation not needed at runtime (kept out of the build context;
+# still present in source control).
+README.md
