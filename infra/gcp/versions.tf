@@ -12,8 +12,17 @@ terraform {
     }
   }
 
-  # Backend intentionally left unconfigured here. The operator applying this
-  # configuration must supply a backend (e.g. a GCS bucket with versioning
-  # and access controls of its own) via `-backend-config` or a separate
-  # backend.tf that is NOT part of this credential-free authoring task.
+  # Increment 025: backend TYPE is now Founder-decided (GCS — Founder
+  # Backend Decision Closure, A1). This is a deliberately EMPTY, partial
+  # backend block — Terraform's own supported mechanism for supplying the
+  # concrete bucket/prefix values separately, per environment, via
+  # `-backend-config=...` flags or a `-backend-config=<file>.hcl` file
+  # (see environments/*.backend.hcl.example). No bucket name, project, or
+  # prefix is hardcoded here — those remain deployment-time facts until an
+  # operator supplies them, exactly as gateway_image_digest and project_id
+  # already do for this same configuration (variables.tf). The two state
+  # buckets referenced by that future -backend-config are themselves
+  # created by the separate infra/gcp-bootstrap root (see its README.md),
+  # never by this configuration.
+  backend "gcs" {}
 }

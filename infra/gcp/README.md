@@ -126,17 +126,52 @@ is currently nothing provider-side to revoke — this procedure becomes
 materially more important once Increment 011 introduces one, at which point
 the federation rule itself must also be revocable independently of GitHub.
 
+## Terraform state (Increment 025)
+
+**Terraform state uses GCS.** **State is owned by a dedicated GCP
+state-management project** — never the same project as this
+configuration's own `var.project_id`. **Staging and production use
+separate GCS buckets** — never one shared bucket. **Terraform state
+access uses a dedicated, least-privileged Terraform State Service
+Account** — never the Gateway Runtime SA, never the Gateway Deploy SA,
+never the Zone-2 `apps/api` Runtime SA, and no application/runtime
+identity is ever granted any permission on either state bucket. All four
+of these are Founder decisions (Founder Backend Decision Closure,
+Increment 024), not this configuration's own choice.
+
+The project, buckets, and state service account that back this
+configuration's `backend "gcs" {}` block (`versions.tf`) are created by a
+**separate Terraform root**, `infra/gcp-bootstrap/` — see its own
+`README.md` for the full bootstrap-lifecycle rationale (a backend cannot
+depend on itself, so bootstrap deliberately uses local state, applied
+once by an authorized operator, before this configuration's own backend
+can be initialized against the result). This configuration does not
+create its own backend's resources, and claiming those GCP resources
+exist merely because this Terraform source has been authored would be
+false — as of Increment 025, none of them exist (see that increment's
+report for the explicit resource-by-resource confirmation).
+
+`versions.tf`'s `backend "gcs" {}` block is deliberately empty (a
+partial/environment-agnostic configuration) — concrete bucket/prefix
+values are supplied per environment via `-backend-config`, using
+`environments/staging.backend.hcl.example` /
+`production.backend.hcl.example` as templates. Real values (the actual
+bucket names) only exist once `infra/gcp-bootstrap` has actually been
+applied — a separate, not-yet-authorized action.
+
 ## File layout
 
 | File | Purpose |
 |---|---|
-| `versions.tf` | Terraform + provider version pins |
+| `versions.tf` | Terraform + provider version pins, GCS backend type declaration (empty/partial — see "Terraform state" above) |
 | `providers.tf` | `google`/`google-beta` provider configuration (no embedded credentials — relies on the operator's own ADC at apply time) |
 | `variables.tf` | All environment-specific inputs |
 | `main.tf` | Required API enablement |
-| `iam.tf` | Build/Deploy/Runtime identity definitions and least-privilege bindings |
+| `iam.tf` | Build/Deploy/Runtime/Zone-2 identity definitions and least-privilege bindings |
 | `workload_identity.tf` | GitHub OIDC → GCP Workload Identity Federation, scoped to this exact repository and the `production` GitHub Environment claim |
 | `network.tf` | VPC, restrictive egress path, honest limitation documentation |
 | `logging.tf` | Cloud Audit Log configuration for the identities/services defined here |
+| `secret_manager.tf` | Zone-3 OpenAI provider credential container (Increment 020) |
 | `outputs.tf` | Non-secret identifiers needed to configure the GitHub Actions deployment workflow |
 | `environments/*.tfvars.example` | Safe placeholder values only — no real project IDs, no real digests |
+| `environments/*.backend.hcl.example` | Safe placeholder `-backend-config` values only — no real bucket names until `infra/gcp-bootstrap` has actually been applied |

@@ -1,0 +1,12 @@
+# SAFE PLACEHOLDER FILE — copy to a local, untracked "staging.backend.hcl"
+# and replace every value below, only AFTER infra/gcp-bootstrap has
+# actually been applied by an authorized operator (Increment 025 design
+# only — that apply is not authorized or performed by this record). The
+# real value comes from infra/gcp-bootstrap's own "staging_state_bucket"
+# output once it has actually run. Pass this file to
+# `terraform init -backend-config=staging.backend.hcl` for the staging
+# environment. Must never contain a real bucket name until the bucket
+# genuinely exists — this example file intentionally uses a placeholder.
+
+bucket = "REPLACE_WITH_STAGING_STATE_BUCKET_NAME"
+prefix = "decivexa-ai-gateway"

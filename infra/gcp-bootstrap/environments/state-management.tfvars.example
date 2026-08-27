@@ -1,0 +1,20 @@
+# SAFE PLACEHOLDER FILE — copy to a local, untracked "state-management.tfvars"
+# and replace every value below before running `terraform plan` against
+# this bootstrap root. This example file must never contain a real
+# project ID or any secret.
+#
+# This root is NOT per-environment: a single apply creates both the
+# staging_state and production_state buckets together, inside the one
+# dedicated state-management project (Founder Decision B1). Unlike
+# infra/gcp (which has separate staging.tfvars.example /
+# production.tfvars.example because it deploys a distinct Gateway per
+# environment), there is exactly one bootstrap tfvars file, because there
+# is exactly one dedicated state project and one apply of this root.
+
+state_project_id = "REPLACE_WITH_DEDICATED_STATE_MANAGEMENT_GCP_PROJECT_ID"
+region            = "europe-west3"
+
+# terraform_state_service_account_id, staging_bucket_suffix, and
+# production_bucket_suffix all have implementation-convention defaults
+# (see variables.tf) and do not need to be set here unless the Founder
+# later specifies different exact names.
