@@ -19,6 +19,7 @@ import type {
   CreateClaimInput,
   PersonalIntelligenceClaimRepository,
 } from "../../core/personal-intelligence/personal-intelligence-claim.repository";
+import type { EvidenceLifecycle, EvidenceProvenance, EvidenceVersion } from "../../core/evidence/evidence.model";
 
 function toDomainClaim(
   row: typeof personalIntelligenceClaims.$inferSelect,
@@ -48,6 +49,23 @@ function toDomainVersion(
     evidenceVersionId: row.evidenceVersionId,
     observedAt: row.observedAt,
     acceptedAt: row.acceptedAt,
+    createdAt: row.createdAt,
+  };
+}
+
+function toDomainEvidenceVersion(
+  row: typeof evidenceVersions.$inferSelect,
+): EvidenceVersion {
+  return {
+    id: row.id,
+    evidenceId: row.evidenceId,
+    version: row.version,
+    userId: row.userId,
+    provenance: row.provenance as EvidenceProvenance,
+    lifecycle: row.lifecycle as EvidenceLifecycle,
+    observedAt: row.observedAt,
+    acceptedAt: row.acceptedAt,
+    confidence: row.confidence,
     createdAt: row.createdAt,
   };
 }
@@ -325,5 +343,49 @@ export class DrizzlePersonalIntelligenceClaimRepository
       if (isUniqueViolation(error)) return null;
       throw error;
     }
+  }
+
+  // Read-only, IMPLEMENTATION_INCREMENT_PIC-D4-01
+  // (docs/gates/PERSONAL-INTELLIGENCE-D4-01-CONTRACT-AND-BUILD-AUTHORIZATION-RECORD.md).
+  // Returns every version row for this user - deliberately no lifecycle
+  // filter, unlike findActiveClaimVersionsForUser above, so a consumer can
+  // observe the full history (active, superseded, corrected, revoked,
+  // disputed), not only the current state. `since`, when supplied,
+  // excludes the reference row itself (strict greater-than) so repeated
+  // polling with the last-seen createdAt never re-returns it.
+  async findVersionsForUser(
+    userId: string,
+    since?: Date,
+  ): Promise<PersonalIntelligenceClaimVersion[]> {
+    const rows = await this.db
+      .select()
+      .from(personalIntelligenceClaimVersions)
+      .where(
+        and(
+          eq(personalIntelligenceClaimVersions.userId, userId),
+          since ? gt(personalIntelligenceClaimVersions.createdAt, since) : undefined,
+        ),
+      )
+      .orderBy(asc(personalIntelligenceClaimVersions.createdAt));
+
+    return rows.map(toDomainVersion);
+  }
+
+  // Read-only, IMPLEMENTATION_INCREMENT_PIC-D4-01. Resolves an
+  // EvidenceVersion by its own id, scoped to the requesting user - the
+  // same ownership fact already enforced inline in create() and
+  // appendCorrection() above, exposed here as its own read for
+  // inspectEvidence. Never writes to evidence_versions.
+  async findEvidenceVersionForUser(
+    userId: string,
+    evidenceVersionId: string,
+  ): Promise<EvidenceVersion | null> {
+    const [row] = await this.db
+      .select()
+      .from(evidenceVersions)
+      .where(and(eq(evidenceVersions.id, evidenceVersionId), eq(evidenceVersions.userId, userId)))
+      .limit(1);
+
+    return row ? toDomainEvidenceVersion(row) : null;
   }
 }

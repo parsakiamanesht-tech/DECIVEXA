@@ -10,6 +10,7 @@ import type {
   CreateClaimInput,
   PersonalIntelligenceClaimRepository,
 } from "../../core/personal-intelligence/personal-intelligence-claim.repository";
+import type { EvidenceVersion } from "../../core/evidence/evidence.model";
 
 class FakePersonalIntelligenceClaimRepository implements PersonalIntelligenceClaimRepository {
   public findClaimForUserCalls: Array<[string, string]> = [];
@@ -17,18 +18,29 @@ class FakePersonalIntelligenceClaimRepository implements PersonalIntelligenceCla
   public findActiveClaimVersionsForUserCalls: Array<[string, string | undefined]> = [];
   public createCalls: CreateClaimInput[] = [];
   public appendCorrectionCalls: AppendClaimCorrectionInput[] = [];
+  public findVersionsForUserCalls: Array<[string, Date | undefined]> = [];
+  public findEvidenceVersionForUserCalls: Array<[string, string]> = [];
 
   public findClaimForUserResult: PersonalIntelligenceClaim | null = null;
   public findClaimVersionForUserResult: PersonalIntelligenceClaimVersion | null = null;
   public findActiveClaimVersionsForUserResult: PersonalIntelligenceClaimVersion[] = [];
   public createResult: PersonalIntelligenceClaimVersion | undefined;
   public appendCorrectionResult: PersonalIntelligenceClaimVersion | null = null;
+  public findVersionsForUserResult: PersonalIntelligenceClaimVersion[] = [];
+  public findEvidenceVersionForUserResult: EvidenceVersion | null = null;
+  // findClaimVersionForUser is called twice by explainModelChange (once per
+  // requested version) and once by inspectEvidence - a single shared result
+  // field is not expressive enough for those tests, so they queue results
+  // here instead; when empty, findClaimVersionForUserResult is used as before.
+  public findClaimVersionForUserResultQueue: Array<PersonalIntelligenceClaimVersion | null> = [];
 
   public createRejection: Error | undefined;
   public appendCorrectionRejection: Error | undefined;
   public findClaimForUserRejection: Error | undefined;
   public findClaimVersionForUserRejection: Error | undefined;
   public findActiveClaimVersionsForUserRejection: Error | undefined;
+  public findVersionsForUserRejection: Error | undefined;
+  public findEvidenceVersionForUserRejection: Error | undefined;
 
   async findClaimForUser(userId: string, claimId: string): Promise<PersonalIntelligenceClaim | null> {
     this.findClaimForUserCalls.push([userId, claimId]);
@@ -43,6 +55,9 @@ class FakePersonalIntelligenceClaimRepository implements PersonalIntelligenceCla
   ): Promise<PersonalIntelligenceClaimVersion | null> {
     this.findClaimVersionForUserCalls.push([userId, claimId, version]);
     if (this.findClaimVersionForUserRejection) throw this.findClaimVersionForUserRejection;
+    if (this.findClaimVersionForUserResultQueue.length > 0) {
+      return this.findClaimVersionForUserResultQueue.shift() ?? null;
+    }
     return this.findClaimVersionForUserResult;
   }
 
@@ -68,6 +83,24 @@ class FakePersonalIntelligenceClaimRepository implements PersonalIntelligenceCla
     this.appendCorrectionCalls.push(input);
     if (this.appendCorrectionRejection) throw this.appendCorrectionRejection;
     return this.appendCorrectionResult;
+  }
+
+  async findVersionsForUser(
+    userId: string,
+    since?: Date,
+  ): Promise<PersonalIntelligenceClaimVersion[]> {
+    this.findVersionsForUserCalls.push([userId, since]);
+    if (this.findVersionsForUserRejection) throw this.findVersionsForUserRejection;
+    return this.findVersionsForUserResult;
+  }
+
+  async findEvidenceVersionForUser(
+    userId: string,
+    evidenceVersionId: string,
+  ): Promise<EvidenceVersion | null> {
+    this.findEvidenceVersionForUserCalls.push([userId, evidenceVersionId]);
+    if (this.findEvidenceVersionForUserRejection) throw this.findEvidenceVersionForUserRejection;
+    return this.findEvidenceVersionForUserResult;
   }
 }
 
@@ -285,4 +318,289 @@ test("findActiveClaimVersionsForUser propagates a repository rejection unchanged
   const useCase = new PersonalIntelligenceClaimUseCase(repository);
 
   await assert.rejects(() => useCase.findActiveClaimVersionsForUser("user-a"), rejection);
+});
+
+// ---------------------------------------------------------------------
+// IMPLEMENTATION_INCREMENT_PIC-D4-01 — detectChange, explainModelChange,
+// inspectEvidence (docs/gates/PERSONAL-INTELLIGENCE-D4-01-CONTRACT-AND-BUILD-AUTHORIZATION-RECORD.md)
+// ---------------------------------------------------------------------
+
+function makeClaimVersion(
+  overrides: Partial<PersonalIntelligenceClaimVersion> = {},
+): PersonalIntelligenceClaimVersion {
+  return {
+    id: "version-1",
+    claimId: "claim-1",
+    version: 1,
+    userId: "user-a",
+    valueKind: "text",
+    valueText: "likes dark mode",
+    provenance: "declared",
+    confidence: 0.8,
+    lifecycle: "active",
+    evidenceVersionId: null,
+    observedAt: new Date("2026-01-01T00:00:00Z"),
+    acceptedAt: new Date("2026-01-01T00:00:00Z"),
+    createdAt: new Date("2026-01-01T00:00:00Z"),
+    ...overrides,
+  };
+}
+
+function makeEvidenceVersion(
+  overrides: Partial<EvidenceVersion> = {},
+): EvidenceVersion {
+  return {
+    id: "evidence-version-1",
+    evidenceId: "evidence-1",
+    version: 1,
+    userId: "user-a",
+    provenance: "observed",
+    lifecycle: "active",
+    observedAt: new Date("2026-01-01T00:00:00Z"),
+    acceptedAt: new Date("2026-01-01T00:00:00Z"),
+    confidence: 0.7,
+    createdAt: new Date("2026-01-01T00:00:00Z"),
+    ...overrides,
+  };
+}
+
+// --- detectChange ---
+
+test("detectChange returns an explicit empty result when the user has no claim history", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.findVersionsForUserResult = [];
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const result = await useCase.detectChange("user-a");
+
+  assert.deepEqual(result, []);
+  assert.deepEqual(repository.findVersionsForUserCalls, [["user-a", undefined]]);
+});
+
+test("detectChange returns the repository's ordered version history unchanged for a single version", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const only = makeClaimVersion();
+  repository.findVersionsForUserResult = [only];
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const result = await useCase.detectChange("user-a");
+
+  assert.deepEqual(result, [only]);
+});
+
+test("detectChange preserves ordering and includes multiple versions spanning every lifecycle state", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const versions = [
+    makeClaimVersion({ id: "v1", version: 1, lifecycle: "active" }),
+    makeClaimVersion({ id: "v2", version: 2, lifecycle: "superseded" }),
+    makeClaimVersion({ id: "v3", version: 3, lifecycle: "corrected" }),
+    makeClaimVersion({ id: "v4", version: 4, lifecycle: "revoked" }),
+    makeClaimVersion({ id: "v5", version: 5, lifecycle: "disputed" }),
+  ];
+  repository.findVersionsForUserResult = versions;
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const result = await useCase.detectChange("user-a");
+
+  assert.deepEqual(result, versions);
+  assert.deepEqual(
+    result.map((v) => v.lifecycle),
+    ["active", "superseded", "corrected", "revoked", "disputed"],
+  );
+});
+
+test("detectChange forwards an explicit `since` reference point to the repository unchanged", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const since = new Date("2026-02-01T00:00:00Z");
+  repository.findVersionsForUserResult = [];
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.detectChange("user-a", since);
+
+  assert.deepEqual(repository.findVersionsForUserCalls, [["user-a", since]]);
+});
+
+test("detectChange only ever queries the repository for the requesting user's own userId", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.findVersionsForUserResult = [];
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.detectChange("user-a");
+  await useCase.detectChange("user-b");
+
+  assert.deepEqual(repository.findVersionsForUserCalls, [
+    ["user-a", undefined],
+    ["user-b", undefined],
+  ]);
+});
+
+test("detectChange propagates a repository rejection unchanged, without being swallowed or replaced", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const rejection = new Error("connection lost");
+  repository.findVersionsForUserRejection = rejection;
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await assert.rejects(() => useCase.detectChange("user-a"), rejection);
+});
+
+// --- explainModelChange ---
+
+test("explainModelChange returns a grounded diff for two existing versions of the same claim", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const from = makeClaimVersion({ id: "v1", version: 1, valueText: "old value" });
+  const to = makeClaimVersion({ id: "v2", version: 2, valueText: "new value" });
+  repository.findClaimVersionForUserResultQueue = [from, to];
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const result = await useCase.explainModelChange("user-a", "claim-1", 1, 2);
+
+  assert.ok(result);
+  assert.equal(result.claimId, "claim-1");
+  assert.equal(result.fromVersion, from);
+  assert.equal(result.toVersion, to);
+  assert.deepEqual(result.changedFields, ["valueText"]);
+});
+
+test("explainModelChange reports no changed fields between two identical versions", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const version = makeClaimVersion();
+  repository.findClaimVersionForUserResultQueue = [version, version];
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const result = await useCase.explainModelChange("user-a", "claim-1", 1, 1);
+
+  assert.ok(result);
+  assert.deepEqual(result.changedFields, []);
+});
+
+test("explainModelChange looks up both versions scoped to the same claimId, enforcing same-claim comparison by construction", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.findClaimVersionForUserResultQueue = [makeClaimVersion(), makeClaimVersion({ version: 2 })];
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.explainModelChange("user-a", "claim-1", 1, 2);
+
+  assert.deepEqual(repository.findClaimVersionForUserCalls, [
+    ["user-a", "claim-1", 1],
+    ["user-a", "claim-1", 2],
+  ]);
+});
+
+test("explainModelChange returns null, not a fabricated explanation, when the fromVersion does not exist for this user", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.findClaimVersionForUserResultQueue = [null, makeClaimVersion({ version: 2 })];
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const result = await useCase.explainModelChange("user-a", "claim-1", 1, 2);
+
+  assert.equal(result, null);
+});
+
+test("explainModelChange returns null when the toVersion does not exist for this user (cross-user isolation)", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  // Simulates another user's version: the repository itself enforces
+  // userId scoping and would return null for a version it does not own.
+  repository.findClaimVersionForUserResultQueue = [makeClaimVersion(), null];
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const result = await useCase.explainModelChange("user-a", "claim-1", 1, 2);
+
+  assert.equal(result, null);
+});
+
+test("explainModelChange propagates a repository rejection unchanged, without being swallowed or replaced", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const rejection = new Error("connection lost");
+  repository.findClaimVersionForUserRejection = rejection;
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await assert.rejects(() => useCase.explainModelChange("user-a", "claim-1", 1, 2), rejection);
+});
+
+// --- inspectEvidence ---
+
+test("inspectEvidence returns the linked evidence version when evidenceVersionId resolves", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const claimVersion = makeClaimVersion({ evidenceVersionId: "evidence-version-1" });
+  const evidence = makeEvidenceVersion();
+  repository.findClaimVersionForUserResultQueue = [claimVersion];
+  repository.findEvidenceVersionForUserResult = evidence;
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const result = await useCase.inspectEvidence("user-a", "claim-1", 1);
+
+  assert.deepEqual(result, { status: "linked", evidence });
+  assert.deepEqual(repository.findEvidenceVersionForUserCalls, [["user-a", "evidence-version-1"]]);
+});
+
+test("inspectEvidence honestly reports not_linked when evidenceVersionId is null, without fabricating evidence", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const claimVersion = makeClaimVersion({ evidenceVersionId: null });
+  repository.findClaimVersionForUserResultQueue = [claimVersion];
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const result = await useCase.inspectEvidence("user-a", "claim-1", 1);
+
+  assert.deepEqual(result, { status: "not_linked" });
+  assert.equal(repository.findEvidenceVersionForUserCalls.length, 0);
+});
+
+test("inspectEvidence reports evidence_missing for a dangling reference, without repairing or deleting anything", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const claimVersion = makeClaimVersion({ evidenceVersionId: "evidence-version-missing" });
+  repository.findClaimVersionForUserResultQueue = [claimVersion];
+  repository.findEvidenceVersionForUserResult = null;
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const result = await useCase.inspectEvidence("user-a", "claim-1", 1);
+
+  assert.deepEqual(result, { status: "evidence_missing" });
+  assert.equal(repository.createCalls.length, 0);
+  assert.equal(repository.appendCorrectionCalls.length, 0);
+});
+
+test("inspectEvidence reports claim_version_not_found when the claim version does not exist for this user", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.findClaimVersionForUserResultQueue = [null];
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const result = await useCase.inspectEvidence("user-a", "claim-1", 1);
+
+  assert.deepEqual(result, { status: "claim_version_not_found" });
+  assert.equal(repository.findEvidenceVersionForUserCalls.length, 0);
+});
+
+test("inspectEvidence resolves evidence using the same userId as the claim lookup (authorization isolation)", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const claimVersion = makeClaimVersion({ userId: "user-a", evidenceVersionId: "evidence-version-1" });
+  repository.findClaimVersionForUserResultQueue = [claimVersion];
+  repository.findEvidenceVersionForUserResult = makeEvidenceVersion();
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.inspectEvidence("user-a", "claim-1", 1);
+
+  assert.deepEqual(repository.findClaimVersionForUserCalls, [["user-a", "claim-1", 1]]);
+  assert.deepEqual(repository.findEvidenceVersionForUserCalls, [["user-a", "evidence-version-1"]]);
+});
+
+test("inspectEvidence performs no write operations - purely read-only", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const claimVersion = makeClaimVersion({ evidenceVersionId: "evidence-version-1" });
+  repository.findClaimVersionForUserResultQueue = [claimVersion];
+  repository.findEvidenceVersionForUserResult = makeEvidenceVersion();
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.inspectEvidence("user-a", "claim-1", 1);
+
+  assert.equal(repository.createCalls.length, 0);
+  assert.equal(repository.appendCorrectionCalls.length, 0);
+});
+
+test("inspectEvidence propagates a repository rejection unchanged, without being swallowed or replaced", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const rejection = new Error("connection lost");
+  repository.findClaimVersionForUserRejection = rejection;
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await assert.rejects(() => useCase.inspectEvidence("user-a", "claim-1", 1), rejection);
 });
