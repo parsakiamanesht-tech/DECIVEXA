@@ -113,6 +113,17 @@ export const personalIntelligenceClaimVersions = decivexa.table(
     evidenceLinkageState: text("evidence_linkage_state")
       .$type<PersonalIntelligenceEvidenceLinkageState>()
       .notNull(),
+    // Temporal Validity axis (Implementation Increment Contract,
+    // docs/gates/PERSONAL-INTELLIGENCE-TEMPORAL-VALIDITY-IMPLEMENTATION-INCREMENT-CONTRACT.md
+    // §9). Both nullable, no defaults - a database default or an
+    // application-generated "now" fallback would silently manufacture a
+    // value the caller never chose, violating the "null means only 'not
+    // established'" semantics this axis exists to guarantee. Populated
+    // only by explicit caller input on create()/appendCorrection()
+    // (Option A - Always Explicit) - never derived from observedAt,
+    // acceptedAt, createdAt, lifecycle, evidence, or provenance.
+    effectiveFrom: timestamp("effective_from", { withTimezone: true }),
+    effectiveTo: timestamp("effective_to", { withTimezone: true }),
     observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
     acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),

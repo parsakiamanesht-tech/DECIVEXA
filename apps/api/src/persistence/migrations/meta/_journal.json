@@ -85,6 +85,13 @@
       "when": 1787916334447,
       "tag": "0011_pic_claim_ontology_option2",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1787926444773,
+      "tag": "0012_temporal_validity_effective_from_to",
+      "breakpoints": true
     }
   ]
 }

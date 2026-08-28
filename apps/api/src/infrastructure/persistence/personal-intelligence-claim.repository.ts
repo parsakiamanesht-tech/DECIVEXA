@@ -63,6 +63,12 @@ function toDomainVersion(
     // valid, owned inferenceId; null otherwise.
     inferenceId: row.inferenceId,
     evidenceLinkageState: row.evidenceLinkageState as PersonalIntelligenceEvidenceLinkageState,
+    // Temporal Validity axis (Implementation Increment Contract,
+    // docs/gates/PERSONAL-INTELLIGENCE-TEMPORAL-VALIDITY-IMPLEMENTATION-INCREMENT-CONTRACT.md).
+    // Set only from explicit caller input on create()/appendCorrection();
+    // null means "not established," never "always"/"now".
+    effectiveFrom: row.effectiveFrom,
+    effectiveTo: row.effectiveTo,
     observedAt: row.observedAt,
     acceptedAt: row.acceptedAt,
     createdAt: row.createdAt,
@@ -169,6 +175,8 @@ export class DrizzlePersonalIntelligenceClaimRepository
         evidenceVersionId: personalIntelligenceClaimVersions.evidenceVersionId,
         inferenceId: personalIntelligenceClaimVersions.inferenceId,
         evidenceLinkageState: personalIntelligenceClaimVersions.evidenceLinkageState,
+        effectiveFrom: personalIntelligenceClaimVersions.effectiveFrom,
+        effectiveTo: personalIntelligenceClaimVersions.effectiveTo,
         observedAt: personalIntelligenceClaimVersions.observedAt,
         acceptedAt: personalIntelligenceClaimVersions.acceptedAt,
         createdAt: personalIntelligenceClaimVersions.createdAt,
@@ -240,6 +248,8 @@ export class DrizzlePersonalIntelligenceClaimRepository
             evidenceVersionId: null,
             inferenceId: null,
             evidenceLinkageState: input.evidenceLinkageState,
+            effectiveFrom: input.effectiveFrom,
+            effectiveTo: input.effectiveTo,
             observedAt: input.observedAt,
             acceptedAt: input.acceptedAt,
             createdAt: input.now,
@@ -272,6 +282,8 @@ export class DrizzlePersonalIntelligenceClaimRepository
                 evidenceVersionId: sql<string | null>`null`.as("evidence_version_id"),
                 inferenceId: personalIntelligenceInferences.id,
                 evidenceLinkageState: sql<string>`${input.evidenceLinkageState}`.as("evidence_linkage_state"),
+                effectiveFrom: sql<Date | null>`${input.effectiveFrom}`.as("effective_from"),
+                effectiveTo: sql<Date | null>`${input.effectiveTo}`.as("effective_to"),
                 observedAt: sql<Date>`${input.observedAt}`.as("observed_at"),
                 acceptedAt: sql<Date>`${input.acceptedAt}`.as("accepted_at"),
                 createdAt: sql<Date>`${input.now}`.as("created_at"),
@@ -319,6 +331,8 @@ export class DrizzlePersonalIntelligenceClaimRepository
               evidenceVersionId: evidenceVersions.id,
               inferenceId: sql<string | null>`${inferenceId}`.as("inference_id"),
               evidenceLinkageState: sql<string>`${input.evidenceLinkageState}`.as("evidence_linkage_state"),
+              effectiveFrom: sql<Date | null>`${input.effectiveFrom}`.as("effective_from"),
+              effectiveTo: sql<Date | null>`${input.effectiveTo}`.as("effective_to"),
               observedAt: sql<Date>`${input.observedAt}`.as("observed_at"),
               acceptedAt: sql<Date>`${input.acceptedAt}`.as("accepted_at"),
               createdAt: sql<Date>`${input.now}`.as("created_at"),
@@ -412,6 +426,15 @@ export class DrizzlePersonalIntelligenceClaimRepository
               // check below for the corresponding validation.
               inferenceId: sql<string | null>`${input.inferenceId}`.as("inference_id"),
               evidenceLinkageState: sql<string>`${input.evidenceLinkageState}`.as("evidence_linkage_state"),
+              // Temporal Validity axis: always taken fresh from this
+              // input, exactly like inferenceId above - NEVER sourced from
+              // personalIntelligenceClaimVersions.effectiveFrom/.effectiveTo
+              // of the matched prior row (Option A - Always Explicit,
+              // Founder-approved, Contract §6). This makes inheritance
+              // structurally impossible: there is no reference anywhere in
+              // this projection to the prior row's temporal columns.
+              effectiveFrom: sql<Date | null>`${input.effectiveFrom}`.as("effective_from"),
+              effectiveTo: sql<Date | null>`${input.effectiveTo}`.as("effective_to"),
               observedAt: sql<Date>`${input.observedAt}`.as("observed_at"),
               acceptedAt: sql<Date>`${input.acceptedAt}`.as("accepted_at"),
               createdAt: sql<Date>`${input.now}`.as("created_at"),

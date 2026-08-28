@@ -77,6 +77,19 @@ export type PersonalIntelligenceClaimVersion = Readonly<{
   // path (never mutated afterward, matching every other field on this
   // immutable row) - "linked" iff evidenceVersionId is non-null.
   evidenceLinkageState: PersonalIntelligenceEvidenceLinkageState;
+  // Temporal Validity axis (Implementation Increment Contract,
+  // docs/gates/PERSONAL-INTELLIGENCE-TEMPORAL-VALIDITY-IMPLEMENTATION-INCREMENT-CONTRACT.md).
+  // Answers "when was the underlying fact actually true," distinct from
+  // observedAt/acceptedAt/createdAt below (which answer "when did
+  // DECIVEXA learn/accept/record this"), from lifecycle (epistemic/
+  // workflow state), and from evidence/provenance. `null` means only
+  // "not established" - never "always", "forever", "now", or "inherit
+  // from the previous version." Always an explicit, caller-supplied
+  // value on every create()/appendCorrection() call (Option A - Always
+  // Explicit, Founder-approved) - never derived, defaulted, or carried
+  // forward from a prior ClaimVersion.
+  effectiveFrom: Date | null;
+  effectiveTo: Date | null;
   observedAt: Date;
   acceptedAt: Date;
   createdAt: Date;

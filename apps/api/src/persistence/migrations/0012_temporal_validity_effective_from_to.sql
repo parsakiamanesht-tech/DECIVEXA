@@ -1,0 +1,2 @@
+ALTER TABLE "decivexa"."personal_intelligence_claim_versions" ADD COLUMN "effective_from" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "decivexa"."personal_intelligence_claim_versions" ADD COLUMN "effective_to" timestamp with time zone;

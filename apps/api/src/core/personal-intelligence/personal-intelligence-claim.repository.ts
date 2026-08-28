@@ -37,6 +37,16 @@ export type CreateClaimInput = Readonly<{
   // Founder-approved: any status - proposed/confirmed/rejected/disputed/
   // stale - may be referenced).
   inferenceId: string | null;
+  // Temporal Validity axis (Implementation Increment Contract,
+  // docs/gates/PERSONAL-INTELLIGENCE-TEMPORAL-VALIDITY-IMPLEMENTATION-INCREMENT-CONTRACT.md
+  // §6, Option A - Always Explicit, Founder-approved). Required,
+  // non-optional, `Date | null` - the caller must always make an
+  // explicit choice; `null` means only "not established," never
+  // "always"/"now". Never defaulted or inherited by this input type
+  // itself (it has no "previous version" to inherit from - full
+  // explicit replacement is the only shape this field has ever had).
+  effectiveFrom: Date | null;
+  effectiveTo: Date | null;
   observedAt: Date;
   acceptedAt: Date;
   now: Date;
@@ -63,6 +73,16 @@ export type AppendClaimCorrectionInput = Readonly<{
   // inferenceId again; omitting it (passing null) disassociates the new
   // version even if the prior version had one.
   inferenceId: string | null;
+  // See CreateClaimInput.effectiveFrom/.effectiveTo (Option A - Always
+  // Explicit). Always taken fresh from this input on every correction -
+  // NEVER copied, inherited, or carried forward from the prior version's
+  // effectiveFrom/effectiveTo, structurally identical to how inferenceId
+  // already behaves above. A caller who wants the correction to keep the
+  // same temporal window must pass those same values again explicitly;
+  // omitting either (passing null) clears it on the new version even if
+  // the prior version had a known value.
+  effectiveFrom: Date | null;
+  effectiveTo: Date | null;
   observedAt: Date;
   acceptedAt: Date;
   now: Date;

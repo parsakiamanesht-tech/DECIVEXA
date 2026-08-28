@@ -117,6 +117,8 @@ function makeCreateInput(): CreateClaimInput {
     evidenceVersionId: null,
     evidenceLinkageState: "linkage_pending",
     inferenceId: null,
+    effectiveFrom: null,
+    effectiveTo: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     now: new Date(),
@@ -137,6 +139,8 @@ function makeAppendCorrectionInput(): AppendClaimCorrectionInput {
     evidenceVersionId: null,
     evidenceLinkageState: "linkage_pending",
     inferenceId: null,
+    effectiveFrom: null,
+    effectiveTo: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     now: new Date(),
@@ -177,6 +181,8 @@ test("create delegates to repository.create exactly once and returns its result 
     evidenceVersionId: null,
     inferenceId: null,
     evidenceLinkageState: "linkage_pending",
+    effectiveFrom: null,
+    effectiveTo: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     createdAt: new Date(),
@@ -208,6 +214,8 @@ test("appendCorrection delegates to repository.appendCorrection exactly once and
     evidenceVersionId: null,
     inferenceId: null,
     evidenceLinkageState: "linkage_pending",
+    effectiveFrom: null,
+    effectiveTo: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     createdAt: new Date(),
@@ -258,6 +266,8 @@ test("findClaimVersionForUser delegates to repository.findClaimVersionForUser ex
     evidenceVersionId: null,
     inferenceId: null,
     evidenceLinkageState: "linkage_pending",
+    effectiveFrom: null,
+    effectiveTo: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     createdAt: new Date(),
@@ -351,6 +361,8 @@ function makeClaimVersion(
     evidenceVersionId: null,
     inferenceId: null,
     evidenceLinkageState: "linkage_pending",
+    effectiveFrom: null,
+    effectiveTo: null,
     observedAt: new Date("2026-01-01T00:00:00Z"),
     acceptedAt: new Date("2026-01-01T00:00:00Z"),
     createdAt: new Date("2026-01-01T00:00:00Z"),
@@ -645,6 +657,8 @@ test("create passes a caller-supplied inferenceId through to repository.create u
     evidenceVersionId: null,
     inferenceId: "inference-1",
     evidenceLinkageState: "linkage_pending",
+    effectiveFrom: null,
+    effectiveTo: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     createdAt: new Date(),
@@ -675,6 +689,8 @@ test("create passes a null inferenceId through to repository.create unchanged (n
     evidenceVersionId: null,
     inferenceId: null,
     evidenceLinkageState: "linkage_pending",
+    effectiveFrom: null,
+    effectiveTo: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     createdAt: new Date(),
@@ -701,6 +717,8 @@ test("appendCorrection passes a caller-supplied inferenceId through to repositor
     evidenceVersionId: null,
     inferenceId: "inference-1",
     evidenceLinkageState: "linkage_pending",
+    effectiveFrom: null,
+    effectiveTo: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     createdAt: new Date(),
@@ -745,6 +763,8 @@ test("linking a Claim to an Inference via inferenceId leaves every other field o
     evidenceVersionId: null,
     inferenceId: "inference-1",
     evidenceLinkageState: "linkage_pending",
+    effectiveFrom: null,
+    effectiveTo: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     createdAt: new Date(),
@@ -761,4 +781,167 @@ test("linking a Claim to an Inference via inferenceId leaves every other field o
   assert.equal(callWithout?.confidence, callWith?.confidence);
   assert.equal(callWithout?.evidenceLinkageState, callWith?.evidenceLinkageState);
   assert.notEqual(callWithout?.inferenceId, callWith?.inferenceId);
+});
+
+// ---------------------------------------------------------------------
+// Temporal Validity axis
+// (docs/gates/PERSONAL-INTELLIGENCE-TEMPORAL-VALIDITY-IMPLEMENTATION-INCREMENT-CONTRACT.md,
+// Option A - Always Explicit, Founder-approved). Ownership/concurrency
+// enforcement itself lives in the Drizzle repository (untestable without
+// a live PostgreSQL instance, unavailable in this environment - see the
+// Contract's §18 Runtime Verification Plan). What is testable here, at
+// the use-case delegation layer, is that effectiveFrom/effectiveTo are
+// passed through to the repository exactly as supplied - never
+// defaulted, never inherited from a prior version, never mutating any
+// other field on the same call.
+// ---------------------------------------------------------------------
+
+test("create passes explicit bounded effectiveFrom/effectiveTo values through to repository.create unchanged", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const effectiveFrom = new Date("2026-03-01T00:00:00Z");
+  const effectiveTo = new Date("2026-06-01T00:00:00Z");
+  repository.createResult = { ...makeClaimVersion(), effectiveFrom, effectiveTo };
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.create({ ...makeCreateInput(), effectiveFrom, effectiveTo });
+
+  assert.equal(repository.createCalls[0]?.effectiveFrom, effectiveFrom);
+  assert.equal(repository.createCalls[0]?.effectiveTo, effectiveTo);
+});
+
+test("create passes both effectiveFrom and effectiveTo as null through unchanged (wholly unknown temporal validity)", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.createResult = makeClaimVersion();
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.create(makeCreateInput());
+
+  assert.equal(repository.createCalls[0]?.effectiveFrom, null);
+  assert.equal(repository.createCalls[0]?.effectiveTo, null);
+});
+
+test("create passes only effectiveFrom set through unchanged (open-ended interval)", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const effectiveFrom = new Date("2026-03-01T00:00:00Z");
+  repository.createResult = { ...makeClaimVersion(), effectiveFrom };
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.create({ ...makeCreateInput(), effectiveFrom, effectiveTo: null });
+
+  assert.equal(repository.createCalls[0]?.effectiveFrom, effectiveFrom);
+  assert.equal(repository.createCalls[0]?.effectiveTo, null);
+});
+
+test("create passes only effectiveTo set through unchanged", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const effectiveTo = new Date("2026-06-01T00:00:00Z");
+  repository.createResult = { ...makeClaimVersion(), effectiveTo };
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.create({ ...makeCreateInput(), effectiveFrom: null, effectiveTo });
+
+  assert.equal(repository.createCalls[0]?.effectiveFrom, null);
+  assert.equal(repository.createCalls[0]?.effectiveTo, effectiveTo);
+});
+
+test("appendCorrection passes explicit effectiveFrom/effectiveTo through to repository.appendCorrection unchanged", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.appendCorrectionResult = makeClaimVersion({ version: 2 });
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+  const effectiveFrom = new Date("2026-03-01T00:00:00Z");
+  const effectiveTo = new Date("2026-06-01T00:00:00Z");
+
+  await useCase.appendCorrection({ ...makeAppendCorrectionInput(), effectiveFrom, effectiveTo });
+
+  assert.equal(repository.appendCorrectionCalls[0]?.effectiveFrom, effectiveFrom);
+  assert.equal(repository.appendCorrectionCalls[0]?.effectiveTo, effectiveTo);
+});
+
+test("appendCorrection with explicit null/null does not inherit the prior version's known effectiveFrom/effectiveTo", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  // A "prior version" the caller happens to know about, with known
+  // temporal bounds - the use case never reads this, and this test
+  // proves the correction input alone determines the outcome.
+  const priorVersion = makeClaimVersion({
+    effectiveFrom: new Date("2025-01-01T00:00:00Z"),
+    effectiveTo: new Date("2025-06-01T00:00:00Z"),
+  });
+  repository.findClaimVersionForUserResult = priorVersion;
+  repository.appendCorrectionResult = makeClaimVersion({ version: 2 });
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.appendCorrection({ ...makeAppendCorrectionInput(), effectiveFrom: null, effectiveTo: null });
+
+  assert.equal(repository.appendCorrectionCalls[0]?.effectiveFrom, null);
+  assert.equal(repository.appendCorrectionCalls[0]?.effectiveTo, null);
+});
+
+test("appendCorrection proves no inheritance generally - the correction input alone determines the call, independent of any prior-version concept", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.appendCorrectionResult = makeClaimVersion({ version: 2 });
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  // makeAppendCorrectionInput() already supplies effectiveFrom: null,
+  // effectiveTo: null - the point of this test is that the use case's
+  // create/appendCorrection methods never look up, read, or reference a
+  // "prior version" at all when forwarding the call, so carry-forward is
+  // structurally impossible here, not merely untriggered by this test's
+  // fixture (mirrors the equivalent inferenceId no-carry-forward test
+  // above).
+  await useCase.appendCorrection(makeAppendCorrectionInput());
+
+  assert.equal(repository.findClaimVersionForUserCalls.length, 0);
+  assert.equal(repository.appendCorrectionCalls[0]?.effectiveFrom, null);
+  assert.equal(repository.appendCorrectionCalls[0]?.effectiveTo, null);
+});
+
+test("appendCorrection changing only effectiveTo still requires effectiveFrom to be explicitly restated", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.appendCorrectionResult = makeClaimVersion({ version: 2 });
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+  const effectiveFrom = new Date("2026-03-01T00:00:00Z");
+  const newEffectiveTo = new Date("2026-07-01T00:00:00Z");
+
+  await useCase.appendCorrection({
+    ...makeAppendCorrectionInput(),
+    effectiveFrom,
+    effectiveTo: newEffectiveTo,
+  });
+
+  assert.equal(repository.appendCorrectionCalls[0]?.effectiveFrom, effectiveFrom);
+  assert.equal(repository.appendCorrectionCalls[0]?.effectiveTo, newEffectiveTo);
+});
+
+test("linking a Claim to a temporal validity window leaves every other field of the call unchanged", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.createResult = makeClaimVersion();
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const withoutTemporal = makeCreateInput();
+  const withTemporal = {
+    ...makeCreateInput(),
+    effectiveFrom: new Date("2026-03-01T00:00:00Z"),
+    effectiveTo: new Date("2026-06-01T00:00:00Z"),
+  };
+  await useCase.create(withoutTemporal);
+  await useCase.create(withTemporal);
+
+  const [callWithout, callWith] = repository.createCalls;
+  assert.equal(callWithout?.provenance, callWith?.provenance);
+  assert.equal(callWithout?.confidence, callWith?.confidence);
+  assert.equal(callWithout?.evidenceLinkageState, callWith?.evidenceLinkageState);
+  assert.equal(callWithout?.inferenceId, callWith?.inferenceId);
+  assert.notEqual(callWithout?.effectiveFrom, callWith?.effectiveFrom);
+});
+
+test("a read-back ClaimVersion honestly reports null/null when temporal validity was never established, never a fabricated value", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const version = makeClaimVersion({ effectiveFrom: null, effectiveTo: null });
+  repository.findClaimVersionForUserResult = version;
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const result = await useCase.findClaimVersionForUser("user-a", "claim-1", 1);
+
+  assert.equal(result?.effectiveFrom, null);
+  assert.equal(result?.effectiveTo, null);
 });
