@@ -2,6 +2,7 @@ import type {
   PersonalIntelligenceClaim,
   PersonalIntelligenceClaimType,
   PersonalIntelligenceClaimVersion,
+  PersonalIntelligenceEvidenceLinkageState,
   PersonalIntelligenceLifecycle,
   PersonalIntelligenceProvenance,
   PersonalIntelligenceValueKind,
@@ -18,6 +19,12 @@ export type CreateClaimInput = Readonly<{
   provenance: PersonalIntelligenceProvenance;
   confidence: number;
   evidenceVersionId: string | null;
+  // PIC Claim Ontology / Taxonomy Option 2 (Implementation Increment
+  // Contract §3.1). Caller-declared; the database enforces the mandatory
+  // 1:1 coupling with evidenceVersionId ("linked" iff non-null) via a
+  // check constraint - an inconsistent combination is rejected at write
+  // time, not silently accepted or silently corrected.
+  evidenceLinkageState: PersonalIntelligenceEvidenceLinkageState;
   observedAt: Date;
   acceptedAt: Date;
   now: Date;
@@ -34,6 +41,9 @@ export type AppendClaimCorrectionInput = Readonly<{
   confidence: number;
   lifecycle: PersonalIntelligenceLifecycle;
   evidenceVersionId: string | null;
+  // See CreateClaimInput.evidenceLinkageState - same coupling requirement
+  // applies to every appended correction.
+  evidenceLinkageState: PersonalIntelligenceEvidenceLinkageState;
   observedAt: Date;
   acceptedAt: Date;
   now: Date;

@@ -18,6 +18,7 @@ function makeVersion(
     lifecycle: "active",
     evidenceVersionId: null,
     inferenceId: null,
+    evidenceLinkageState: "linkage_pending",
     observedAt: new Date("2026-01-01T00:00:00Z"),
     acceptedAt: new Date("2026-01-01T00:00:00Z"),
     createdAt: new Date("2026-01-01T00:00:00Z"),

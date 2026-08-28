@@ -10,6 +10,7 @@ import type {
   PersonalIntelligenceClaim,
   PersonalIntelligenceClaimType,
   PersonalIntelligenceClaimVersion,
+  PersonalIntelligenceEvidenceLinkageState,
   PersonalIntelligenceProvenance,
   PersonalIntelligenceValueKind,
   PersonalIntelligenceLifecycle,
@@ -52,6 +53,7 @@ function toDomainVersion(
     // that sets it; mapped through here now purely so the domain type is
     // read-complete.
     inferenceId: row.inferenceId,
+    evidenceLinkageState: row.evidenceLinkageState as PersonalIntelligenceEvidenceLinkageState,
     observedAt: row.observedAt,
     acceptedAt: row.acceptedAt,
     createdAt: row.createdAt,
@@ -157,6 +159,7 @@ export class DrizzlePersonalIntelligenceClaimRepository
         lifecycle: personalIntelligenceClaimVersions.lifecycle,
         evidenceVersionId: personalIntelligenceClaimVersions.evidenceVersionId,
         inferenceId: personalIntelligenceClaimVersions.inferenceId,
+        evidenceLinkageState: personalIntelligenceClaimVersions.evidenceLinkageState,
         observedAt: personalIntelligenceClaimVersions.observedAt,
         acceptedAt: personalIntelligenceClaimVersions.acceptedAt,
         createdAt: personalIntelligenceClaimVersions.createdAt,
@@ -216,6 +219,7 @@ export class DrizzlePersonalIntelligenceClaimRepository
             // field-level comment); always null until a future,
             // separately-scoped promotion increment.
             inferenceId: null,
+            evidenceLinkageState: input.evidenceLinkageState,
             observedAt: input.observedAt,
             acceptedAt: input.acceptedAt,
             createdAt: input.now,
@@ -249,6 +253,7 @@ export class DrizzlePersonalIntelligenceClaimRepository
               evidenceVersionId: evidenceVersions.id,
               // Additive, D3 - no write path sets this yet; always null.
               inferenceId: sql<string | null>`null`.as("inference_id"),
+              evidenceLinkageState: sql<string>`${input.evidenceLinkageState}`.as("evidence_linkage_state"),
               observedAt: sql<Date>`${input.observedAt}`.as("observed_at"),
               acceptedAt: sql<Date>`${input.acceptedAt}`.as("accepted_at"),
               createdAt: sql<Date>`${input.now}`.as("created_at"),
@@ -315,6 +320,7 @@ export class DrizzlePersonalIntelligenceClaimRepository
               // Correction never inherits the prior version's inferenceId
               // by this increment's scope (§H of the Contract).
               inferenceId: sql<string | null>`null`.as("inference_id"),
+              evidenceLinkageState: sql<string>`${input.evidenceLinkageState}`.as("evidence_linkage_state"),
               observedAt: sql<Date>`${input.observedAt}`.as("observed_at"),
               acceptedAt: sql<Date>`${input.acceptedAt}`.as("accepted_at"),
               createdAt: sql<Date>`${input.now}`.as("created_at"),

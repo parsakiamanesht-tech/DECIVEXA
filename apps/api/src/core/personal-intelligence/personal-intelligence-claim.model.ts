@@ -20,6 +20,31 @@ export type PersonalIntelligenceLifecycle =
   | "revoked"
   | "disputed";
 
+// PIC Claim Ontology / Taxonomy, Option 2 (Decision Record §8; Implementation
+// Increment Contract §3.1, docs/gates/PERSONAL-INTELLIGENCE-PIC-CLAIM-ONTOLOGY-TAXONOMY-*).
+// Distinguishes three previously-conflated cases that a bare, nullable
+// evidenceVersionId could not express: evidence actually linked; the claim
+// intentionally self-reported and not expected to carry evidence; or
+// evidence linkage genuinely pending. Coupled 1:1 with evidenceVersionId
+// ("linked" iff evidenceVersionId is non-null) - enforced at the database
+// layer, not merely by convention (see the schema's check constraint).
+export type PersonalIntelligenceEvidenceLinkageState =
+  | "linked"
+  | "self_reported_no_evidence_required"
+  | "linkage_pending";
+
+// Subject / Attribute / Value (Decision Record §9; Implementation Increment
+// Contract §3.2). "Subject" is the ontology's answer to "what person/entity
+// is this claim about." No new field is introduced to represent it: under
+// the current DECIVEXA product invariant, every PersonalIntelligenceClaim
+// is about its owning user with no exception, so `userId` (below, and on
+// PersonalIntelligenceClaimVersion) already IS the Subject - Attribute/
+// Domain is `claimType`, and Value is `valueText` on the version. This
+// mapping is documentation-only, per the Contract: it does not authorize a
+// Subject entity, registry, or multi-subject support. If a future
+// requirement introduces claims about another person, organization,
+// object, relationship, or external subject, that is a separate, later
+// Founder decision - not implied or foreclosed here.
 export type PersonalIntelligenceClaim = Readonly<{
   id: string;
   userId: string;
@@ -43,6 +68,11 @@ export type PersonalIntelligenceClaimVersion = Readonly<{
   // §F/§N): set only by an explicit, separately-scoped promotion write
   // path not yet implemented by this increment - always null until then.
   inferenceId: string | null;
+  // Additive, PIC Claim Ontology / Taxonomy Option 2 (Implementation
+  // Increment Contract §3.1). Set at version-creation time by the write
+  // path (never mutated afterward, matching every other field on this
+  // immutable row) - "linked" iff evidenceVersionId is non-null.
+  evidenceLinkageState: PersonalIntelligenceEvidenceLinkageState;
   observedAt: Date;
   acceptedAt: Date;
   createdAt: Date;
