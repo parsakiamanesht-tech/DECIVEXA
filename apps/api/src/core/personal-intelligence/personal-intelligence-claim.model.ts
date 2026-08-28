@@ -39,6 +39,10 @@ export type PersonalIntelligenceClaimVersion = Readonly<{
   confidence: number;
   lifecycle: PersonalIntelligenceLifecycle;
   evidenceVersionId: string | null;
+  // Additive, D3 (docs/gates/PERSONAL-INTELLIGENCE-D3-IMPLEMENTATION-CONTRACT.md
+  // §F/§N): set only by an explicit, separately-scoped promotion write
+  // path not yet implemented by this increment - always null until then.
+  inferenceId: string | null;
   observedAt: Date;
   acceptedAt: Date;
   createdAt: Date;

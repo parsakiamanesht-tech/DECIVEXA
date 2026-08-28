@@ -11,6 +11,7 @@ import {
 import { sql } from "drizzle-orm";
 import { users } from "./identity.schema";
 import { evidenceVersions } from "./evidence.schema";
+import { personalIntelligenceInferences } from "./personal-intelligence-inference.schema";
 
 const decivexa = pgSchema("decivexa");
 
@@ -80,6 +81,14 @@ export const personalIntelligenceClaimVersions = decivexa.table(
       .notNull()
       .default("active"),
     evidenceVersionId: text("evidence_version_id"),
+    // Additive, nullable, D3 (docs/gates/PERSONAL-INTELLIGENCE-D3-IMPLEMENTATION-CONTRACT.md
+    // §F/§N): an explicit promotion of an Inference into this claim
+    // version may set this to the originating inference's id. Out of
+    // scope for this increment: no repository write-path (create()/
+    // appendCorrection()) sets this column yet - it is always null until
+    // a future, separately-scoped increment adds that write path. Its
+    // presence here is the one schema change §F requires now.
+    inferenceId: text("inference_id"),
     observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
     acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
@@ -98,6 +107,11 @@ export const personalIntelligenceClaimVersions = decivexa.table(
       columns: [table.evidenceVersionId],
       foreignColumns: [evidenceVersions.id],
       name: "personal_intelligence_claim_versions_evidence_version_fk",
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [table.inferenceId],
+      foreignColumns: [personalIntelligenceInferences.id],
+      name: "personal_intelligence_claim_versions_inference_fk",
     }).onDelete("restrict"),
     check("personal_intelligence_claim_versions_version_check", sql`${table.version} >= 1`),
     check(

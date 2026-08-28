@@ -47,6 +47,11 @@ function toDomainVersion(
     confidence: row.confidence,
     lifecycle: row.lifecycle as PersonalIntelligenceLifecycle,
     evidenceVersionId: row.evidenceVersionId,
+    // Additive, D3 - see personal-intelligence-claim.model.ts. Always
+    // null until a future, separately-scoped increment adds a write path
+    // that sets it; mapped through here now purely so the domain type is
+    // read-complete.
+    inferenceId: row.inferenceId,
     observedAt: row.observedAt,
     acceptedAt: row.acceptedAt,
     createdAt: row.createdAt,
@@ -151,6 +156,7 @@ export class DrizzlePersonalIntelligenceClaimRepository
         confidence: personalIntelligenceClaimVersions.confidence,
         lifecycle: personalIntelligenceClaimVersions.lifecycle,
         evidenceVersionId: personalIntelligenceClaimVersions.evidenceVersionId,
+        inferenceId: personalIntelligenceClaimVersions.inferenceId,
         observedAt: personalIntelligenceClaimVersions.observedAt,
         acceptedAt: personalIntelligenceClaimVersions.acceptedAt,
         createdAt: personalIntelligenceClaimVersions.createdAt,
@@ -206,6 +212,10 @@ export class DrizzlePersonalIntelligenceClaimRepository
             confidence: input.confidence,
             lifecycle: "active",
             evidenceVersionId: null,
+            // Additive, D3 - no write path sets this yet (see the model's
+            // field-level comment); always null until a future,
+            // separately-scoped promotion increment.
+            inferenceId: null,
             observedAt: input.observedAt,
             acceptedAt: input.acceptedAt,
             createdAt: input.now,
@@ -237,6 +247,8 @@ export class DrizzlePersonalIntelligenceClaimRepository
               confidence: sql<number>`${input.confidence}`.as("confidence"),
               lifecycle: sql<string>`active`.as("lifecycle"),
               evidenceVersionId: evidenceVersions.id,
+              // Additive, D3 - no write path sets this yet; always null.
+              inferenceId: sql<string | null>`null`.as("inference_id"),
               observedAt: sql<Date>`${input.observedAt}`.as("observed_at"),
               acceptedAt: sql<Date>`${input.acceptedAt}`.as("accepted_at"),
               createdAt: sql<Date>`${input.now}`.as("created_at"),
@@ -299,6 +311,10 @@ export class DrizzlePersonalIntelligenceClaimRepository
               evidenceVersionId: sql<string | null>`${input.evidenceVersionId}`.as(
                 "evidence_version_id",
               ),
+              // Additive, D3 - no write path sets this yet; always null.
+              // Correction never inherits the prior version's inferenceId
+              // by this increment's scope (§H of the Contract).
+              inferenceId: sql<string | null>`null`.as("inference_id"),
               observedAt: sql<Date>`${input.observedAt}`.as("observed_at"),
               acceptedAt: sql<Date>`${input.acceptedAt}`.as("accepted_at"),
               createdAt: sql<Date>`${input.now}`.as("created_at"),

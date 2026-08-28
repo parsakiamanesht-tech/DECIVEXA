@@ -71,6 +71,13 @@
       "when": 1787566034685,
       "tag": "0009_foamy_raider",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787893093308,
+      "tag": "0010_large_wolfsbane",
+      "breakpoints": true
     }
   ]
 }
