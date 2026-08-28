@@ -64,9 +64,13 @@ export type PersonalIntelligenceClaimVersion = Readonly<{
   confidence: number;
   lifecycle: PersonalIntelligenceLifecycle;
   evidenceVersionId: string | null;
-  // Additive, D3 (docs/gates/PERSONAL-INTELLIGENCE-D3-IMPLEMENTATION-CONTRACT.md
-  // §F/§N): set only by an explicit, separately-scoped promotion write
-  // path not yet implemented by this increment - always null until then.
+  // D3 (docs/gates/PERSONAL-INTELLIGENCE-D3-IMPLEMENTATION-CONTRACT.md §F/§N)
+  // + D3 Inference -> Claim Promotion Write Path (Implementation Increment
+  // Contract, docs/gates/PERSONAL-INTELLIGENCE-D3-CLAIM-PROMOTION-WRITE-PATH-*):
+  // set by an explicit, caller-supplied reference to an owned Inference at
+  // create()/appendCorrection() time; a provenance/causal-linkage pointer
+  // only - never gated by, or itself changing, the Inference's lifecycle
+  // status.
   inferenceId: string | null;
   // Additive, PIC Claim Ontology / Taxonomy Option 2 (Implementation
   // Increment Contract §3.1). Set at version-creation time by the write

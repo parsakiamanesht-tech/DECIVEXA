@@ -6,6 +6,15 @@ import {
   personalIntelligenceClaimVersions,
 } from "../../persistence/schema/personal-intelligence.schema";
 import { evidenceVersions } from "../../persistence/schema/evidence.schema";
+// D3 Inference -> Claim Promotion Write Path (Implementation Increment
+// Contract, docs/gates/PERSONAL-INTELLIGENCE-D3-CLAIM-PROMOTION-WRITE-PATH-*).
+// Safe to import directly: personal-intelligence-inference.schema.ts
+// deliberately does not import from personal-intelligence.schema.ts (see
+// that file's own header comment), so no circular module dependency is
+// introduced by importing it here, in the infrastructure layer, exactly
+// mirroring how evidenceVersions above is already imported directly
+// rather than via a separate repository.
+import { personalIntelligenceInferences } from "../../persistence/schema/personal-intelligence-inference.schema";
 import type {
   PersonalIntelligenceClaim,
   PersonalIntelligenceClaimType,
@@ -48,10 +57,10 @@ function toDomainVersion(
     confidence: row.confidence,
     lifecycle: row.lifecycle as PersonalIntelligenceLifecycle,
     evidenceVersionId: row.evidenceVersionId,
-    // Additive, D3 - see personal-intelligence-claim.model.ts. Always
-    // null until a future, separately-scoped increment adds a write path
-    // that sets it; mapped through here now purely so the domain type is
-    // read-complete.
+    // D3 Inference -> Claim Promotion Write Path (Implementation
+    // Increment Contract, docs/gates/PERSONAL-INTELLIGENCE-D3-CLAIM-PROMOTION-WRITE-PATH-*).
+    // Set by create()/appendCorrection() when the caller supplies a
+    // valid, owned inferenceId; null otherwise.
     inferenceId: row.inferenceId,
     evidenceLinkageState: row.evidenceLinkageState as PersonalIntelligenceEvidenceLinkageState,
     observedAt: row.observedAt,
@@ -182,15 +191,29 @@ export class DrizzlePersonalIntelligenceClaimRepository
   }
 
   // Creates the stable claim identity row plus its version 1 row, atomically.
-  // If evidenceVersionId is null, the version insert is a plain, unconditional
-  // insert (no ownership fact to verify). If evidenceVersionId is supplied,
-  // the insert is sourced FROM evidence_versions filtered to
-  // (id = evidenceVersionId AND user_id = userId) - the exact atomic
-  // ownership-check pattern already proven in
-  // DrizzlePersonalStateRepository.insertRevision. A mismatched/nonexistent
-  // EvidenceVersion yields zero source rows, so nothing is inserted and the
-  // whole transaction (including the claim identity row already inserted)
-  // rolls back.
+  // Ownership of an optional evidenceVersionId and/or inferenceId (D3
+  // Inference -> Claim Promotion Write Path) is verified atomically via the
+  // same INSERT ... SELECT ... WHERE technique already proven in
+  // DrizzlePersonalStateRepository.insertRevision - a mismatched/nonexistent
+  // reference yields zero source rows, so nothing is inserted and the whole
+  // transaction (including the claim identity row already inserted) rolls
+  // back. Four cases:
+  //   - neither reference supplied: plain, unconditional insert (no
+  //     ownership fact to verify).
+  //   - only evidenceVersionId supplied: sourced FROM evidence_versions
+  //     (unchanged from before this revision).
+  //   - only inferenceId supplied: sourced FROM
+  //     personal_intelligence_inferences instead, mirroring the
+  //     evidenceVersionId branch exactly.
+  //   - both supplied: sourced FROM evidence_versions (as with
+  //     evidence-only), with an additional correlated EXISTS against
+  //     personal_intelligence_inferences layered on - the same
+  //     "base source plus optional EXISTS" technique already used by
+  //     appendCorrection below.
+  // Referencing an Inference is a provenance/causal-linkage pointer only
+  // (Contract §6/§5.F): it is not gated by the Inference's lifecycle
+  // status, never mutates the Inference, and never appends an Inference
+  // lifecycle-history entry.
   async create(input: CreateClaimInput): Promise<PersonalIntelligenceClaimVersion> {
     return this.db.transaction(async (tx) => {
       await tx.insert(personalIntelligenceClaims).values({
@@ -201,7 +224,7 @@ export class DrizzlePersonalIntelligenceClaimRepository
         updatedAt: input.now,
       });
 
-      if (input.evidenceVersionId === null) {
+      if (input.evidenceVersionId === null && input.inferenceId === null) {
         const [row] = await tx
           .insert(personalIntelligenceClaimVersions)
           .values({
@@ -215,9 +238,6 @@ export class DrizzlePersonalIntelligenceClaimRepository
             confidence: input.confidence,
             lifecycle: "active",
             evidenceVersionId: null,
-            // Additive, D3 - no write path sets this yet (see the model's
-            // field-level comment); always null until a future,
-            // separately-scoped promotion increment.
             inferenceId: null,
             evidenceLinkageState: input.evidenceLinkageState,
             observedAt: input.observedAt,
@@ -230,11 +250,57 @@ export class DrizzlePersonalIntelligenceClaimRepository
         return toDomainVersion(row);
       }
 
+      if (input.evidenceVersionId === null) {
+        // Narrowed: inferenceId is non-null here (the both-null case
+        // returned above).
+        const inferenceId = input.inferenceId as string;
+
+        const [row] = await tx
+          .insert(personalIntelligenceClaimVersions)
+          .select((qb) =>
+            qb
+              .select({
+                id: sql<string>`${input.versionId}`.as("id"),
+                claimId: sql<string>`${input.claimId}`.as("claim_id"),
+                userId: personalIntelligenceInferences.userId,
+                version: sql<number>`1`.as("version"),
+                valueKind: sql<string>`${input.valueKind}`.as("value_kind"),
+                valueText: sql<string>`${input.valueText}`.as("value_text"),
+                provenance: sql<string>`${input.provenance}`.as("provenance"),
+                confidence: sql<number>`${input.confidence}`.as("confidence"),
+                lifecycle: sql<string>`active`.as("lifecycle"),
+                evidenceVersionId: sql<string | null>`null`.as("evidence_version_id"),
+                inferenceId: personalIntelligenceInferences.id,
+                evidenceLinkageState: sql<string>`${input.evidenceLinkageState}`.as("evidence_linkage_state"),
+                observedAt: sql<Date>`${input.observedAt}`.as("observed_at"),
+                acceptedAt: sql<Date>`${input.acceptedAt}`.as("accepted_at"),
+                createdAt: sql<Date>`${input.now}`.as("created_at"),
+              })
+              .from(personalIntelligenceInferences)
+              .where(
+                and(
+                  eq(personalIntelligenceInferences.id, inferenceId),
+                  eq(personalIntelligenceInferences.userId, input.userId),
+                ),
+              ),
+          )
+          .returning();
+
+        if (!row) {
+          throw new Error(
+            "Cannot create personal intelligence claim: the referenced Inference does not belong to the authenticated user",
+          );
+        }
+
+        return toDomainVersion(row);
+      }
+
       // Extracted to a local so TypeScript's null-narrowing (established by
-      // the early return above) survives capture inside the nested query
+      // the branches above) survives capture inside the nested query
       // builder closure below - narrowing a property access on `input`
       // itself does not persist across a closure boundary.
       const evidenceVersionId = input.evidenceVersionId;
+      const inferenceId = input.inferenceId;
 
       const [row] = await tx
         .insert(personalIntelligenceClaimVersions)
@@ -251,8 +317,7 @@ export class DrizzlePersonalIntelligenceClaimRepository
               confidence: sql<number>`${input.confidence}`.as("confidence"),
               lifecycle: sql<string>`active`.as("lifecycle"),
               evidenceVersionId: evidenceVersions.id,
-              // Additive, D3 - no write path sets this yet; always null.
-              inferenceId: sql<string | null>`null`.as("inference_id"),
+              inferenceId: sql<string | null>`${inferenceId}`.as("inference_id"),
               evidenceLinkageState: sql<string>`${input.evidenceLinkageState}`.as("evidence_linkage_state"),
               observedAt: sql<Date>`${input.observedAt}`.as("observed_at"),
               acceptedAt: sql<Date>`${input.acceptedAt}`.as("accepted_at"),
@@ -260,14 +325,30 @@ export class DrizzlePersonalIntelligenceClaimRepository
             })
             .from(evidenceVersions)
             .where(
-              and(eq(evidenceVersions.id, evidenceVersionId), eq(evidenceVersions.userId, input.userId)),
+              and(
+                eq(evidenceVersions.id, evidenceVersionId),
+                eq(evidenceVersions.userId, input.userId),
+                inferenceId
+                  ? exists(
+                      qb
+                        .select({ one: sql`1` })
+                        .from(personalIntelligenceInferences)
+                        .where(
+                          and(
+                            eq(personalIntelligenceInferences.id, inferenceId),
+                            eq(personalIntelligenceInferences.userId, input.userId),
+                          ),
+                        ),
+                    )
+                  : undefined,
+              ),
             ),
         )
         .returning();
 
       if (!row) {
         throw new Error(
-          "Cannot create personal intelligence claim: the referenced EvidenceVersion does not belong to the authenticated user",
+          "Cannot create personal intelligence claim: the referenced EvidenceVersion or Inference does not belong to the authenticated user",
         );
       }
 
@@ -292,6 +373,15 @@ export class DrizzlePersonalIntelligenceClaimRepository
   //     against evidence_versions requires it to belong to the same user -
   //     the same ownership fact enforced in create(), expressed as an
   //     additional WHERE condition in the same atomic statement;
+  //   - likewise, when inferenceId is supplied (D3 Inference -> Claim
+  //     Promotion Write Path), an additional correlated EXISTS against
+  //     personal_intelligence_inferences requires it to belong to the same
+  //     user - not gated by the Inference's lifecycle status (Contract
+  //     §5.F);
+  //   - inferenceId is always taken fresh from this input, never inherited
+  //     from the prior version (Contract §5.G/§8) - a caller who wants the
+  //     correction to remain associated with the same Inference must pass
+  //     it again explicitly;
   //   - the existing unique(claimId, version) constraint is the final,
   //     database-enforced backstop against a race between two concurrent
   //     appendCorrection calls for the same expectedVersion.
@@ -316,10 +406,11 @@ export class DrizzlePersonalIntelligenceClaimRepository
               evidenceVersionId: sql<string | null>`${input.evidenceVersionId}`.as(
                 "evidence_version_id",
               ),
-              // Additive, D3 - no write path sets this yet; always null.
-              // Correction never inherits the prior version's inferenceId
-              // by this increment's scope (§H of the Contract).
-              inferenceId: sql<string | null>`null`.as("inference_id"),
+              // D3 Inference -> Claim Promotion Write Path: always taken
+              // fresh from this input, never inherited from the prior
+              // version (Contract §5.G/§8) - see the ownership EXISTS
+              // check below for the corresponding validation.
+              inferenceId: sql<string | null>`${input.inferenceId}`.as("inference_id"),
               evidenceLinkageState: sql<string>`${input.evidenceLinkageState}`.as("evidence_linkage_state"),
               observedAt: sql<Date>`${input.observedAt}`.as("observed_at"),
               acceptedAt: sql<Date>`${input.acceptedAt}`.as("accepted_at"),
@@ -351,6 +442,19 @@ export class DrizzlePersonalIntelligenceClaimRepository
                           and(
                             eq(evidenceVersions.id, input.evidenceVersionId),
                             eq(evidenceVersions.userId, input.userId),
+                          ),
+                        ),
+                    )
+                  : undefined,
+                input.inferenceId
+                  ? exists(
+                      qb
+                        .select({ one: sql`1` })
+                        .from(personalIntelligenceInferences)
+                        .where(
+                          and(
+                            eq(personalIntelligenceInferences.id, input.inferenceId),
+                            eq(personalIntelligenceInferences.userId, input.userId),
                           ),
                         ),
                     )

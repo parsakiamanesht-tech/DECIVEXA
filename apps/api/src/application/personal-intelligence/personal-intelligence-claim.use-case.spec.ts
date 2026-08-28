@@ -116,6 +116,7 @@ function makeCreateInput(): CreateClaimInput {
     confidence: 0.8,
     evidenceVersionId: null,
     evidenceLinkageState: "linkage_pending",
+    inferenceId: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     now: new Date(),
@@ -135,6 +136,7 @@ function makeAppendCorrectionInput(): AppendClaimCorrectionInput {
     lifecycle: "active",
     evidenceVersionId: null,
     evidenceLinkageState: "linkage_pending",
+    inferenceId: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     now: new Date(),
@@ -613,4 +615,150 @@ test("inspectEvidence propagates a repository rejection unchanged, without being
   const useCase = new PersonalIntelligenceClaimUseCase(repository);
 
   await assert.rejects(() => useCase.inspectEvidence("user-a", "claim-1", 1), rejection);
+});
+
+// ---------------------------------------------------------------------
+// D3 Inference -> Claim Promotion Write Path
+// (docs/gates/PERSONAL-INTELLIGENCE-D3-CLAIM-PROMOTION-WRITE-PATH-IMPLEMENTATION-INCREMENT-CONTRACT.md)
+//
+// Ownership/concurrency enforcement itself lives in the Drizzle repository
+// (untestable without a live PostgreSQL instance, unavailable in this
+// environment - see that Contract's §13 Runtime Verification Plan). What
+// is testable here, at the use-case delegation layer, is that `inferenceId`
+// is passed through to the repository exactly as supplied - never
+// defaulted, never inherited from a prior version, never mutating any
+// other field on the same call.
+// ---------------------------------------------------------------------
+
+test("create passes a caller-supplied inferenceId through to repository.create unchanged", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const expected: PersonalIntelligenceClaimVersion = {
+    id: "version-1",
+    claimId: "claim-1",
+    version: 1,
+    userId: "user-a",
+    valueKind: "text",
+    valueText: "likes dark mode",
+    provenance: "declared",
+    confidence: 0.8,
+    lifecycle: "active",
+    evidenceVersionId: null,
+    inferenceId: "inference-1",
+    evidenceLinkageState: "linkage_pending",
+    observedAt: new Date(),
+    acceptedAt: new Date(),
+    createdAt: new Date(),
+  };
+  repository.createResult = expected;
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const input = { ...makeCreateInput(), inferenceId: "inference-1" };
+  const result = await useCase.create(input);
+
+  assert.equal(repository.createCalls.length, 1);
+  assert.equal(repository.createCalls[0]?.inferenceId, "inference-1");
+  assert.equal(result, expected);
+});
+
+test("create passes a null inferenceId through to repository.create unchanged (no Inference reference)", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.createResult = {
+    id: "version-1",
+    claimId: "claim-1",
+    version: 1,
+    userId: "user-a",
+    valueKind: "text",
+    valueText: "likes dark mode",
+    provenance: "declared",
+    confidence: 0.8,
+    lifecycle: "active",
+    evidenceVersionId: null,
+    inferenceId: null,
+    evidenceLinkageState: "linkage_pending",
+    observedAt: new Date(),
+    acceptedAt: new Date(),
+    createdAt: new Date(),
+  };
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.create(makeCreateInput());
+
+  assert.equal(repository.createCalls[0]?.inferenceId, null);
+});
+
+test("appendCorrection passes a caller-supplied inferenceId through to repository.appendCorrection unchanged", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.appendCorrectionResult = {
+    id: "version-2",
+    claimId: "claim-1",
+    version: 2,
+    userId: "user-a",
+    valueKind: "text",
+    valueText: "likes dark mode, confirmed",
+    provenance: "observed",
+    confidence: 0.9,
+    lifecycle: "active",
+    evidenceVersionId: null,
+    inferenceId: "inference-1",
+    evidenceLinkageState: "linkage_pending",
+    observedAt: new Date(),
+    acceptedAt: new Date(),
+    createdAt: new Date(),
+  };
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const input = { ...makeAppendCorrectionInput(), inferenceId: "inference-1" };
+  await useCase.appendCorrection(input);
+
+  assert.equal(repository.appendCorrectionCalls[0]?.inferenceId, "inference-1");
+});
+
+test("appendCorrection passes a null inferenceId through even when the caller omits it - no implicit carry-forward from any prior version, because the use case never reads prior-version state at all", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.appendCorrectionResult = null;
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  // makeAppendCorrectionInput() already supplies inferenceId: null - the
+  // point of this test is that the use case forwards exactly that,
+  // regardless of whatever inferenceId a "prior version" might carry; the
+  // use case has no prior-version lookup in its create/appendCorrection
+  // path at all, so carry-forward is structurally impossible here, not
+  // merely untriggered by this test's fixture.
+  await useCase.appendCorrection(makeAppendCorrectionInput());
+
+  assert.equal(repository.appendCorrectionCalls[0]?.inferenceId, null);
+});
+
+test("linking a Claim to an Inference via inferenceId leaves every other field of the call unchanged", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.createResult = undefined as unknown as PersonalIntelligenceClaimVersion;
+  repository.createResult = {
+    id: "version-1",
+    claimId: "claim-1",
+    version: 1,
+    userId: "user-a",
+    valueKind: "text",
+    valueText: "likes dark mode",
+    provenance: "declared",
+    confidence: 0.8,
+    lifecycle: "active",
+    evidenceVersionId: null,
+    inferenceId: "inference-1",
+    evidenceLinkageState: "linkage_pending",
+    observedAt: new Date(),
+    acceptedAt: new Date(),
+    createdAt: new Date(),
+  };
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const withoutInference = makeCreateInput();
+  const withInference = { ...makeCreateInput(), inferenceId: "inference-1" };
+  await useCase.create(withoutInference);
+  await useCase.create(withInference);
+
+  const [callWithout, callWith] = repository.createCalls;
+  assert.equal(callWithout?.provenance, callWith?.provenance);
+  assert.equal(callWithout?.confidence, callWith?.confidence);
+  assert.equal(callWithout?.evidenceLinkageState, callWith?.evidenceLinkageState);
+  assert.notEqual(callWithout?.inferenceId, callWith?.inferenceId);
 });
