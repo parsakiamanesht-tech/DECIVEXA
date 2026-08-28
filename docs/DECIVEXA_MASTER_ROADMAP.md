@@ -2228,3 +2228,75 @@ domain/authority statements appear to interact, the Authority Hierarchy in
 authority over domain boundaries, ownership, or implementation
 authorization. Full reconciliation detail is recorded in
 `docs/DECIVEXA/GOVERNANCE_RECONCILIATION.md`.
+
+---
+
+# PART IV — STATUS RECONCILIATION ADDENDUM (2026-08-28)
+
+**Added 2026-08-28 pursuant to an explicit Founder directive
+("POST-D3 GOVERNANCE RECONCILIATION & NEXT-TRACK DESIGN AUDIT," Decision
+A1). This section is NOT part of the verbatim Founder-supplied roadmap
+messages preserved in PART I and PART II above — no text in PART I or
+PART II has been summarized, rewritten, consolidated, or deleted to add
+this section. This addendum is a documentation-only status correction. It
+does not redesign the Roadmap's architecture, does not alter sequencing
+authority beyond what is stated below, and does not authorize any
+implementation.**
+
+## Status Correction
+
+As of this addendum's date, actual committed repository evidence shows:
+
+- **PHASE 3 §3.3 (Personal State) and §3.4 (Personal State History):**
+  implemented — `personal_states` (current snapshot) and
+  `personal_state_revisions` (immutable, append-only history, one row per
+  accepted change) both exist in
+  `apps/api/src/persistence/schema/personal-state.schema.ts`.
+- **PHASE 4 (Human Understanding System / Personal Intelligence Core):**
+  materially underway, not merely "next." Architecture is Founder-approved
+  (D1: `docs/gates/PERSONAL-INTELLIGENCE-TD-04-APPROVAL-AND-CURRENT-STATE-OWNERSHIP-DECISION-RECORD.md`);
+  the ownership boundary is recorded (D2, same record); the inference-
+  provenance architecture and its implementation are committed (D3:
+  `docs/gates/PERSONAL-INTELLIGENCE-D3-INFERENCE-PROVENANCE-ARCHITECTURE-DECISION-RECORD.md`,
+  commit `b05fb17`); a first read-side Implementation Increment Contract
+  is committed and closed (D4-01:
+  `docs/gates/PERSONAL-INTELLIGENCE-D4-01-CONTRACT-AND-BUILD-AUTHORIZATION-RECORD.md`,
+  commit `ceefd5f`). The `personal_intelligence_claims` schema's 9-value
+  `claimType` enum (`identity_attribute, value, preference, capability,
+  constraint, environment_context, strength, weakness, behavior_pattern`)
+  corresponds closely to this Roadmap's own PHASE 4 §4.1–§4.9 category
+  list. PHASE 4 §4.10's "Living User Model," as a synthesized composite
+  entity distinct from its underlying per-category data, remains
+  unimplemented.
+
+## What This Addendum Does Not Do
+
+This addendum does not mark PHASE 3 or PHASE 4 "complete" — no
+Exit-Gate evidence (per this Roadmap's own §10 Master Exit Criteria:
+Architecture, Implementation, Verification, Readiness, each assessed
+independently) has been produced for either phase as a whole. It does
+not select, authorize, or begin any new Implementation Increment
+Contract. It does not resolve which internal "Personal State History
+Phase 1–4" sub-phase (PART I line 72, PART II §3.9) the above evidence
+corresponds to — no committed governance record anywhere in `docs/gates/`
+defines those internal sub-phase boundaries, and this addendum does not
+invent one. It does not alter the Authority Hierarchy documented in
+`docs/technical-design/TD-01_ARCHITECTURE_CONSTITUTION_AND_DOCUMENT_AUTHORITY.md`
+§4, and it does not modify
+`docs/DECIVEXA/GOVERNANCE_RECONCILIATION.md`.
+
+## Governance Note — TD-04 Naming Collision (recorded, not resolved)
+
+Two documents in this repository are both labeled "TD-04" with unrelated
+subject matter: `docs/architecture/TD-04-human-os-personal-intelligence-core.md`
+("Human OS & Personal Intelligence Core Architecture," the document D1
+approved by exact path) and `docs/TD-04_DATA_RUNTIME_CONTRACTS.md` ("Data
+& Runtime Contracts," part of the top-level TD chain
+`docs/DECIVEXA/GOVERNANCE_RECONCILIATION.md` §6–§7 identifies as
+operationally authoritative for TD-02 through TD-06 under the Architecture
+Freeze Baseline). This mirrors the TD-02 naming collision that
+Reconciliation record already resolved (§7 of that document) — no
+equivalent determination has yet been made for TD-04. D1's approval
+remains valid on its own terms (it names the Human-OS document by its
+exact, unambiguous path), but this collision is recorded here as an
+open documentation-hygiene item, not resolved by this addendum.
