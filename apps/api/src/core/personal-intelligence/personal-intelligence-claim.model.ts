@@ -90,6 +90,25 @@ export type PersonalIntelligenceClaimVersion = Readonly<{
   // forward from a prior ClaimVersion.
   effectiveFrom: Date | null;
   effectiveTo: Date | null;
+  // Claim-level Context (Implementation Increment Contract,
+  // docs/gates/PERSONAL-INTELLIGENCE-CONTEXT-IMPLEMENTATION-INCREMENT-CONTRACT.md
+  // §5/§6/§18). Answers "under what situation/setting was this claim
+  // true," strictly separate from the vision-level Context Fusion Engine
+  // (docs/DECIVEXA_MASTER_ARCHITECTURE_AND_VISION.md §19) - not
+  // implemented or referenced by this field. Minimal, Founder-approved
+  // dimensions only; every other candidate dimension (role, task/goal,
+  // emotional state, location) remains OPEN and is not represented here.
+  // No new sovereignty/provenance field is introduced (Contract §7):
+  // Context is governed by the same row-level provenance/inferenceId/
+  // confirmation apparatus as every other field on this immutable row.
+  // `null` means only "not established" - never "always", "now", or
+  // "inherit from the previous version" - and is always an explicit,
+  // caller-supplied value on every create()/appendCorrection() call
+  // (Always Explicit, same convention as effectiveFrom/effectiveTo and
+  // inferenceId above) - never derived from Temporal Validity, lifecycle,
+  // provenance, or evidence timestamps.
+  situationSetting: string | null;
+  timeOfDay: string | null;
   observedAt: Date;
   acceptedAt: Date;
   createdAt: Date;

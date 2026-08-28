@@ -119,6 +119,8 @@ function makeCreateInput(): CreateClaimInput {
     inferenceId: null,
     effectiveFrom: null,
     effectiveTo: null,
+    situationSetting: null,
+    timeOfDay: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     now: new Date(),
@@ -141,6 +143,8 @@ function makeAppendCorrectionInput(): AppendClaimCorrectionInput {
     inferenceId: null,
     effectiveFrom: null,
     effectiveTo: null,
+    situationSetting: null,
+    timeOfDay: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     now: new Date(),
@@ -183,6 +187,8 @@ test("create delegates to repository.create exactly once and returns its result 
     evidenceLinkageState: "linkage_pending",
     effectiveFrom: null,
     effectiveTo: null,
+    situationSetting: null,
+    timeOfDay: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     createdAt: new Date(),
@@ -216,6 +222,8 @@ test("appendCorrection delegates to repository.appendCorrection exactly once and
     evidenceLinkageState: "linkage_pending",
     effectiveFrom: null,
     effectiveTo: null,
+    situationSetting: null,
+    timeOfDay: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     createdAt: new Date(),
@@ -268,6 +276,8 @@ test("findClaimVersionForUser delegates to repository.findClaimVersionForUser ex
     evidenceLinkageState: "linkage_pending",
     effectiveFrom: null,
     effectiveTo: null,
+    situationSetting: null,
+    timeOfDay: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     createdAt: new Date(),
@@ -363,6 +373,8 @@ function makeClaimVersion(
     evidenceLinkageState: "linkage_pending",
     effectiveFrom: null,
     effectiveTo: null,
+    situationSetting: null,
+    timeOfDay: null,
     observedAt: new Date("2026-01-01T00:00:00Z"),
     acceptedAt: new Date("2026-01-01T00:00:00Z"),
     createdAt: new Date("2026-01-01T00:00:00Z"),
@@ -659,6 +671,8 @@ test("create passes a caller-supplied inferenceId through to repository.create u
     evidenceLinkageState: "linkage_pending",
     effectiveFrom: null,
     effectiveTo: null,
+    situationSetting: null,
+    timeOfDay: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     createdAt: new Date(),
@@ -691,6 +705,8 @@ test("create passes a null inferenceId through to repository.create unchanged (n
     evidenceLinkageState: "linkage_pending",
     effectiveFrom: null,
     effectiveTo: null,
+    situationSetting: null,
+    timeOfDay: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     createdAt: new Date(),
@@ -719,6 +735,8 @@ test("appendCorrection passes a caller-supplied inferenceId through to repositor
     evidenceLinkageState: "linkage_pending",
     effectiveFrom: null,
     effectiveTo: null,
+    situationSetting: null,
+    timeOfDay: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     createdAt: new Date(),
@@ -765,6 +783,8 @@ test("linking a Claim to an Inference via inferenceId leaves every other field o
     evidenceLinkageState: "linkage_pending",
     effectiveFrom: null,
     effectiveTo: null,
+    situationSetting: null,
+    timeOfDay: null,
     observedAt: new Date(),
     acceptedAt: new Date(),
     createdAt: new Date(),
@@ -944,4 +964,167 @@ test("a read-back ClaimVersion honestly reports null/null when temporal validity
 
   assert.equal(result?.effectiveFrom, null);
   assert.equal(result?.effectiveTo, null);
+});
+
+// ---------------------------------------------------------------------
+// Claim-Level Context axis
+// (docs/gates/PERSONAL-INTELLIGENCE-CONTEXT-IMPLEMENTATION-INCREMENT-CONTRACT.md,
+// §5/§6/§7/§12/§18, Always Explicit, no new sovereignty field,
+// Founder-approved). What is testable here, at the use-case delegation
+// layer, is that situationSetting/timeOfDay are passed through to the
+// repository exactly as supplied - never defaulted, never inherited
+// from a prior version, never mutating any other field on the same
+// call - mirroring the equivalent Temporal Validity test set above.
+// ---------------------------------------------------------------------
+
+test("create passes both situationSetting and timeOfDay through to repository.create unchanged (fully known Context)", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.createResult = { ...makeClaimVersion(), situationSetting: "at work", timeOfDay: "morning" };
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.create({ ...makeCreateInput(), situationSetting: "at work", timeOfDay: "morning" });
+
+  assert.equal(repository.createCalls[0]?.situationSetting, "at work");
+  assert.equal(repository.createCalls[0]?.timeOfDay, "morning");
+});
+
+test("create passes both situationSetting and timeOfDay as null through unchanged (wholly unestablished Context)", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.createResult = makeClaimVersion();
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.create(makeCreateInput());
+
+  assert.equal(repository.createCalls[0]?.situationSetting, null);
+  assert.equal(repository.createCalls[0]?.timeOfDay, null);
+});
+
+test("create passes only situationSetting set through unchanged (timeOfDay independently unestablished)", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.createResult = { ...makeClaimVersion(), situationSetting: "at home" };
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.create({ ...makeCreateInput(), situationSetting: "at home", timeOfDay: null });
+
+  assert.equal(repository.createCalls[0]?.situationSetting, "at home");
+  assert.equal(repository.createCalls[0]?.timeOfDay, null);
+});
+
+test("create passes only timeOfDay set through unchanged (situationSetting independently unestablished)", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.createResult = { ...makeClaimVersion(), timeOfDay: "evening" };
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.create({ ...makeCreateInput(), situationSetting: null, timeOfDay: "evening" });
+
+  assert.equal(repository.createCalls[0]?.situationSetting, null);
+  assert.equal(repository.createCalls[0]?.timeOfDay, "evening");
+});
+
+test("appendCorrection passes explicit situationSetting/timeOfDay through to repository.appendCorrection unchanged", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.appendCorrectionResult = makeClaimVersion({ version: 2 });
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.appendCorrection({
+    ...makeAppendCorrectionInput(),
+    situationSetting: "commuting",
+    timeOfDay: "morning",
+  });
+
+  assert.equal(repository.appendCorrectionCalls[0]?.situationSetting, "commuting");
+  assert.equal(repository.appendCorrectionCalls[0]?.timeOfDay, "morning");
+});
+
+test("appendCorrection with explicit null/null does not inherit the prior version's known Context", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  // A "prior version" the caller happens to know about, with known
+  // Context - the use case never reads this, and this test proves the
+  // correction input alone determines the outcome.
+  const priorVersion = makeClaimVersion({
+    situationSetting: "at work",
+    timeOfDay: "afternoon",
+  });
+  repository.findClaimVersionForUserResult = priorVersion;
+  repository.appendCorrectionResult = makeClaimVersion({ version: 2 });
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.appendCorrection({
+    ...makeAppendCorrectionInput(),
+    situationSetting: null,
+    timeOfDay: null,
+  });
+
+  assert.equal(repository.appendCorrectionCalls[0]?.situationSetting, null);
+  assert.equal(repository.appendCorrectionCalls[0]?.timeOfDay, null);
+});
+
+test("appendCorrection proves no Context inheritance generally - the correction input alone determines the call, independent of any prior-version concept", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.appendCorrectionResult = makeClaimVersion({ version: 2 });
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  // makeAppendCorrectionInput() already supplies situationSetting: null,
+  // timeOfDay: null - the point of this test is that the use case's
+  // create/appendCorrection methods never look up, read, or reference a
+  // "prior version" at all when forwarding the call, so carry-forward is
+  // structurally impossible here, not merely untriggered by this test's
+  // fixture (mirrors the equivalent effectiveFrom/effectiveTo and
+  // inferenceId no-carry-forward tests above).
+  await useCase.appendCorrection(makeAppendCorrectionInput());
+
+  assert.equal(repository.findClaimVersionForUserCalls.length, 0);
+  assert.equal(repository.appendCorrectionCalls[0]?.situationSetting, null);
+  assert.equal(repository.appendCorrectionCalls[0]?.timeOfDay, null);
+});
+
+test("appendCorrection changing only timeOfDay still requires situationSetting to be explicitly restated", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.appendCorrectionResult = makeClaimVersion({ version: 2 });
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await useCase.appendCorrection({
+    ...makeAppendCorrectionInput(),
+    situationSetting: "at work",
+    timeOfDay: "evening",
+  });
+
+  assert.equal(repository.appendCorrectionCalls[0]?.situationSetting, "at work");
+  assert.equal(repository.appendCorrectionCalls[0]?.timeOfDay, "evening");
+});
+
+test("linking a Claim to a Context leaves every other field of the call unchanged", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  repository.createResult = makeClaimVersion();
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const withoutContext = makeCreateInput();
+  const withContext = {
+    ...makeCreateInput(),
+    situationSetting: "at work",
+    timeOfDay: "morning",
+  };
+  await useCase.create(withoutContext);
+  await useCase.create(withContext);
+
+  const [callWithout, callWith] = repository.createCalls;
+  assert.equal(callWithout?.provenance, callWith?.provenance);
+  assert.equal(callWithout?.confidence, callWith?.confidence);
+  assert.equal(callWithout?.evidenceLinkageState, callWith?.evidenceLinkageState);
+  assert.equal(callWithout?.inferenceId, callWith?.inferenceId);
+  assert.equal(callWithout?.effectiveFrom, callWith?.effectiveFrom);
+  assert.equal(callWithout?.effectiveTo, callWith?.effectiveTo);
+  assert.notEqual(callWithout?.situationSetting, callWith?.situationSetting);
+});
+
+test("a read-back ClaimVersion honestly reports null/null when Context was never established, never a fabricated value", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const version = makeClaimVersion({ situationSetting: null, timeOfDay: null });
+  repository.findClaimVersionForUserResult = version;
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const result = await useCase.findClaimVersionForUser("user-a", "claim-1", 1);
+
+  assert.equal(result?.situationSetting, null);
+  assert.equal(result?.timeOfDay, null);
 });

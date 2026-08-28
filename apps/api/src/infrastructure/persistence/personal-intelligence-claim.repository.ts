@@ -69,6 +69,12 @@ function toDomainVersion(
     // null means "not established," never "always"/"now".
     effectiveFrom: row.effectiveFrom,
     effectiveTo: row.effectiveTo,
+    // Claim-level Context (Implementation Increment Contract,
+    // docs/gates/PERSONAL-INTELLIGENCE-CONTEXT-IMPLEMENTATION-INCREMENT-CONTRACT.md).
+    // Set only from explicit caller input on create()/appendCorrection();
+    // null means "not established," never "always"/"now".
+    situationSetting: row.situationSetting,
+    timeOfDay: row.timeOfDay,
     observedAt: row.observedAt,
     acceptedAt: row.acceptedAt,
     createdAt: row.createdAt,
@@ -177,6 +183,8 @@ export class DrizzlePersonalIntelligenceClaimRepository
         evidenceLinkageState: personalIntelligenceClaimVersions.evidenceLinkageState,
         effectiveFrom: personalIntelligenceClaimVersions.effectiveFrom,
         effectiveTo: personalIntelligenceClaimVersions.effectiveTo,
+        situationSetting: personalIntelligenceClaimVersions.situationSetting,
+        timeOfDay: personalIntelligenceClaimVersions.timeOfDay,
         observedAt: personalIntelligenceClaimVersions.observedAt,
         acceptedAt: personalIntelligenceClaimVersions.acceptedAt,
         createdAt: personalIntelligenceClaimVersions.createdAt,
@@ -250,6 +258,8 @@ export class DrizzlePersonalIntelligenceClaimRepository
             evidenceLinkageState: input.evidenceLinkageState,
             effectiveFrom: input.effectiveFrom,
             effectiveTo: input.effectiveTo,
+            situationSetting: input.situationSetting,
+            timeOfDay: input.timeOfDay,
             observedAt: input.observedAt,
             acceptedAt: input.acceptedAt,
             createdAt: input.now,
@@ -284,6 +294,8 @@ export class DrizzlePersonalIntelligenceClaimRepository
                 evidenceLinkageState: sql<string>`${input.evidenceLinkageState}`.as("evidence_linkage_state"),
                 effectiveFrom: sql<Date | null>`${input.effectiveFrom}`.as("effective_from"),
                 effectiveTo: sql<Date | null>`${input.effectiveTo}`.as("effective_to"),
+                situationSetting: sql<string | null>`${input.situationSetting}`.as("situation_setting"),
+                timeOfDay: sql<string | null>`${input.timeOfDay}`.as("time_of_day"),
                 observedAt: sql<Date>`${input.observedAt}`.as("observed_at"),
                 acceptedAt: sql<Date>`${input.acceptedAt}`.as("accepted_at"),
                 createdAt: sql<Date>`${input.now}`.as("created_at"),
@@ -333,6 +345,8 @@ export class DrizzlePersonalIntelligenceClaimRepository
               evidenceLinkageState: sql<string>`${input.evidenceLinkageState}`.as("evidence_linkage_state"),
               effectiveFrom: sql<Date | null>`${input.effectiveFrom}`.as("effective_from"),
               effectiveTo: sql<Date | null>`${input.effectiveTo}`.as("effective_to"),
+              situationSetting: sql<string | null>`${input.situationSetting}`.as("situation_setting"),
+              timeOfDay: sql<string | null>`${input.timeOfDay}`.as("time_of_day"),
               observedAt: sql<Date>`${input.observedAt}`.as("observed_at"),
               acceptedAt: sql<Date>`${input.acceptedAt}`.as("accepted_at"),
               createdAt: sql<Date>`${input.now}`.as("created_at"),
@@ -435,6 +449,14 @@ export class DrizzlePersonalIntelligenceClaimRepository
               // this projection to the prior row's temporal columns.
               effectiveFrom: sql<Date | null>`${input.effectiveFrom}`.as("effective_from"),
               effectiveTo: sql<Date | null>`${input.effectiveTo}`.as("effective_to"),
+              // Claim-level Context: always taken fresh from this input,
+              // exactly like effectiveFrom/effectiveTo and inferenceId
+              // above - NEVER sourced from personalIntelligenceClaimVersions
+              // .situationSetting/.timeOfDay of the matched prior row
+              // (Always Explicit, Contract §12). No reference anywhere in
+              // this projection to the prior row's Context columns.
+              situationSetting: sql<string | null>`${input.situationSetting}`.as("situation_setting"),
+              timeOfDay: sql<string | null>`${input.timeOfDay}`.as("time_of_day"),
               observedAt: sql<Date>`${input.observedAt}`.as("observed_at"),
               acceptedAt: sql<Date>`${input.acceptedAt}`.as("accepted_at"),
               createdAt: sql<Date>`${input.now}`.as("created_at"),

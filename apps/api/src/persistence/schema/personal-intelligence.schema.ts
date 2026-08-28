@@ -124,6 +124,17 @@ export const personalIntelligenceClaimVersions = decivexa.table(
     // acceptedAt, createdAt, lifecycle, evidence, or provenance.
     effectiveFrom: timestamp("effective_from", { withTimezone: true }),
     effectiveTo: timestamp("effective_to", { withTimezone: true }),
+    // Claim-level Context (Implementation Increment Contract,
+    // docs/gates/PERSONAL-INTELLIGENCE-CONTEXT-IMPLEMENTATION-INCREMENT-CONTRACT.md
+    // §18/§20). Both nullable text, no defaults, no enum - no evidenced
+    // fixed vocabulary exists for either dimension. Populated only by
+    // explicit caller input on create()/appendCorrection() (Always
+    // Explicit) - never derived from Temporal Validity, lifecycle,
+    // provenance, or evidence timestamps. No new sovereignty column is
+    // introduced for Context - it is governed by this row's existing
+    // provenance/inferenceId/confirmation apparatus (Contract §7).
+    situationSetting: text("situation_setting"),
+    timeOfDay: text("time_of_day"),
     observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
     acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),

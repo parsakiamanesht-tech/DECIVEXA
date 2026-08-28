@@ -47,6 +47,14 @@ export type CreateClaimInput = Readonly<{
   // explicit replacement is the only shape this field has ever had).
   effectiveFrom: Date | null;
   effectiveTo: Date | null;
+  // Claim-level Context (Implementation Increment Contract,
+  // docs/gates/PERSONAL-INTELLIGENCE-CONTEXT-IMPLEMENTATION-INCREMENT-CONTRACT.md
+  // §12, Always Explicit). Required, non-optional, `string | null` -
+  // caller must always make an explicit choice; `null` means only "not
+  // established". No new sovereignty field - governed by this row's
+  // existing provenance/inferenceId/confirmation apparatus (Contract §7).
+  situationSetting: string | null;
+  timeOfDay: string | null;
   observedAt: Date;
   acceptedAt: Date;
   now: Date;
@@ -83,6 +91,16 @@ export type AppendClaimCorrectionInput = Readonly<{
   // the prior version had a known value.
   effectiveFrom: Date | null;
   effectiveTo: Date | null;
+  // See CreateClaimInput.situationSetting/.timeOfDay. Always taken fresh
+  // from this input on every correction - NEVER copied, inherited, or
+  // carried forward from the prior version's Context, structurally
+  // identical to how effectiveFrom/effectiveTo and inferenceId already
+  // behave above. A caller who wants the correction to keep the same
+  // Context must pass those same values again explicitly; omitting
+  // either (passing null) clears it on the new version even if the prior
+  // version had a known value.
+  situationSetting: string | null;
+  timeOfDay: string | null;
   observedAt: Date;
   acceptedAt: Date;
   now: Date;

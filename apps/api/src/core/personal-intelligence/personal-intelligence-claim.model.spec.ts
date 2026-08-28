@@ -35,6 +35,8 @@ test("PersonalIntelligenceClaim domain contract", async (t) => {
       evidenceLinkageState: "linkage_pending",
       effectiveFrom: null,
       effectiveTo: null,
+      situationSetting: null,
+      timeOfDay: null,
       observedAt: new Date("2025-12-31T23:00:00.000Z"),
       acceptedAt: new Date("2026-01-01T00:00:00.000Z"),
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
@@ -59,6 +61,8 @@ test("PersonalIntelligenceClaim domain contract", async (t) => {
       inferenceId: null,
       effectiveFrom: null,
       effectiveTo: null,
+      situationSetting: null,
+      timeOfDay: null,
       observedAt: new Date("2025-12-31T23:00:00.000Z"),
       acceptedAt: new Date("2026-01-01T00:00:00.000Z"),
       now: new Date("2026-01-01T00:00:00.000Z"),
@@ -83,6 +87,8 @@ test("PersonalIntelligenceClaim domain contract", async (t) => {
       evidenceLinkageState: "linkage_pending",
       effectiveFrom: null,
       effectiveTo: null,
+      situationSetting: null,
+      timeOfDay: null,
       observedAt: new Date("2025-12-31T23:00:00.000Z"),
       acceptedAt: new Date("2026-01-01T00:00:00.000Z"),
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
@@ -103,6 +109,8 @@ test("PersonalIntelligenceClaim domain contract", async (t) => {
       inferenceId: null,
       effectiveFrom: null,
       effectiveTo: null,
+      situationSetting: null,
+      timeOfDay: null,
       observedAt: new Date("2026-01-02T00:00:00.000Z"),
       acceptedAt: new Date("2026-01-02T00:00:00.000Z"),
       now: new Date("2026-01-02T00:00:00.000Z"),
@@ -128,6 +136,8 @@ test("PersonalIntelligenceClaim domain contract", async (t) => {
       evidenceLinkageState: "linkage_pending",
       effectiveFrom: null,
       effectiveTo: null,
+      situationSetting: null,
+      timeOfDay: null,
       observedAt: new Date("2026-01-01T00:00:00.000Z"),
       acceptedAt: new Date("2026-01-01T00:01:00.000Z"),
       createdAt: new Date("2026-01-01T00:01:00.000Z"),
@@ -152,6 +162,8 @@ test("PersonalIntelligenceClaim domain contract", async (t) => {
       evidenceLinkageState: "linkage_pending",
       effectiveFrom: new Date("2026-03-01T00:00:00.000Z"),
       effectiveTo: new Date("2026-06-01T00:00:00.000Z"),
+      situationSetting: null,
+      timeOfDay: null,
       observedAt: new Date("2026-07-01T00:00:00.000Z"),
       acceptedAt: new Date("2026-07-01T00:00:00.000Z"),
       createdAt: new Date("2026-07-01T00:00:00.000Z"),
@@ -177,6 +189,8 @@ test("PersonalIntelligenceClaim domain contract", async (t) => {
       evidenceLinkageState: "linkage_pending",
       effectiveFrom: new Date("2026-06-01T00:00:00.000Z"),
       effectiveTo: new Date("2026-03-01T00:00:00.000Z"),
+      situationSetting: null,
+      timeOfDay: null,
       observedAt: new Date("2026-07-01T00:00:00.000Z"),
       acceptedAt: new Date("2026-07-01T00:00:00.000Z"),
       createdAt: new Date("2026-07-01T00:00:00.000Z"),
@@ -206,6 +220,8 @@ test("PersonalIntelligenceClaim domain contract", async (t) => {
       evidenceLinkageState: "linkage_pending",
       effectiveFrom: instant,
       effectiveTo: instant,
+      situationSetting: null,
+      timeOfDay: null,
       observedAt: instant,
       acceptedAt: instant,
       createdAt: instant,
@@ -230,6 +246,8 @@ test("PersonalIntelligenceClaim domain contract", async (t) => {
       evidenceLinkageState: "linkage_pending",
       effectiveFrom: null,
       effectiveTo: null,
+      situationSetting: null,
+      timeOfDay: null,
       observedAt: new Date("2026-01-01T00:00:00.000Z"),
       acceptedAt: new Date("2026-01-01T00:00:00.000Z"),
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
@@ -255,6 +273,8 @@ test("PersonalIntelligenceClaim domain contract", async (t) => {
       evidenceLinkageState: "linkage_pending",
       effectiveFrom: new Date("2026-01-01T00:00:00.000Z"),
       effectiveTo: null,
+      situationSetting: null,
+      timeOfDay: null,
       observedAt: new Date("2026-01-01T00:00:00.000Z"),
       acceptedAt: new Date("2026-01-01T00:00:00.000Z"),
       createdAt: new Date("2026-01-01T00:00:00.000Z"),
@@ -262,5 +282,113 @@ test("PersonalIntelligenceClaim domain contract", async (t) => {
 
     assert.notEqual(version.effectiveFrom, null);
     assert.equal(version.effectiveTo, null);
+  });
+
+  await t.test("Context: both situationSetting and timeOfDay known is representable", () => {
+    const version: PersonalIntelligenceClaimVersion = {
+      id: "claim-version-8",
+      claimId: "claim-8",
+      version: 1,
+      userId: "user-8",
+      valueKind: "text",
+      valueText: "prefers quiet music",
+      provenance: "declared",
+      confidence: 0.8,
+      lifecycle: "active",
+      evidenceVersionId: null,
+      inferenceId: null,
+      evidenceLinkageState: "linkage_pending",
+      effectiveFrom: null,
+      effectiveTo: null,
+      situationSetting: "at work",
+      timeOfDay: "morning",
+      observedAt: new Date("2026-01-01T00:00:00.000Z"),
+      acceptedAt: new Date("2026-01-01T00:00:00.000Z"),
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+
+    assert.equal(version.situationSetting, "at work");
+    assert.equal(version.timeOfDay, "morning");
+  });
+
+  await t.test("Context: both situationSetting and timeOfDay null is the honest, first-class 'not established' state, not a degraded default", () => {
+    const version: PersonalIntelligenceClaimVersion = {
+      id: "claim-version-9",
+      claimId: "claim-9",
+      version: 1,
+      userId: "user-9",
+      valueKind: "text",
+      valueText: "a claim with no known Context",
+      provenance: "declared",
+      confidence: 0.7,
+      lifecycle: "active",
+      evidenceVersionId: null,
+      inferenceId: null,
+      evidenceLinkageState: "linkage_pending",
+      effectiveFrom: null,
+      effectiveTo: null,
+      situationSetting: null,
+      timeOfDay: null,
+      observedAt: new Date("2026-01-01T00:00:00.000Z"),
+      acceptedAt: new Date("2026-01-01T00:00:00.000Z"),
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+
+    assert.equal(version.situationSetting, null);
+    assert.equal(version.timeOfDay, null);
+  });
+
+  await t.test("Context: situationSetting known while timeOfDay is independently unestablished is representable (dimension independence)", () => {
+    const version: PersonalIntelligenceClaimVersion = {
+      id: "claim-version-10",
+      claimId: "claim-10",
+      version: 1,
+      userId: "user-10",
+      valueKind: "text",
+      valueText: "gets anxious in meetings",
+      provenance: "observed",
+      confidence: 0.6,
+      lifecycle: "active",
+      evidenceVersionId: null,
+      inferenceId: null,
+      evidenceLinkageState: "linkage_pending",
+      effectiveFrom: null,
+      effectiveTo: null,
+      situationSetting: "in a meeting",
+      timeOfDay: null,
+      observedAt: new Date("2026-01-01T00:00:00.000Z"),
+      acceptedAt: new Date("2026-01-01T00:00:00.000Z"),
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+
+    assert.notEqual(version.situationSetting, null);
+    assert.equal(version.timeOfDay, null);
+  });
+
+  await t.test("Context: timeOfDay known while situationSetting is independently unestablished is representable (dimension independence)", () => {
+    const version: PersonalIntelligenceClaimVersion = {
+      id: "claim-version-11",
+      claimId: "claim-11",
+      version: 1,
+      userId: "user-11",
+      valueKind: "text",
+      valueText: "sleeps poorly",
+      provenance: "declared",
+      confidence: 0.9,
+      lifecycle: "active",
+      evidenceVersionId: null,
+      inferenceId: null,
+      evidenceLinkageState: "linkage_pending",
+      effectiveFrom: null,
+      effectiveTo: null,
+      situationSetting: null,
+      timeOfDay: "night",
+      observedAt: new Date("2026-01-01T00:00:00.000Z"),
+      acceptedAt: new Date("2026-01-01T00:00:00.000Z"),
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+
+    assert.equal(version.situationSetting, null);
+    assert.notEqual(version.timeOfDay, null);
   });
 });

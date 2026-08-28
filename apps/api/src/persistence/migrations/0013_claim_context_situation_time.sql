@@ -1,0 +1,2 @@
+ALTER TABLE "decivexa"."personal_intelligence_claim_versions" ADD COLUMN "situation_setting" text;--> statement-breakpoint
+ALTER TABLE "decivexa"."personal_intelligence_claim_versions" ADD COLUMN "time_of_day" text;

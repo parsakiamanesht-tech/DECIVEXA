@@ -92,6 +92,13 @@
       "when": 1787926444773,
       "tag": "0012_temporal_validity_effective_from_to",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1787927873140,
+      "tag": "0013_claim_context_situation_time",
+      "breakpoints": true
     }
   ]
 }
