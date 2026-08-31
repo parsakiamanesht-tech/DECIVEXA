@@ -59,6 +59,56 @@ export const PERSONAL_INTELLIGENCE_CLAIM_CONFIRMATION_ACTIONS = ["confirmed", "u
 export type PersonalIntelligenceClaimConfirmationAction =
   (typeof PERSONAL_INTELLIGENCE_CLAIM_CONFIRMATION_ACTIONS)[number];
 
+// Cross-Claim Matching — Relationship + Relationship Evidence
+// (Implementation Increment Contract §6/§11, docs/gates/
+// PERSONAL-INTELLIGENCE-RELATIONSHIP-EVIDENCE-IMPLEMENTATION-INCREMENT-CONTRACT.md).
+// Axis 1 — Relationship Type. FORMALIZED BY THE CONTRACT, not
+// independently Founder-approved by name before it — only the three-axis
+// *structure* is Founder-approved (Decision 4). `same_claim` and
+// `unrelated` are deliberately excluded per explicit Founder decision
+// (Contract §11.1); `same_subject`/`same_attribute` remain structural
+// predicates and are never values here either.
+export const PERSONAL_INTELLIGENCE_RELATIONSHIP_TYPES = [
+  "successive_state",
+  "refinement",
+  "contradiction",
+  "contextual_variation",
+  "related_fact",
+] as const;
+export type PersonalIntelligenceRelationshipType =
+  (typeof PERSONAL_INTELLIGENCE_RELATIONSHIP_TYPES)[number];
+
+// Axis 2 — Certainty (Contract §11.2, FORMALIZED BY THE CONTRACT).
+export const PERSONAL_INTELLIGENCE_RELATIONSHIP_CERTAINTIES = [
+  "certain",
+  "uncertain",
+  "unknown",
+] as const;
+export type PersonalIntelligenceRelationshipCertainty =
+  (typeof PERSONAL_INTELLIGENCE_RELATIONSHIP_CERTAINTIES)[number];
+
+// Axis 3 — Confirmation State (Contract §11.3, FORMALIZED BY THE
+// CONTRACT). Data only in this increment - no workflow/mechanism in this
+// module ever transitions a row from one value to another after creation.
+export const PERSONAL_INTELLIGENCE_RELATIONSHIP_CONFIRMATION_STATES = [
+  "not_required",
+  "pending",
+  "confirmed",
+  "rejected",
+] as const;
+export type PersonalIntelligenceRelationshipConfirmationState =
+  (typeof PERSONAL_INTELLIGENCE_RELATIONSHIP_CONFIRMATION_STATES)[number];
+
+// Provenance for Relationship and Relationship Evidence records (Contract
+// §10/§12, FORMALIZED BY THE CONTRACT) - same enum reused by both tables.
+export const PERSONAL_INTELLIGENCE_RELATIONSHIP_PROVENANCES = [
+  "ai_hypothesis",
+  "system_derived",
+  "user_declared",
+] as const;
+export type PersonalIntelligenceRelationshipProvenance =
+  (typeof PERSONAL_INTELLIGENCE_RELATIONSHIP_PROVENANCES)[number];
+
 export const personalIntelligenceClaims = decivexa.table(
   "personal_intelligence_claims",
   {
@@ -253,6 +303,139 @@ export const personalIntelligenceClaimConfirmationEvents = decivexa.table(
   ],
 );
 
+// Cross-Claim Matching — Relationship (Implementation Increment Contract
+// §10/§13, docs/gates/PERSONAL-INTELLIGENCE-RELATIONSHIP-EVIDENCE-IMPLEMENTATION-INCREMENT-CONTRACT.md).
+// Fully immutable core table: every column is set exactly once at INSERT
+// time and never updated (Contract §13 - "a variant of Option B/C,
+// deliberately minimized"). No append-only state-event table is created
+// for certainty/confirmationState in this increment, because nothing this
+// Contract authorizes ever needs to change either after creation - a
+// future, separately-authorized Matching-Hypothesis Confirmation
+// increment would define its own additive mechanism for that, without
+// altering this table (Contract §13/§18). sourceClaimVersionId/
+// targetClaimVersionId are single-column FKs to
+// personal_intelligence_claim_versions.id, with ownership (that both
+// referenced ClaimVersions belong to this row's own userId) verified at
+// the application/repository layer inside the same transaction - the same
+// established pattern already used for evidenceVersionId/inferenceId on
+// personal_intelligence_claim_versions itself, since claim_versions
+// exposes no (id, userId) composite unique key to FK against.
+export const personalIntelligenceRelationships = decivexa.table(
+  "personal_intelligence_relationships",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    sourceClaimVersionId: text("source_claim_version_id").notNull(),
+    targetClaimVersionId: text("target_claim_version_id").notNull(),
+    relationshipType: text("relationship_type")
+      .$type<PersonalIntelligenceRelationshipType>()
+      .notNull(),
+    certainty: text("certainty").$type<PersonalIntelligenceRelationshipCertainty>().notNull(),
+    confirmationState: text("confirmation_state")
+      .$type<PersonalIntelligenceRelationshipConfirmationState>()
+      .notNull(),
+    provenance: text("provenance").$type<PersonalIntelligenceRelationshipProvenance>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    // Required so personal_intelligence_relationship_evidence's composite
+    // ownership FK below can reference (id, user_id) - mirrors
+    // personal_intelligence_claims_id_user_id_unique exactly (a plain
+    // PRIMARY KEY on id alone does not, by itself, constitute a unique
+    // constraint on the pair; Postgres requires an explicit one for a
+    // composite FK to target it).
+    uniqueIndex("personal_intelligence_relationships_id_user_id_unique").on(
+      table.id,
+      table.userId,
+    ),
+    foreignKey({
+      columns: [table.sourceClaimVersionId],
+      foreignColumns: [personalIntelligenceClaimVersions.id],
+      name: "personal_intelligence_relationships_source_claim_version_fk",
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [table.targetClaimVersionId],
+      foreignColumns: [personalIntelligenceClaimVersions.id],
+      name: "personal_intelligence_relationships_target_claim_version_fk",
+    }).onDelete("restrict"),
+    check(
+      "personal_intelligence_relationships_relationship_type_check",
+      sql`${table.relationshipType} in ('successive_state','refinement','contradiction','contextual_variation','related_fact')`,
+    ),
+    check(
+      "personal_intelligence_relationships_certainty_check",
+      sql`${table.certainty} in ('certain','uncertain','unknown')`,
+    ),
+    check(
+      "personal_intelligence_relationships_confirmation_state_check",
+      sql`${table.confirmationState} in ('not_required','pending','confirmed','rejected')`,
+    ),
+    check(
+      "personal_intelligence_relationships_provenance_check",
+      sql`${table.provenance} in ('ai_hypothesis','system_derived','user_declared')`,
+    ),
+  ],
+);
+
+// Cross-Claim Matching — Relationship Evidence (Implementation Increment
+// Contract §12/§13). An independent abstraction, distinct from Claim
+// evidence and from candidate-generation signal (Decision 5). Append-only
+// event log, structurally analogous to
+// personal_intelligence_claim_confirmation_events above - never updated,
+// never deleted. evidenceVersionId is a nullable *reference* to an
+// existing evidence_versions row, never a repurposing of that schema
+// (Contract §12) - null when this evidence is a system-derived
+// deterministic-check result with nothing in evidence_versions to cite.
+export const personalIntelligenceRelationshipEvidence = decivexa.table(
+  "personal_intelligence_relationship_evidence",
+  {
+    id: text("id").primaryKey(),
+    // Single-column FK is not possible for ownership here either -
+    // personal_intelligence_relationships exposes no (id, userId)
+    // composite unique key - so ownership is enforced via the composite
+    // foreign key below instead, mirroring
+    // personal_intelligence_claim_confirmation_events_claim_owner_fk.
+    relationshipId: text("relationship_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    // Current-max-plus-one per relationshipId, allocated the same
+    // INSERT...SELECT way as every other sequence column in this schema -
+    // not a Postgres identity/serial column.
+    sequence: integer("sequence").notNull(),
+    description: text("description").notNull(),
+    evidenceVersionId: text("evidence_version_id"),
+    provenance: text("provenance").$type<PersonalIntelligenceRelationshipProvenance>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("personal_intelligence_relationship_evidence_relationship_id_sequence_unique").on(
+      table.relationshipId,
+      table.sequence,
+    ),
+    foreignKey({
+      columns: [table.relationshipId, table.userId],
+      foreignColumns: [personalIntelligenceRelationships.id, personalIntelligenceRelationships.userId],
+      name: "personal_intelligence_relationship_evidence_relationship_owner_fk",
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [table.evidenceVersionId],
+      foreignColumns: [evidenceVersions.id],
+      name: "personal_intelligence_relationship_evidence_evidence_version_fk",
+    }).onDelete("restrict"),
+    check(
+      "personal_intelligence_relationship_evidence_sequence_check",
+      sql`${table.sequence} >= 1`,
+    ),
+    check(
+      "personal_intelligence_relationship_evidence_provenance_check",
+      sql`${table.provenance} in ('ai_hypothesis','system_derived','user_declared')`,
+    ),
+  ],
+);
+
 export type PersonalIntelligenceClaimRow = typeof personalIntelligenceClaims.$inferSelect;
 export type NewPersonalIntelligenceClaimRow = typeof personalIntelligenceClaims.$inferInsert;
 export type PersonalIntelligenceClaimVersionRow = typeof personalIntelligenceClaimVersions.$inferSelect;
@@ -262,3 +445,10 @@ export type PersonalIntelligenceClaimConfirmationEventRow =
   typeof personalIntelligenceClaimConfirmationEvents.$inferSelect;
 export type NewPersonalIntelligenceClaimConfirmationEventRow =
   typeof personalIntelligenceClaimConfirmationEvents.$inferInsert;
+export type PersonalIntelligenceRelationshipRow = typeof personalIntelligenceRelationships.$inferSelect;
+export type NewPersonalIntelligenceRelationshipRow =
+  typeof personalIntelligenceRelationships.$inferInsert;
+export type PersonalIntelligenceRelationshipEvidenceRow =
+  typeof personalIntelligenceRelationshipEvidence.$inferSelect;
+export type NewPersonalIntelligenceRelationshipEvidenceRow =
+  typeof personalIntelligenceRelationshipEvidence.$inferInsert;
