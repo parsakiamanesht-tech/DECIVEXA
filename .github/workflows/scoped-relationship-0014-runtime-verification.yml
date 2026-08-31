@@ -18,6 +18,9 @@ name: TEMPORARY - Scoped Relationship 0014 Runtime Verification
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - verify/scoped-relationship-0014-runtime
 
 jobs:
   scoped-verify-0014:
