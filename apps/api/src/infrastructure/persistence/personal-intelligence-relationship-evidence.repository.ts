@@ -27,13 +27,29 @@ function toDomainRelationshipEvidence(
   };
 }
 
-function isUniqueViolation(error: unknown): boolean {
+function hasUniqueViolationCode(value: unknown): boolean {
   return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: unknown }).code === "23505"
+    typeof value === "object" &&
+    value !== null &&
+    "code" in value &&
+    (value as { code?: unknown }).code === "23505"
   );
+}
+
+// PostgreSQL's own error (code "23505") is what the concurrent-loser branch
+// above must recognize, but Drizzle's node-postgres driver wraps it in a
+// DrizzleQueryError whose own properties are only { query, params, cause } -
+// the raw pg error, and its code, live at error.cause, not on the thrown
+// error itself. Checking both shapes keeps this working whether the error
+// arrives as the raw pg error (error.code) or Drizzle's wrapper
+// (error.cause.code), without assuming either shape or that a "cause"
+// property exists at all.
+function isUniqueViolation(error: unknown): boolean {
+  if (hasUniqueViolationCode(error)) return true;
+  const cause = typeof error === "object" && error !== null && "cause" in error
+    ? (error as { cause?: unknown }).cause
+    : undefined;
+  return hasUniqueViolationCode(cause);
 }
 
 export class DrizzlePersonalIntelligenceRelationshipEvidenceRepository
