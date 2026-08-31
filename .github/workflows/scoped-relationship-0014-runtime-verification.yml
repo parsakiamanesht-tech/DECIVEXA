@@ -1,0 +1,96 @@
+name: TEMPORARY - Scoped Relationship 0014 Runtime Verification
+
+# TEMPORARY VERIFICATION INFRASTRUCTURE.
+# Created solely to obtain real PostgreSQL 18 runtime evidence for the
+# already-implemented, already-pushed migration
+# 0014_relationship_and_relationship_evidence.sql, per an explicit,
+# narrowly-scoped Founder Execution Directive.
+#
+# This workflow exists ONLY on a temporary, non-production verification
+# branch. It is never merged into main and is deleted, along with this
+# branch, once verification evidence has been captured.
+#
+# It does not modify, repair, or reorder any committed migration. It
+# applies a filtered, ephemeral copy of the migration set that excludes
+# ONLY migrations 0008 and 0009 (a pre-existing, unrelated Memory-schema
+# defect - see the accompanying directive's Phase 1 dependency graph),
+# to reach and verify migration 0014 in isolation.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  scoped-verify-0014:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: decivexa
+          POSTGRES_USER: decivexa
+          POSTGRES_PASSWORD: decivexa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U decivexa -d decivexa"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          npm install --package-lock-only --ignore-scripts
+          npm ci
+        working-directory: apps/api
+
+      - name: Typecheck (sanity only, not a substitute for runtime evidence)
+        run: npm run typecheck
+        working-directory: apps/api
+
+      - name: Build
+        run: npm run build
+        working-directory: apps/api
+
+      - name: Apply filtered migration sequence (0000-0007, 0010-0014; 0008/0009 excluded)
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
+        run: |
+          set -euo pipefail
+          tmpdir="$(mktemp -d)"
+          cp -a apps/api "$tmpdir/apps-api"
+          rm -f "$tmpdir/apps-api/src/persistence/migrations/0008_fair_gideon.sql"
+          rm -f "$tmpdir/apps-api/src/persistence/migrations/meta/0008_snapshot.json"
+          rm -f "$tmpdir/apps-api/src/persistence/migrations/0009_foamy_raider.sql"
+          rm -f "$tmpdir/apps-api/src/persistence/migrations/meta/0009_snapshot.json"
+          JOURNAL_PATH="$tmpdir/apps-api/src/persistence/migrations/meta/_journal.json" node -e '
+            const fs = require("fs");
+            const p = process.env.JOURNAL_PATH;
+            const j = JSON.parse(fs.readFileSync(p, "utf8"));
+            j.entries = j.entries.filter((e) => e.tag !== "0008_fair_gideon" && e.tag !== "0009_foamy_raider");
+            fs.writeFileSync(p, JSON.stringify(j, null, 2));
+          '
+          echo "--- filtered journal (ephemeral copy only; committed _journal.json is untouched) ---"
+          cat "$tmpdir/apps-api/src/persistence/migrations/meta/_journal.json"
+          (cd "$tmpdir/apps-api" && npx drizzle-kit migrate)
+          rm -rf "$tmpdir"
+          echo "Filtered migration sequence applied. Committed migration files were never touched (this ran against a temporary copy only)."
+
+      - name: Verify committed migration files were not touched by the filtering step
+        run: |
+          set -euo pipefail
+          git status --porcelain
+          test -z "$(git status --porcelain)"
+          echo "Confirmed: no committed file was modified by the filtered-copy migration step."
+
+      - name: Run scoped 0014 runtime verification
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
+        run: node scripts/verify-0014-runtime.js
+        working-directory: apps/api
