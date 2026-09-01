@@ -5,6 +5,7 @@ import { PERSONAL_INTELLIGENCE_INFERENCE_REPOSITORY } from "../../core/personal-
 import { PERSONAL_INTELLIGENCE_CLAIM_CONFIRMATION_REPOSITORY } from "../../core/personal-intelligence/personal-intelligence-claim-confirmation.repository.token";
 import { PERSONAL_INTELLIGENCE_RELATIONSHIP_REPOSITORY } from "../../core/personal-intelligence/personal-intelligence-relationship.repository.token";
 import { PERSONAL_INTELLIGENCE_RELATIONSHIP_EVIDENCE_REPOSITORY } from "../../core/personal-intelligence/personal-intelligence-relationship-evidence.repository.token";
+import { PERSONAL_INTELLIGENCE_RELATIONSHIP_CONFIRMATION_REPOSITORY } from "../../core/personal-intelligence/personal-intelligence-relationship-confirmation.repository.token";
 import { DatabaseService } from "../../persistence/database.service";
 import { DrizzleWorkspaceRepository } from "./workspace.repository";
 import { DrizzlePersonalIntelligenceClaimRepository } from "./personal-intelligence-claim.repository";
@@ -12,6 +13,7 @@ import { DrizzlePersonalIntelligenceInferenceRepository } from "./personal-intel
 import { DrizzlePersonalIntelligenceClaimConfirmationRepository } from "./personal-intelligence-claim-confirmation.repository";
 import { DrizzlePersonalIntelligenceRelationshipRepository } from "./personal-intelligence-relationship.repository";
 import { DrizzlePersonalIntelligenceRelationshipEvidenceRepository } from "./personal-intelligence-relationship-evidence.repository";
+import { DrizzlePersonalIntelligenceRelationshipConfirmationRepository } from "./personal-intelligence-relationship-confirmation.repository";
 
 @Module({
   providers: [
@@ -52,6 +54,12 @@ import { DrizzlePersonalIntelligenceRelationshipEvidenceRepository } from "./per
         new DrizzlePersonalIntelligenceRelationshipEvidenceRepository(database.client),
       inject: [DatabaseService],
     },
+    {
+      provide: PERSONAL_INTELLIGENCE_RELATIONSHIP_CONFIRMATION_REPOSITORY,
+      useFactory: (database: DatabaseService) =>
+        new DrizzlePersonalIntelligenceRelationshipConfirmationRepository(database.client),
+      inject: [DatabaseService],
+    },
   ],
   exports: [
     WORKSPACE_REPOSITORY,
@@ -60,6 +68,7 @@ import { DrizzlePersonalIntelligenceRelationshipEvidenceRepository } from "./per
     PERSONAL_INTELLIGENCE_CLAIM_CONFIRMATION_REPOSITORY,
     PERSONAL_INTELLIGENCE_RELATIONSHIP_REPOSITORY,
     PERSONAL_INTELLIGENCE_RELATIONSHIP_EVIDENCE_REPOSITORY,
+    PERSONAL_INTELLIGENCE_RELATIONSHIP_CONFIRMATION_REPOSITORY,
   ],
 })
 export class PersistenceModule {}

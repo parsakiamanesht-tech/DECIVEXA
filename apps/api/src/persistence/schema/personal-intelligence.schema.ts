@@ -109,6 +109,28 @@ export const PERSONAL_INTELLIGENCE_RELATIONSHIP_PROVENANCES = [
 export type PersonalIntelligenceRelationshipProvenance =
   (typeof PERSONAL_INTELLIGENCE_RELATIONSHIP_PROVENANCES)[number];
 
+// Cross-Claim Matching — Matching-Hypothesis Confirmation (Implementation
+// Increment Contract §9/§11, docs/gates/
+// PERSONAL-INTELLIGENCE-MATCHING-HYPOTHESIS-CONFIRMATION-IMPLEMENTATION-INCREMENT-CONTRACT.md).
+// Event action vocabulary — not a copy of C3's confirmed|unconfirmed,
+// since Relationship confirmation is a four-value domain
+// (not_required/pending/confirmed/rejected), not a boolean toggle.
+// not_required is never a valid event action.
+export const PERSONAL_INTELLIGENCE_RELATIONSHIP_CONFIRMATION_ACTIONS = [
+  "pending",
+  "confirmed",
+  "rejected",
+] as const;
+export type PersonalIntelligenceRelationshipConfirmationAction =
+  (typeof PERSONAL_INTELLIGENCE_RELATIONSHIP_CONFIRMATION_ACTIONS)[number];
+
+// Actor model (Contract §10.2, corrected per Final Founder Review
+// finding F-4): this Increment authorizes only the "user" actor — no
+// "system" or "ai" value exists in this Increment's domain.
+export const PERSONAL_INTELLIGENCE_RELATIONSHIP_CONFIRMATION_ACTORS = ["user"] as const;
+export type PersonalIntelligenceRelationshipConfirmationActor =
+  (typeof PERSONAL_INTELLIGENCE_RELATIONSHIP_CONFIRMATION_ACTORS)[number];
+
 export const personalIntelligenceClaims = decivexa.table(
   "personal_intelligence_claims",
   {
@@ -436,6 +458,70 @@ export const personalIntelligenceRelationshipEvidence = decivexa.table(
   ],
 );
 
+// Cross-Claim Matching — Matching-Hypothesis Confirmation (Implementation
+// Increment Contract §9/§10/§11). An independent confirmation mechanism
+// (Decision 6), separate from C3 Claim Confirmation and D3 Inference
+// Confirmation. Append-only event log, structurally analogous to
+// personal_intelligence_claim_confirmation_events and
+// personal_intelligence_relationship_evidence above — never updated,
+// never deleted. Effective confirmation state is derived (see
+// deriveEffectiveConfirmationState in
+// personal-intelligence-relationship-confirmation.model.ts) from the
+// event with the greatest `sequence` for a given relationshipId, falling
+// back to the Relationship's own creation-time confirmationState when no
+// event exists yet — never stored as a mutable column anywhere, and
+// personal_intelligence_relationships.confirmationState itself is never
+// updated after Relationship creation (Contract §10 — this table does
+// not reopen that already-shipped immutability). actor is currently
+// constrained to exactly "user" (Contract §10.2/§17, Final Founder
+// Review finding F-4) — no system or AI actor is authorized by this
+// Increment.
+export const personalIntelligenceRelationshipConfirmationEvents = decivexa.table(
+  "personal_intelligence_relationship_confirmation_events",
+  {
+    id: text("id").primaryKey(),
+    // Single-column FK is not possible for ownership here either -
+    // personal_intelligence_relationships exposes no bare (id) target
+    // suitable for composite ownership matching - so ownership is
+    // enforced via the composite foreign key below instead, mirroring
+    // personal_intelligence_relationship_evidence_relationship_owner_fk.
+    relationshipId: text("relationship_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    // Current-max-plus-one per relationshipId, allocated the same
+    // INSERT...SELECT way as every other sequence column in this schema -
+    // not a Postgres identity/serial column.
+    sequence: integer("sequence").notNull(),
+    action: text("action").$type<PersonalIntelligenceRelationshipConfirmationAction>().notNull(),
+    actor: text("actor").$type<PersonalIntelligenceRelationshipConfirmationActor>().notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    uniqueIndex(
+      "personal_intelligence_relationship_confirmation_events_relationship_id_sequence_unique",
+    ).on(table.relationshipId, table.sequence),
+    foreignKey({
+      columns: [table.relationshipId, table.userId],
+      foreignColumns: [personalIntelligenceRelationships.id, personalIntelligenceRelationships.userId],
+      name: "personal_intelligence_relationship_confirmation_events_relationship_owner_fk",
+    }).onDelete("restrict"),
+    check(
+      "personal_intelligence_relationship_confirmation_events_sequence_check",
+      sql`${table.sequence} >= 1`,
+    ),
+    check(
+      "personal_intelligence_relationship_confirmation_events_action_check",
+      sql`${table.action} in ('pending','confirmed','rejected')`,
+    ),
+    check(
+      "personal_intelligence_relationship_confirmation_events_actor_check",
+      sql`${table.actor} in ('user')`,
+    ),
+  ],
+);
+
 export type PersonalIntelligenceClaimRow = typeof personalIntelligenceClaims.$inferSelect;
 export type NewPersonalIntelligenceClaimRow = typeof personalIntelligenceClaims.$inferInsert;
 export type PersonalIntelligenceClaimVersionRow = typeof personalIntelligenceClaimVersions.$inferSelect;
@@ -452,3 +538,7 @@ export type PersonalIntelligenceRelationshipEvidenceRow =
   typeof personalIntelligenceRelationshipEvidence.$inferSelect;
 export type NewPersonalIntelligenceRelationshipEvidenceRow =
   typeof personalIntelligenceRelationshipEvidence.$inferInsert;
+export type PersonalIntelligenceRelationshipConfirmationEventRow =
+  typeof personalIntelligenceRelationshipConfirmationEvents.$inferSelect;
+export type NewPersonalIntelligenceRelationshipConfirmationEventRow =
+  typeof personalIntelligenceRelationshipConfirmationEvents.$inferInsert;

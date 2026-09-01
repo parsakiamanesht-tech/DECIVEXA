@@ -138,11 +138,18 @@ test("the Relationship schema's check() constraint accepts exactly the five form
   assert.equal(allowedValues.includes("same_attribute"), false);
 });
 
-test("no Relationship state-event or Matching-Hypothesis Confirmation table is referenced anywhere in the schema file (structural: those remain a future, separately authorized increment, Contract §13/§18)", async () => {
+// Matching-Hypothesis Confirmation was, at the time this test was
+// originally written, a future, separately authorized increment
+// (Contract §13/§18 of the Relationship + Relationship Evidence
+// Contract). It has since been Founder-authorized and implemented (its
+// own Implementation Increment Contract, docs/gates/
+// PERSONAL-INTELLIGENCE-MATCHING-HYPOTHESIS-CONFIRMATION-IMPLEMENTATION-INCREMENT-CONTRACT.md) —
+// this test is updated accordingly to no longer forbid its presence,
+// while the still-unbuilt, generic "Relationship state-event" concept
+// (distinct from Confirmation Events) remains correctly prohibited.
+test("no generic Relationship state-event table is referenced anywhere in the schema file (structural: distinct from Matching-Hypothesis Confirmation, which is now a separately authorized and implemented increment)", async () => {
   const source = await readRelationshipSchemaSource();
 
   assert.equal(source.includes("relationship_state_events"), false);
-  assert.equal(source.includes("relationship_confirmation_events"), false);
-  assert.equal(source.includes("personalIntelligenceRelationshipConfirmationEvents"), false);
   assert.equal(source.includes("personalIntelligenceRelationshipStateEvents"), false);
 });
