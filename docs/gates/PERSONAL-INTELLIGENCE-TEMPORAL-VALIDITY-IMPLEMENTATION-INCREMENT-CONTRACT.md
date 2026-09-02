@@ -5,6 +5,129 @@
 > This document is documentation only. No code, schema, migration, test,
 > API, repository, or service file was modified in producing it.
 
+---
+
+## Present-Day Repository Reconciliation
+
+**Added by Founder-authorized documentation/governance reconciliation
+("FOUNDER EXECUTION DIRECTIVE — TEMPORAL VALIDITY GOVERNANCE
+RECONCILIATION"). This section is purely additive. Every word of the
+historical Contract below — including the banner above
+("IMPLEMENTATION AUTHORIZATION: NOT GRANTED"), §23's restatement of that
+status, and every other historical statement in §1–§23 — is preserved
+byte-for-byte and remains the historical record of what this Contract
+specified and what it did and did not authorize at drafting time.
+Nothing below rewrites, deletes, softens, or reinterprets that historical
+record.**
+
+### Present-Day Status
+
+**MAINLINE-SHIPPED / UNIT & STRUCTURAL VERIFIED / LIVE POSTGRESQL
+VERIFICATION OUTSTANDING.**
+
+### Implementation Evidence
+
+The Temporal Validity implementation this Contract specifies exists on
+current `main`, introduced entirely by one commit:
+
+- **`587a854`** — "feat(pic): implement temporal validity for claim
+  versions." This commit contains **both** the Temporal Validity
+  implementation **and** the Temporal Validity Contract document itself
+  (this file), committed together. The implementation is present on
+  current `main`. No later commit was found that reverts or supersedes
+  the `effectiveFrom`/`effectiveTo` fields.
+
+**The existence of this commit is not treated here as independent
+Founder authorization evidence** — see "Authorization" below.
+
+### Implementation Scope Present Today
+
+Present-day repository reality includes the Contract-defined
+implementation surface: `effectiveFrom`/`effectiveTo` on
+`PersonalIntelligenceClaimVersion`
+(`apps/api/src/core/personal-intelligence/personal-intelligence-claim.model.ts`);
+both fields on `CreateClaimInput`/`AppendClaimCorrectionInput` (core
+repository interface); the Drizzle persistence implementation
+(`infrastructure/persistence/personal-intelligence-claim.repository.ts`);
+the schema addition
+(`persistence/schema/personal-intelligence.schema.ts`); the additive
+migration
+`apps/api/src/persistence/migrations/0012_temporal_validity_effective_from_to.sql`
+(two nullable `ADD COLUMN` statements, no default, no backfill — matching
+§9's specification exactly); unit tests
+(`personal-intelligence-claim.model.spec.ts`,
+`personal-intelligence-claim.use-case.spec.ts`); and a dedicated
+structural test file
+(`infrastructure/persistence/personal-intelligence-claim-temporal-validity.structural.spec.ts`).
+The implementation matches this Contract's Option-A semantics (§6): the
+dedicated structural test verifies that `appendCorrection`'s projection
+sources `effectiveFrom`/`effectiveTo` only from the correction input,
+never from the matched prior row — the required non-inheritance
+behavior.
+
+### Exclusions Confirmed Still Absent
+
+Consistent with this Contract's own scope (§7, §20), present-day
+repository evidence confirms the implementation did **not** introduce or
+authorize: Cross-Claim Matching (any part), candidate generation,
+similarity matching, or ranking; Relationship; Relationship Evidence;
+Matching-Hypothesis Confirmation; Context; a confidence algorithm; a
+"currently effective" derivation; any ordering-validation rule for
+`effectiveFrom`/`effectiveTo`; any change to Inference, Evidence, Memory,
+Personal State, or the AI Gateway; any API/controller/DTO layer; any web
+change. **Decision 7 — Cross-Claim Matching Implementation — remains NOT
+APPROVED**, untouched and unaffected by this reconciliation.
+
+### Test Status
+
+Unit and structural verification exists and matches this Contract's test
+intent (§17 items 1–8, 11–20 at the unit/structural level; the
+non-inheritance requirement of item 7 directly proven). **Live
+PostgreSQL verification was not performed. No dedicated live-database
+verification evidence was found for migration `0012` or these fields.**
+This limitation was explicitly disclosed by this Contract itself, in
+§§18–19, **before** implementation occurred ("No live PostgreSQL
+instance is available in this environment"). It is therefore a known,
+pre-declared environmental limitation, not a silently omitted
+requirement, and this reconciliation does not convert it into a claim
+that runtime verification occurred.
+
+### Authorization
+
+The historical Contract records Implementation Authorization as **NOT
+GRANTED** (banner; §23) and describes itself as documenting what a
+future, separately authorized implementation pass must do. Present-day
+repository evidence confirms the implementation nevertheless exists on
+`main`, matching this Contract's specification. However: **no
+independently verifiable separate Founder Execution Directive artifact
+was recovered.** What can be recorded is strong circumstantial
+alignment — this Contract's own recorded baseline (`HEAD =
+70bfd73ba4a09b9a6dcb69cfb843039af6bd6a90`) is the exact parent commit of
+the implementation commit (`587a854`), and the Contract and the
+implementation were committed together, atomically, in that same commit.
+**These facts are not converted into a claim that Founder authorization
+is proven.** Implementation existence is not authorization evidence.
+Passing tests are not authorization evidence. The commit's existence is
+not authorization evidence. This Contract's internal consistency with
+the shipped code is not authorization evidence. Authorization for the
+historical implementation remains an unresolved historical evidence
+question.
+
+### No Retroactive Authorization
+
+This reconciliation does not retroactively grant, establish, or infer
+authorization for the historical implementation. It records present-day
+repository reality only. The Founder directive that authorized producing
+this section authorized only this documentary reconciliation — it does
+not rewrite the historical authorization record, and does not authorize
+any further implementation, runtime verification, schema change, API/web
+exposure, or Cross-Claim Matching / Decision 7 work of any kind. Any
+future work on this capability — including the outstanding live
+PostgreSQL verification — requires its own separate, explicit Founder
+authorization.
+
+---
+
 ## 1. Authority
 
 This Contract is produced under "FOUNDER DIRECTIVE — TEMPORAL VALIDITY
