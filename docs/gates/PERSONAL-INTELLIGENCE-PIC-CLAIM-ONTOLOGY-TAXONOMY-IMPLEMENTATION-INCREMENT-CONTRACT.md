@@ -470,3 +470,139 @@ Contract's approval is a design approval, not that authorization (§1).
 This finalized Contract is superseded only by a further Founder decision
 amending it, or by a future, separately-scoped governance record. It does
 not itself authorize implementation.
+
+---
+
+## PRESENT-DAY FOUNDER GOVERNANCE RECONCILIATION — 2026-09-02
+
+This section is additive. It records a present-day Founder governance
+resolution and does not delete, rewrite, reorder, or reinterpret any
+historical statement made elsewhere in this Contract, including §1's
+status banner and §8. It was authorized by an explicit "FOUNDER-AUTHORIZED
+GOVERNANCE RECONCILIATION — PIC CLAIM ONTOLOGY / TAXONOMY" directive
+dated 2026-09-02, itself following a dedicated "FOUNDER GOVERNANCE
+RESOLUTION — PIC CLAIM ONTOLOGY / TAXONOMY" directive (also 2026-09-02),
+which in turn followed a strictly read-only forensic governance and
+implementation-conformance audit completed earlier the same day.
+
+### A. Historical Governance State (preserved, restated for clarity only)
+
+- The architectural parent, `docs/gates/PERSONAL-INTELLIGENCE-PIC-CLAIM-ONTOLOGY-TAXONOMY-DECISION-RECORD.md`
+  (`PI-ONTOLOGY-ARCHITECTURE-001`), remains historically **"FOUNDER-APPROVED
+  ARCHITECTURE — IMPLEMENTATION NOT AUTHORIZED"** — unchanged, untouched,
+  byte-for-byte, by this reconciliation.
+- This Contract (`PIC-ONTOLOGY-CONTRACT-001`) remains historically
+  **"FOUNDER-REVIEWED — REPRESENTATION DECISIONS APPROVED. STILL NOT AN
+  IMPLEMENTATION AUTHORIZATION"** (§1, verbatim, unaltered).
+- **HISTORICAL IMPLEMENTATION AUTHORIZATION: NOT FOUND / NOT
+  INDEPENDENTLY VERIFIABLE.** No commit, message, or artifact
+  independently authorizing implementation was located between this
+  Contract's finalization and implementation commit `f2af663`.
+- The existence of `f2af663` in Git history is **not** interpreted as
+  proof that historical authorization existed. No historical
+  authorization event is fabricated or reconstructed by this section.
+
+### B. Present-Day Founder Acceptance (effective 2026-09-02)
+
+Effective 2026-09-02, the Founder accepts `PIC-ONTOLOGY-CONTRACT-001`
+(this Contract) as the governing specification for the already-shipped
+PIC Claim Ontology / Taxonomy implementation, subject to its
+architectural parent, `PI-ONTOLOGY-ARCHITECTURE-001`. This present-day
+acceptance does not alter, and must not be read as altering, either
+document's historical status line (§1 above, or the architectural
+parent's own §1).
+
+### C. Present-Day Founder Ratification
+
+**PRESENT-DAY FOUNDER RATIFICATION: EFFECTIVE 2026-09-02.** The Founder
+ratifies and authorizes the already-shipped implementation represented
+by commit `f2af663e0b5d8f640d2a05e3e51f25f781c4bc02`, and the directly
+related corrective commit `647bc1bdb30cc4efbf8976fa1ef05825b79c23c1`.
+This is present-day ratification only. It is not retroactive
+authorization and must not be represented as historical implementation
+authorization existing at or before either commit's own date.
+
+### D. Atomic Commit Fact (preserved, not concealed)
+
+Commit `f2af663` contained **both** the two governance documents named
+above (this Contract and its architectural parent) **and** the full
+implementation — domain model, repository interfaces, Drizzle
+implementation, schema, migration, and tests — in a single atomic
+commit. There was **no separately committed, independently reviewable
+window** in which a finalized Contract existed in committed history
+before its implementation was also committed. This differs from every
+other Personal Intelligence increment reconciled this session (D3 base,
+D3 Promotion, Temporal Validity, Context, Relationship + Relationship
+Evidence), each of which had its governing Contract committed
+separately, and earlier, than its implementation. This fact is stated
+plainly and is not softened or implied away.
+
+### E. Corrective Fix History
+
+`647bc1b` was a corrective fix addressing nested PostgreSQL
+unique-violation error handling (Drizzle's node-postgres driver wraps
+the underlying Postgres error such that its `code` lives at
+`error.cause.code`, not `error.code`) in the affected PIC
+claim-confirmation repository path
+(`personal-intelligence-claim-confirmation.repository.ts`), mirroring
+the same defect class independently found and fixed in the Evidence,
+Claim, Relationship-Evidence, and Memory repositories. This commit did
+not perform, and is not represented here as having performed, any live
+PostgreSQL verification.
+
+### F. Contract ↔ Implementation Conformance
+
+**IMPLEMENTATION CONFORMANCE: FULLY CONFORMANT.** This is a Contract ↔
+implementation scope/conformance assessment only — it is not a
+statement of live PostgreSQL or production runtime verification.
+Scope, domain model, taxonomy value lists, invariants (including the
+database-enforced `evidence_linkage_state`/`evidenceVersionId` 1:1
+coupling), persistence structure, and the repository-only architectural
+boundary were each independently checked against this Contract's §3–§5
+and found to match.
+
+### G. Technical Verification Status
+
+**LIVE POSTGRESQL VERIFICATION OUTSTANDING — NO VERIFICATION ATTEMPT OF
+ANY KIND FOUND.** Domain-derivation logic (`deriveEffectiveConfirmation`)
+has dedicated unit tests. Some structural/composition evidence exists
+(an `*.app-composition.spec.ts` proving DI wiring). Several
+Contract-named structural requirements — including §3.3.2's named
+"architectural invariant test asserting no code path other than an
+explicit, human-triggered confirmation call can insert a `'confirmed'`
+event" — do not have an independently located, dedicated test. No
+temporary or permanent live-PostgreSQL verification script, workflow, or
+infrastructure of any kind was found for this workstream, at any point
+in its history. No production or runtime verification was established.
+This status is not described as "verified," "partially verified,"
+"runtime verified," "live PostgreSQL verified," "verification complete,"
+or "tested in PostgreSQL" — none of those statements is supported by the
+forensic evidence.
+
+### H. Scope Safeguards (unchanged)
+
+**Cross-Claim Matching / Decision 7 remains NOT APPROVED.** **Living
+User Model remains NOT AUTHORIZED.** This reconciliation does not
+authorize: Cross-Claim Matching, similarity, ranking, candidate
+generation, contradiction detection, matching pipelines, autonomous
+claim classification, AI Runtime integration, AI Gateway integration,
+HTTP/API exposure, Decision Engine integration, or any Claim
+intelligence outside the governed Contract.
+
+### I. Governance Status After This Reconciliation
+
+```
+HISTORICAL IMPLEMENTATION AUTHORIZATION: NOT FOUND / NOT INDEPENDENTLY VERIFIABLE
+PRESENT-DAY FOUNDER RATIFICATION: EFFECTIVE 2026-09-02
+IMPLEMENTATION: ALREADY SHIPPED ON MAINLINE
+CONTRACT ↔ IMPLEMENTATION CONFORMANCE: FULLY CONFORMANT
+LIVE POSTGRESQL VERIFICATION: OUTSTANDING — NO VERIFICATION ATTEMPT OF ANY KIND FOUND
+DECISION 7: NOT APPROVED
+LIVING USER MODEL: NOT AUTHORIZED
+```
+
+This reconciliation is documentary governance repair. It does not imply
+that the original implementation was historically authorized. It
+establishes a clean present-day governance state: the historical
+authorization gap preserved honestly, present-day Founder ratification
+explicitly recorded, and technical limitations explicitly preserved.
