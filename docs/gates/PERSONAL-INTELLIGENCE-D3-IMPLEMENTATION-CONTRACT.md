@@ -657,9 +657,114 @@ PIC-D4-01.
 None of these has occurred. This document does not substitute for any of
 them.
 
+*(The three items above, and the sentence immediately preceding this
+note, describe the historical state of this Contract as originally
+revised on 2026-08-28. They are preserved verbatim. See the
+present-day reconciliation section immediately below for the Founder
+governance state as of 2026-09-02, which supersedes this historical
+state going forward without altering the historical record.)*
+
+---
+
+## PRESENT-DAY FOUNDER GOVERNANCE RECONCILIATION — 2026-09-02
+
+This section is additive. It records a present-day Founder governance
+resolution and does not delete, rewrite, or backdate any historical
+statement made elsewhere in this Contract, including §A and §T above.
+It was authorized by an explicit Founder Reconciliation Directive dated
+2026-09-02, itself following a dedicated Founder Governance Resolution
+directive (also 2026-09-02) that resolved §T's three previously
+outstanding governance gates.
+
+### Historical state (unchanged, restated for clarity only)
+
+At the time of the 2026-08-28 Contract revision and of the
+`b05fb17` implementation:
+
+- the revised Contract was not independently documented as
+  Founder-approved (§A, §T above, verbatim);
+- no independently verifiable historical artifact of Founder
+  implementation authorization was found for `b05fb17`;
+- no independently verifiable historical TD-09 Implementation
+  Readiness / Build Authorization evaluation against this exact
+  revised Contract was found.
+
+None of this historical state is altered by what follows.
+
+### Present-day governance state (effective 2026-09-02)
+
+**§T.1 — Contract approval.** The revised D3 Implementation Contract
+is accepted by the Founder as the governing Contract for the
+already-shipped D3 Inference Provenance implementation. This is a
+present-day Founder approval, effective 2026-09-02, and does not alter
+the historical state of the Contract recorded in §A/§T above.
+
+**§T.2 — TD-09.** No independently verifiable historical TD-09
+Implementation Readiness / Build Authorization evaluation was found
+against the exact revised Contract before `b05fb17`. The Founder has
+decided that retroactive recreation of that historical evaluation is
+not required solely to legitimize the already-shipped implementation.
+This is a present-day governance decision. It is not a statement that
+TD-09 was historically completed, and no such historical completion is
+claimed anywhere in this Contract.
+
+**§T.3 — Implementation ratification.** Founder Parsa Kiamanesh,
+Founder & Owner of DECIVEXA, ratified and authorized the already-shipped
+D3 Inference Provenance implementation represented by commit `b05fb17`,
+subject to this Contract's defined scope, exclusions, verification
+limitations, and all remaining governance constraints. This ratification
+is effective 2026-09-02. It is not historical authorization and must not
+be represented as authorization existing at or before `b05fb17`'s commit
+date (2026-08-28).
+
+### Technical verification (unchanged by this reconciliation)
+
+`MAINLINE-SHIPPED / STRUCTURALLY VERIFIED AT DOMAIN/USE-CASE LAYERS /
+LIVE POSTGRESQL VERIFICATION OUTSTANDING`
+
+Founder governance approval is a governance act. It does not constitute,
+and must not be read as, technical verification. No claim of production
+verification, live-PostgreSQL verification, concurrency verification
+against a real PostgreSQL instance, or migration-execution verification
+is made by this reconciliation. The Contract's existing §R test matrix
+and its known coverage gaps are unaffected and unexpanded by this
+section.
+
+### Scope
+
+This reconciliation, and the present-day ratification it records, apply
+only to the D3 Inference Provenance implementation as defined by this
+Contract (§D/§E/§F above), i.e. to commit `b05fb17`. They do not
+authorize: Cross-Claim Matching, Decision 7, a Living User Model, new
+matching logic, a new inference ontology, new lifecycle states, new
+lifecycle transitions, new AI capabilities, Memory expansion,
+Relationship expansion, Context expansion, Claim Confirmation, new
+API/UI surfaces, or any other unrelated architecture change. Any
+material future change to D3 requires a separate, explicit
+Founder-controlled gate and authorization act of its own.
+
+**Cross-Claim Matching / Decision 7 remains NOT APPROVED.** Nothing in
+this reconciliation authorizes, implements, or implies it.
+
+### §21 and the seven invariants
+
+This reconciliation does not reopen, weaken, or reinterpret the §21
+Founder Addendum or any of the seven D3 invariants referenced by this
+Contract. The immutable Inference row, the absence of any mutable
+`status` field, the append-only lifecycle-history mechanism, the fixed
+and bounded lifecycle-transition graph, the exclusion of full event
+sourcing, and the absence of any automatic `stale` transition or
+lifecycle-graph expansion all remain exactly as approved.
+
 ---
 
 **D3 ARCHITECTURE: APPROVED**
 **D3 STATUS IMMUTABILITY: APPROVED**
-**D3 IMPLEMENTATION CONTRACT: REVISED — PENDING FINAL READINESS AUDIT**
-**D3 IMPLEMENTATION: NOT YET AUTHORIZED**
+**D3 IMPLEMENTATION CONTRACT: FOUNDER-APPROVED AS OF 2026-09-02
+(historically revised 2026-08-28 as "NOT FOUNDER-APPROVED AS REVISED —
+see §A/§T for the verbatim historical record and the reconciliation
+section above for the present-day resolution)**
+**D3 IMPLEMENTATION: PRESENT-DAY FOUNDER-RATIFIED (2026-09-02) / ALREADY
+MAINLINE-SHIPPED (`b05fb17`, 2026-08-28) — RATIFICATION IS NOT
+RETROACTIVE**
+**LIVE POSTGRESQL VERIFICATION: OUTSTANDING**
