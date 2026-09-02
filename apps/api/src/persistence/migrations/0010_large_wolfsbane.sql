@@ -46,6 +46,7 @@ CREATE TABLE "decivexa"."personal_intelligence_inferences" (
 	CONSTRAINT "personal_intelligence_inferences_system_adjusted_confidence_check" CHECK ("decivexa"."personal_intelligence_inferences"."system_adjusted_confidence" is null or ("decivexa"."personal_intelligence_inferences"."system_adjusted_confidence" >= 0 and "decivexa"."personal_intelligence_inferences"."system_adjusted_confidence" <= 1))
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX "personal_intelligence_inferences_id_user_id_unique" ON "decivexa"."personal_intelligence_inferences" USING btree ("id","user_id");--> statement-breakpoint
 ALTER TABLE "decivexa"."personal_intelligence_claim_versions" ADD COLUMN "inference_id" text;--> statement-breakpoint
 ALTER TABLE "decivexa"."personal_intelligence_inference_claim_context" ADD CONSTRAINT "personal_intelligence_inference_claim_context_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "decivexa"."users"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "decivexa"."personal_intelligence_inference_claim_context" ADD CONSTRAINT "personal_intelligence_inference_claim_context_inference_owner_fk" FOREIGN KEY ("inference_id","user_id") REFERENCES "decivexa"."personal_intelligence_inferences"("id","user_id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
@@ -56,5 +57,4 @@ ALTER TABLE "decivexa"."personal_intelligence_inference_lifecycle_events" ADD CO
 ALTER TABLE "decivexa"."personal_intelligence_inference_lifecycle_events" ADD CONSTRAINT "personal_intelligence_inference_lifecycle_events_inference_owner_fk" FOREIGN KEY ("inference_id","user_id") REFERENCES "decivexa"."personal_intelligence_inferences"("id","user_id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "decivexa"."personal_intelligence_inferences" ADD CONSTRAINT "personal_intelligence_inferences_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "decivexa"."users"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "personal_intelligence_inference_lifecycle_events_inference_id_sequence_unique" ON "decivexa"."personal_intelligence_inference_lifecycle_events" USING btree ("inference_id","sequence");--> statement-breakpoint
-CREATE UNIQUE INDEX "personal_intelligence_inferences_id_user_id_unique" ON "decivexa"."personal_intelligence_inferences" USING btree ("id","user_id");--> statement-breakpoint
 ALTER TABLE "decivexa"."personal_intelligence_claim_versions" ADD CONSTRAINT "personal_intelligence_claim_versions_inference_fk" FOREIGN KEY ("inference_id") REFERENCES "decivexa"."personal_intelligence_inferences"("id") ON DELETE restrict ON UPDATE no action;
