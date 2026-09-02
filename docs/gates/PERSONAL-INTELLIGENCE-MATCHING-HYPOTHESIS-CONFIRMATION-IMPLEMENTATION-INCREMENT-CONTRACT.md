@@ -11,6 +11,171 @@
 > Directive is required before any implementation work described here may
 > begin.
 
+---
+
+## Present-Day Repository Reconciliation
+
+**Added by Founder-authorized documentation/governance reconciliation
+("FOUNDER EXECUTION DIRECTIVE — MATCHING-HYPOTHESIS CONFIRMATION CONTRACT
+RECONCILIATION"). This section is purely additive. Every word of the
+historical Contract below — including the banner above ("IMPLEMENTATION
+AUTHORIZATION: NOT GRANTED"), every historical statement in §1–§27, and
+in particular §20's runtime-verification requirements, §25's acceptance
+criteria, and §18's exclusions — is preserved byte-for-byte and remains
+the historical record of what this Contract specified and what it did
+and did not authorize. Nothing below rewrites, deletes, softens, or
+reinterprets that historical record.**
+
+### Present-Day Status
+
+**MAINLINE-SHIPPED / STRUCTURALLY & UNIT VERIFIED / RUNTIME VERIFICATION
+OUTSTANDING.**
+
+The capability this Contract specifies — an independent Confirmation
+Event mechanism over an existing Relationship (Decision 6) — exists on
+current `main` at the domain, repository, and persistence layers,
+introduced entirely by one commit:
+
+- **`21caa84`** — "feat(personal-intelligence): add relationship
+  confirmation events" — the sole commit that introduced this capability;
+  no other commit touches it.
+
+**Implemented and tested (structural/unit level):**
+- Domain model + `deriveEffectiveConfirmationState`:
+  `apps/api/src/core/personal-intelligence/personal-intelligence-relationship-confirmation.model.ts`
+  (10 unit tests in the adjacent `.model.spec.ts`).
+- Repository interface/token:
+  `apps/api/src/core/personal-intelligence/personal-intelligence-relationship-confirmation.repository.ts`
+  / `.repository.token.ts`.
+- Drizzle persistence implementation, including the corrected
+  `isUniqueViolation` (checking both `error.code` and
+  `error.cause.code`, per Contract §14 — **not** C3's defective,
+  top-level-only shape):
+  `apps/api/src/infrastructure/persistence/personal-intelligence-relationship-confirmation.repository.ts`,
+  with 5 dedicated regression tests in the adjacent
+  `.repository.unique-violation.spec.ts`.
+- Additive migration, matching Contract §11/§23 column-for-column and
+  constraint-for-constraint:
+  `apps/api/src/persistence/migrations/0015_relationship_confirmation_events.sql`.
+- Structural boundary tests (11 tests) proving the applicable §9/§18
+  invariants (no mutation of `relationshipType`/`certainty`, no
+  UPDATE/DELETE, no Claim/ClaimVersion/Evidence/D3/Memory/Personal
+  State/AI Gateway reference, no candidate-generation/similarity/ranking
+  code):
+  `apps/api/src/infrastructure/persistence/personal-intelligence-relationship-confirmation.structural.spec.ts`.
+- Module wiring + DI-resolution proof:
+  `apps/api/src/infrastructure/persistence/persistence.module.ts`,
+  `apps/api/src/application/personal-intelligence/personal-intelligence-relationship-confirmation.app-composition.spec.ts`.
+
+**Deliberately not created, consistent with this Contract's own scope —
+not missing, not a gap:**
+- Application/use-case layer (Contract §15: "not required, not created").
+- HTTP/API surface (Contract §16: "Not required, not created. No HTTP
+  controller... exists for any PIC artifact in this codebase today").
+- Web/UI (Contract §18: "UI of any kind").
+- Any AI integration (Contract §17).
+
+**No evidence of external production deployment exists anywhere in the
+repository.** This reconciliation does not use, and repository evidence
+does not support, the word "production" to describe this state. The
+capability exists on `main`, in the repository's own test suite — nothing
+more is claimed.
+
+### Runtime Verification Gap (Acceptance Criterion 6 — NOT SATISFIED)
+
+Contract §20 ("Runtime Verification Requirements") explicitly requires
+real PostgreSQL runtime verification of the new table's schema, ownership
+behavior, and concurrency behavior — live `information_schema`/`pg_catalog`
+checks, live `CHECK`-constraint accept/reject tests, live concurrency race
+tests — as a condition of the implementation being "considered complete"
+(§20's own words), and Contract §25 Acceptance Criterion 6 makes this an
+explicit condition of the Contract being satisfied ("Every test category
+in §19 passes, **including live PostgreSQL runtime verification (§20)**").
+
+**No such runtime verification was performed. No live-PostgreSQL test
+exists anywhere in the repository for migration `0015` or this table** —
+confirmed by a repository-wide search of `.github/workflows/` and of every
+test file referencing this capability: the unique-violation regression
+tests and all structural/unit tests run exclusively against a stub
+`DatabaseClient` or pure in-memory logic, never a live database
+connection. This is unlike the immediately preceding Relationship +
+Relationship Evidence increment (migration `0014`), which had two
+dedicated commits performing exactly this kind of live-database
+verification — no equivalent commit exists for migration `0015`.
+
+**Therefore, Acceptance Criterion 6 is NOT satisfied, and this
+reconciliation does not, and cannot honestly, describe this Contract as
+fully complete or fully satisfied.** Unit- and stub-database-level tests
+do not substitute for, and are not represented here as substituting for,
+the live PostgreSQL verification §20 requires. This gap is recorded as an
+explicit, outstanding Contract requirement — not as an optional future
+enhancement, and not as an action this reconciliation authorizes, performs,
+or schedules.
+
+### Acceptance Criteria (§25) — Present-Day Status
+
+1. Table shape matches §11 — **supported by repository evidence** (migration
+   diffed against §11's specification).
+2. `personal_intelligence_relationships` byte-identical to shipped schema —
+   **supported by repository evidence** (no `ALTER` statement present).
+3. `create()` implements the exact atomic ownership+eligibility check —
+   **structurally verified** (dedicated structural test).
+4. Unique-violation handling recognizes both error shapes — **supported by
+   repository evidence** (5 dedicated regression tests, against a stub
+   database).
+5. `deriveEffectiveConfirmationState` implemented exactly as §10.3 —
+   **supported by repository evidence** (10 dedicated unit tests).
+6. Every test category in §19 passes, **including live PostgreSQL runtime
+   verification (§20)** — **NOT SATISFIED.** No live-database verification
+   exists.
+7. Structural boundary tests proving applicable §9 invariants — **structurally
+   verified** (11 dedicated tests).
+8. No file outside the §15/§23 boundary modified — **verified** (commit
+   `21caa84`'s file list matches the authorized boundary).
+
+### Authorization
+
+The Contract's historical text records Implementation Authorization as
+**NOT GRANTED**. Present-day repository evidence confirms that the scoped
+implementation nevertheless exists on mainline, but no independently
+verifiable surviving implementation-authorization artifact — including
+the "FOUNDER DECISION RESOLUTION — MATCHING-HYPOTHESIS CONFIRMATION"
+this Contract's own §3/§4 refer to, and the separate Founder Execution
+Directive §26 states is required — was identified anywhere in the
+repository, tracked or untracked. This reconciliation records the
+present-day repository state and does not retroactively establish or
+infer authorization. The existence of commit `21caa84`, and the fact that
+its tests pass, are not treated here as proof of authorization.
+
+### Decision 7 / Cross-Claim Matching Boundary (unchanged, reaffirmed)
+
+Decision 6 (Matching-Hypothesis Confirmation) remains FOUNDER-APPROVED
+ARCHITECTURE. **Decision 7 (Cross-Claim Matching Implementation) remains
+NOT APPROVED**, untouched by this reconciliation. The shipped capability
+described above contains no candidate generation, no similarity scoring,
+no ranking, and no matching algorithm — a dedicated structural test
+exists specifically to enforce this boundary (*"the Confirmation
+repository contains no candidate-generation, similarity, ranking, or
+matching-score code (structural: Decision-7 territory excluded, Contract
+§18)"*). This reconciliation does not describe the confirmation-event
+primitive as Cross-Claim Matching, and does not authorize, suggest, or
+advance Decision 7 implementation in any way.
+
+### What This Reconciliation Does Not Do
+
+This reconciliation is not a retroactive authorization of the existing
+implementation. It records repository reality only. It does not grant
+authorization for: the existing historical implementation; the
+outstanding runtime verification described above; any future
+implementation, test, migration, or code change; API or web exposure;
+AI integration; or Cross-Claim Matching / Decision 7 in any form. Any
+future work on this capability — including the outstanding runtime
+verification itself — requires its own separate, explicit Founder
+authorization, exactly as the historical Contract's own §26 already
+states.
+
+---
+
 ## 1. Identity / Increment Name
 
 **Matching-Hypothesis Confirmation** — the fourth stage in the approved
