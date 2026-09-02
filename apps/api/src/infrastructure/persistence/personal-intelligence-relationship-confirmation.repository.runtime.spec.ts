@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, test } from "node:test";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { createDatabase } from "../../persistence/database";
 import { users } from "../../persistence/schema/identity.schema";
 import {
@@ -153,37 +153,61 @@ test("create(): ownership enforcement against real PostgreSQL - a relationshipId
   assert.equal(attempt, null, "cross-user create() must return null, never record a confirmation event against another user's Relationship");
 });
 
-test("create(): real concurrent contention on sequence allocation for the same relationshipId produces a genuine PostgreSQL 23505 for the loser, with only one winner persisted", async () => {
-  const relationshipId = await seedRelationship(userAId, `q1-runtime-relconfirm-concurrency-${runId}`, "pending");
+// Founder-authorized test-design correction (forensic audit of CI Run
+// #359): the prior version of this test used Promise.all() to launch two
+// concurrent create() calls and asserted exactly one must win. That
+// assertion was non-deterministic - it depends on whether the two calls'
+// single-statement, unlocked `coalesce((select max(sequence)...), 0) + 1`
+// read phases genuinely overlap at the database engine level, which
+// Promise.all() does not guarantee (both calls may legitimately succeed
+// with distinct, non-colliding sequence numbers if the second's read
+// happens after the first has already committed - exactly what CI Run
+// #359 observed: two valid rows, sequence 1 and 2, no data corruption).
+// The repository's own comment on this method describes the
+// unique(relationship_id, sequence) index as a backstop against two
+// concurrent calls computing the same next sequence - a conditional
+// guarantee for an actual collision, not a claim that every concurrent
+// invocation collides. This test proves that conditional backstop
+// deterministically, by forcing the exact collision directly at the SQL
+// level instead of hoping Promise.all() produces one.
+test("personal_intelligence_relationship_confirmation_events_relationship_id_sequence_unique: PostgreSQL's unique(relationship_id, sequence) index deterministically rejects a second row explicitly colliding on the same sequence, proving the documented backstop invariant without depending on Promise.all() timing", async () => {
+  const relationshipId = await seedRelationship(userAId, `q1-runtime-relconfirm-collision-${runId}`, "pending");
 
-  const [first, second] = await Promise.all([
-    repo.create({
-      id: randomUUID(),
-      relationshipId,
-      userId: userAId,
-      action: "confirmed",
-      actor: "user",
-      occurredAt: new Date(),
-      now: new Date(),
-    }),
-    repo.create({
-      id: randomUUID(),
-      relationshipId,
-      userId: userAId,
-      action: "rejected",
-      actor: "user",
-      occurredAt: new Date(),
-      now: new Date(),
-    }),
-  ]);
+  const first = await repo.create({
+    id: randomUUID(),
+    relationshipId,
+    userId: userAId,
+    action: "confirmed",
+    actor: "user",
+    occurredAt: new Date(),
+    now: new Date(),
+  });
+  assert.ok(first, "expected the first, uncontended create() to succeed");
+  assert.equal(first!.sequence, 1);
 
-  const results = [first, second];
-  assert.equal(results.filter((r) => r !== null).length, 1, "exactly one concurrent create() must win under the real unique(relationship_id, sequence) constraint");
-  assert.equal(results.filter((r) => r === null).length, 1, "exactly one concurrent create() must be rejected as null");
+  // Deliberately forces the exact tuple the first row above already
+  // occupies - (relationship_id, sequence=1) - via a raw insert that
+  // bypasses the repository's own sequence-computation entirely. This
+  // proves the real PostgreSQL constraint itself, not a probabilistic
+  // race.
+  await assert.rejects(
+    () =>
+      db.execute(
+        sql`insert into decivexa.personal_intelligence_relationship_confirmation_events
+            (id, relationship_id, user_id, sequence, action, actor, occurred_at, created_at)
+            values (${randomUUID()}, ${relationshipId}, ${userAId}, 1, 'confirmed', 'user', now(), now())`,
+      ),
+    (error: unknown) => {
+      const pgError = error as { code?: string; cause?: { code?: string } };
+      const code = pgError.code ?? pgError.cause?.code;
+      assert.equal(code, "23505", `expected PostgreSQL unique-violation (23505) on the deliberately duplicated (relationship_id, sequence) pair, got ${code}`);
+      return true;
+    },
+  );
 
   const rows = await db
     .select()
     .from(personalIntelligenceRelationshipConfirmationEvents)
-    .where(eq(personalIntelligenceRelationshipConfirmationEvents.relationshipId, relationshipId));
-  assert.equal(rows.length, 1, "exactly one confirmation-event row must exist after the race");
+    .where(and(eq(personalIntelligenceRelationshipConfirmationEvents.relationshipId, relationshipId), eq(personalIntelligenceRelationshipConfirmationEvents.sequence, 1)));
+  assert.equal(rows.length, 1, "exactly one row may exist at (relationship_id, sequence=1) - the rejected duplicate must not have been persisted");
 });
