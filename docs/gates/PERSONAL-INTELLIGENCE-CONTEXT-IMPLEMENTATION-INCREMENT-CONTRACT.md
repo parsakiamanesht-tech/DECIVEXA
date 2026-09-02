@@ -5,6 +5,163 @@
 > Documentation only. No code, schema, migration, test, API, repository,
 > or service file was modified in producing this document.
 
+---
+
+## Present-Day Repository Reconciliation
+
+**Added by Founder-authorized documentation/governance reconciliation
+("FOUNDER EXECUTION DIRECTIVE — Additive Present-Day Repository
+Reconciliation — Personal Intelligence Context Contract"). This section
+is purely additive. Every word of the historical Contract below —
+including the banner above ("IMPLEMENTATION AUTHORIZATION: NOT
+GRANTED"), §30's restatement of that status, and every other historical
+statement in §1–§30 — is preserved byte-for-byte and remains the
+historical record of what this Contract specified and what it did and
+did not authorize at drafting time. Nothing below rewrites, deletes,
+softens, or reinterprets that historical record.**
+
+### A. Present-Day Status
+
+**MAINLINE-SHIPPED / UNIT & STRUCTURAL VERIFIED / LIVE POSTGRESQL
+VERIFICATION OUTSTANDING.**
+
+### B. Implementation Evidence
+
+The Claim-Level Context implementation this Contract specifies exists on
+current `main`, introduced entirely by one commit:
+
+- **`2464bed`** — "feat(pic): implement claim-level context." Parent:
+  `587a854351dc734dd7b84ae817ff1e10d140d95f`, which exactly matches this
+  Contract's own recorded baseline (§2). This commit contains **both**
+  the Claim-Level Context implementation **and** the Contract document
+  itself (this file), committed together. The implementation is an
+  ancestor of, and therefore present on, current `main`
+  (`98d63302dafd466ec2b321e47c8f151a17502d40`). No later commit was found
+  that reverts or supersedes the `situationSetting`/`timeOfDay` fields.
+
+**Principal implementation surfaces present:**
+- `PersonalIntelligenceClaimVersion` carries `situationSetting: string |
+  null` and `timeOfDay: string | null`
+  (`apps/api/src/core/personal-intelligence/personal-intelligence-claim.model.ts`).
+- Both fields are represented on `CreateClaimInput` and
+  `AppendClaimCorrectionInput` (core repository interface).
+- The Drizzle repository implements the fields per this Contract's
+  Always-Explicit / no-inheritance semantics (§12), across the relevant
+  `create()` branches and `appendCorrection()`'s projection
+  (`apps/api/src/infrastructure/persistence/personal-intelligence-claim.repository.ts`).
+- The schema contains two nullable `text` columns, `situation_setting`
+  and `time_of_day`, with no default and no `.notNull()`
+  (`apps/api/src/persistence/schema/personal-intelligence.schema.ts`),
+  matching §20's specification exactly.
+- The additive migration
+  `apps/api/src/persistence/migrations/0013_claim_context_situation_time.sql`
+  contains exactly two `ADD COLUMN` statements, no backfill.
+- Unit/fixture verification and a dedicated structural test file
+  (`personal-intelligence-claim-context.structural.spec.ts`) exist,
+  registered in `apps/api/package.json`.
+
+**The existence of this commit is not treated here as independent
+Founder authorization evidence** — see "E. Authorization" below.
+
+### C. Scope Alignment
+
+The implementation was audited against this historical Contract's
+specified scope (§21, §25) and found aligned with its boundary — no
+implementation surface beyond what §21/§25 authorize was found, and no
+excluded item (§27) was found introduced (see "H. Exclusions" below).
+
+### D. Verification
+
+- **Unit verification**: present — model-level and use-case-level
+  (fake-repository) tests covering the Contract's specified cases.
+- **Structural verification**: present — a dedicated structural test
+  file directly enforcing §7's no-new-sovereignty-field decision (checks
+  for, and confirms the absence of, `contextConfidence`/
+  `contextProvenance`/`contextLifecycle`/`contextConfirmation`/
+  `contextInferenceId`), plus D3/C3/Memory/Personal-State-exclusion,
+  axis-independence, and non-inheritance checks.
+- **Live PostgreSQL verification: outstanding.** No dedicated live-database
+  test or CI workflow reference exists anywhere in the repository for
+  migration `0013` or these two columns. **This limitation was explicitly
+  disclosed by this Contract itself**, before implementation occurred
+  (§22: "not achievable in this environment... not claimed as equivalent"
+  to unit/structural success; §26: "No live PostgreSQL instance available
+  in this environment"). It is therefore a known, pre-declared
+  environmental limitation, not a silently omitted requirement, and this
+  reconciliation does not represent it as resolved.
+
+### E. Authorization
+
+The historical Contract records Implementation Authorization as **NOT
+GRANTED** (banner; §30) and describes itself as documenting what a
+future, separately authorized implementation pass must do. Present-day
+repository evidence confirms the implementation nevertheless exists on
+`main`, matching this Contract's specification. However: **no
+independently verifiable separate Founder Execution Directive artifact
+for the historical implementation was found.** What can be recorded is
+strong circumstantial alignment — this Contract's own recorded baseline
+is the exact parent commit of the implementation commit, and the
+Contract and the implementation were committed together, atomically, in
+that same commit. **None of the following is treated as proof of Founder
+authorization:** implementation existence; passing tests; CI success;
+the commit's existence; this Contract's internal consistency with the
+shipped code; or the chronological alignment between the Contract's
+recorded baseline and the implementation commit. Authorization status:
+**UNRESOLVED / NOT INDEPENDENTLY VERIFIABLE.**
+
+### F. Historical Authorization Preservation
+
+The historical statement `IMPLEMENTATION AUTHORIZATION: NOT GRANTED.`
+(banner and §30) remains completely unchanged by this reconciliation and
+continues to represent the historical authorization record as it stood
+at drafting time.
+
+### G. No Retroactive Authorization
+
+**This present-day reconciliation does not constitute retroactive
+Founder authorization of the historical implementation.** It records
+present-day repository reality only. This directive authorizes only the
+documentation reconciliation performed here — it does not rewrite the
+historical authorization record, and does not authorize any further
+implementation, runtime verification, schema change, API/web exposure,
+or Cross-Claim Matching / Decision 7 work of any kind. Any future work on
+this capability — including the outstanding live PostgreSQL
+verification — requires its own separate, explicit Founder authorization.
+
+### H. Exclusions / Decision 7
+
+Consistent with this Contract's own scope (§21, §27), present-day
+repository evidence confirms the implementation did **not** introduce or
+authorize: Cross-Claim Matching (any part); Relationship; Relationship
+Evidence; Matching-Hypothesis Confirmation; a confidence algorithm; a
+"currently effective," "same-claim," or "contradiction" derived
+computation; any Inference-side Context field; sub-row/Context-specific
+provenance; any validation rule beyond structural typing; any change to
+Evidence, Memory, Personal State, D1/D2/D3, the Ontology Decision
+Record, the Constitution, or the AI Gateway; any API/controller/DTO
+layer; any web/UI change. Later files that mention `situationSetting`/
+`timeOfDay` (`personal-intelligence-relationship.repository.ts`,
+`personal-intelligence-relationship-evidence.model.ts`) do so only in
+header comments citing this Contract's precedent — no functional
+read/write coupling exists. **Decision 7 — Cross-Claim Matching
+Implementation — remains NOT APPROVED**, untouched and unaffected by
+this reconciliation. This implementation does not authorize, implement,
+activate, or imply Cross-Claim Matching, candidate matching, similarity,
+ranking, cross-claim comparison, contradiction derivation, or universal
+confidence scoring.
+
+### I. Reason Reconciliation Is Required
+
+A reasonable current maintainer reading only the historical Contract's
+banner and §30 would conclude Claim-Level Context is unbuilt. Present-day
+repository evidence shows the implementation is, in fact, mainline-shipped,
+tested at the unit and structural levels, and already cited by name in
+later files as an established precedent. This reconciliation exists to
+prevent that avoidable misunderstanding without altering the historical
+authorization record.
+
+---
+
 ## 1. Authority
 
 Produced under "FOUNDER DIRECTIVE — CLAIM-LEVEL CONTEXT DESIGN &
