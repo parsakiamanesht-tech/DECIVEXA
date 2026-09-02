@@ -17,6 +17,180 @@ IMPLEMENTATION AUTHORIZATION.** No code, schema, migration, or test has
 been written, modified, staged, committed, or pushed as part of producing
 this document. No write operation was executed against any repository.
 
+---
+
+## Present-Day Repository Reconciliation
+
+**Added by Founder-authorized documentation/governance reconciliation
+("FOUNDER EXECUTION DIRECTIVE — D3 CLAIM PROMOTION WRITE PATH CONTRACT
+RECONCILIATION"). This section is purely additive. Every word of the
+historical Contract below — including the historical status
+("PROPOSED — CONTRACT FOR FOUNDER REVIEW. NOT AN IMPLEMENTATION
+AUTHORIZATION"), the historical §16 Founder Review Gate, the historical
+§5.F reasoning, and the closing "IMPLEMENTATION AUTHORIZATION: NOT
+GRANTED" — is preserved byte-for-byte and remains the historical record
+of what this Contract specified and what it did and did not authorize at
+drafting time. Nothing below rewrites, deletes, softens, or reinterprets
+that historical record.**
+
+### Present-Day Status
+
+**MAINLINE-SHIPPED / UNIT & STRUCTURAL VERIFIED / LIVE POSTGRESQL
+VERIFICATION OUTSTANDING.**
+
+### Implementation Record
+
+The D3 Inference → Claim Promotion Write Path this Contract specifies
+exists on current `main`, introduced entirely by one commit:
+
+- **`70bfd73ba4a09b9a6dcb69cfb843039af6bd6a90`** — "feat(pic): activate
+  inference-to-claim promotion write path." Parent:
+  `f2af663e0b5d8f640d2a05e3e51f25f781c4bc02`, which exactly matches this
+  Contract's own recorded baseline (§1). The implementation is present on
+  current mainline. No later commit was found that reverts or supersedes
+  this write path.
+
+### Implementation Surfaces Present Today
+
+Direct inspection of the shipped commit confirms the following surfaces
+exist, matching this Contract's specified boundary (§5, §11):
+
+- `inferenceId: string | null` added to `CreateClaimInput` (core
+  repository interface).
+- `inferenceId: string | null` added to `AppendClaimCorrectionInput`
+  (same interface).
+- The inference-to-claim promotion write path is activated in the
+  Drizzle repository's `create()` method, handling all four reference
+  combinations: neither reference, evidence-only, inference-only, and
+  both references supplied.
+- Atomic ownership verification requiring
+  `personal_intelligence_inferences.id = :inferenceId AND
+  personal_intelligence_inferences.user_id = :userId` — mirroring the
+  existing `evidenceVersionId` pattern exactly.
+- Correction semantics: `appendCorrection()`'s projection sources
+  `inferenceId` only from the current call's input — it is **not**
+  implicitly inherited from the matched prior version.
+- **No new migration.** The existing `personal_intelligence_claim_versions
+  .inference_id` column (already added by the earlier D3 Inference
+  Provenance increment) was used as-is; this write-path commit contains
+  no migration file.
+- A structural protection against lifecycle-status gating: the
+  ownership check filters only on Inference identity and owning user,
+  never on the Inference's lifecycle status, and no code path in this
+  write path imports or references the Inference lifecycle-event schema
+  table.
+- Unit/use-case-level test coverage for the correction-semantics table
+  (§8), including a dedicated test confirming no implicit carry-forward
+  of a prior version's `inferenceId`.
+
+### Verification Status
+
+Unit verification exists (use-case-level tests covering the correction
+semantics of §8). Structural verification exists (dedicated tests
+proving the write path is not lifecycle-gated and does not import the
+lifecycle-event schema table). Typecheck/build evidence applies to this
+implementation as it does to every commit on `main`. **Live PostgreSQL
+verification was not performed for this capability, and no CI or
+live-database evidence for it was found anywhere in the repository.**
+**LIVE POSTGRESQL VERIFICATION OUTSTANDING.** This reconciliation does
+not represent unit or structural verification as equivalent to live
+PostgreSQL verification, and does not claim that this Contract's full
+13-item test matrix (§10) was independently traced item-by-item as part
+of establishing present-day status — only that unit and structural
+coverage for the write path's core semantics was directly confirmed.
+
+### §5.F / §16 Founder Review Gate — Critical Distinction
+
+This Contract's historical §16 explicitly flagged one open design
+question requiring Founder confirmation *before* implementation: §5.F,
+whether any Inference lifecycle-status restriction should gate
+promotion. This distinction must be recorded precisely, as two separate
+facts, not collapsed into one:
+
+- **Fact A — what the implementation did:** the shipped implementation
+  follows this Contract's own proposed §5.F default exactly — **no
+  lifecycle-status restriction is applied** to inference-to-claim
+  promotion. The ownership checks are based on Inference identity and
+  matching `userId` only, never on lifecycle status, confirmed by direct
+  code inspection and by two dedicated structural tests.
+- **Fact B — what cannot be established:** **no independent, separately
+  verifiable Founder authorization artifact was found confirming that
+  the Founder explicitly ratified the §5.F proposed default before
+  implementation proceeded.** The only evidence available is that the
+  implementation matches the proposal.
+
+Therefore: this reconciliation states that §5.F was **IMPLEMENTED AS THE
+CONTRACT'S PROPOSED DEFAULT**, while **FOUNDER RATIFICATION OF THAT
+SPECIFIC §5.F DECISION REMAINS UNRESOLVED / NOT INDEPENDENTLY
+VERIFIABLE.** This reconciliation does not say or imply that the Founder
+approved, ratified, or authorized §5.F specifically, and does not treat
+the implementation matching the proposed default as proof of that
+ratification.
+
+### Authorization Status
+
+**UNRESOLVED / NOT INDEPENDENTLY VERIFIABLE**, for present-day
+independent verification of authorization generally, and for the §5.F
+question specifically (above). This is recorded separately from, not in
+place of, the historical Contract's own explicit statement: this
+Contract's historical status reads "PROPOSED — CONTRACT FOR FOUNDER
+REVIEW. NOT AN IMPLEMENTATION AUTHORIZATION," and its closing statement
+reads "**IMPLEMENTATION AUTHORIZATION: NOT GRANTED**" — both remain
+exactly as originally written, below, unchanged. The historical record
+states authorization was not granted at drafting time; this present-day
+audit separately states that no independent authorization artifact was
+later recovered. Neither statement substitutes for the other.
+
+None of the following is treated as proof of Founder authorization:
+implementation existence; commit existence; the presence of tests; CI
+evidence; chronological alignment between the Contract's recorded
+baseline and the implementation commit's parent; this Contract's
+internal consistency with the shipped code; or the implementation
+matching the Contract's proposed §5.F default.
+
+### No Retroactive Authorization
+
+**This present-day documentation reconciliation does not constitute,
+imply, or create retroactive Founder authorization for the historical
+implementation.** It records present-day repository reality only. This
+directive authorizes only the documentation reconciliation performed
+here — it does not rewrite the historical authorization record, and does
+not authorize any further implementation, runtime verification, schema
+change, API/web exposure, or Cross-Claim Matching / Decision 7 work of
+any kind. Any future work on this capability — including the outstanding
+live PostgreSQL verification, or a future, separate Founder ratification
+of §5.F specifically — requires its own separate, explicit Founder
+authorization.
+
+### Documentary Contradiction
+
+The current Contract is materially stale: it presents the capability as
+proposed and not implementation-authorized, while the specified
+capability is already shipped on mainline, matching the Contract's own
+boundary precisely. This is recorded as a documentary/governance
+contradiction only — it is not evidence of, and must not be read as,
+retroactive authorization.
+
+### Scope / Exclusions Reaffirmed
+
+This reconciliation does not authorize or imply implementation of: Cross-
+Claim Matching; Decision 7; Living User Model; a contradiction engine; a
+confidence algorithm; temporal intelligence; Pattern or Subject entities;
+Memory; Personal State; Evidence architecture changes; a Claim
+Confirmation API; AI Gateway changes; generalized event sourcing;
+Relationship changes; Relationship Evidence changes; or inference-side
+Context. **Decision 7 / Cross-Claim Matching remains NOT APPROVED**,
+untouched and unaffected by this reconciliation.
+
+### Documentary-Only Nature
+
+No source code is changed by this reconciliation. No schema is changed.
+No migration is changed. No implementation is added. No architecture is
+changed. No authorization is created. This is a documentation-only
+reconciliation of present-day repository state.
+
+---
+
 ## 2. Source Documents Reviewed
 
 1. `docs/gates/PERSONAL-INTELLIGENCE-TD-04-APPROVAL-AND-CURRENT-STATE-OWNERSHIP-DECISION-RECORD.md` (D1)
