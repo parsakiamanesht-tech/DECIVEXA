@@ -52,6 +52,11 @@ jobs:
         working-directory: apps/api
         env:
           DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
+      - name: Q1 persistence runtime verification
+        run: npm run test:runtime
+        working-directory: apps/api
+        env:
+          DATABASE_URL: postgresql://decivexa:decivexa@localhost:5432/decivexa
       - name: Verify PostgreSQL 18 and connectivity
         run: |
           set -euo pipefail
