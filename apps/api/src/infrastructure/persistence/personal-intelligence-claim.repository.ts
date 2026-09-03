@@ -224,6 +224,104 @@ export class DrizzlePersonalIntelligenceClaimRepository
     return rows.map(toDomainVersion);
   }
 
+  // C4 Claim Correction (docs/gates/PERSONAL-INTELLIGENCE-CLAIM-CORRECTION-
+  // IMPLEMENTATION-INCREMENT-CONTRACT.md §4/§5). Resolves the Current
+  // ClaimVersion for one claim - the row with no newer sibling row, i.e.
+  // the maximum `version` for (claimId, userId). Reuses the exact
+  // "notExists(newer version)" idiom already proven in appendCorrection's
+  // own concurrency guard below, applied here as a plain read rather than
+  // a write-time guard. Independent of `lifecycle` - a Current row is
+  // returned regardless of its lifecycle value (Option 2).
+  async findCurrentClaimVersionForUser(
+    userId: string,
+    claimId: string,
+  ): Promise<PersonalIntelligenceClaimVersion | null> {
+    const [row] = await this.db
+      .select()
+      .from(personalIntelligenceClaimVersions)
+      .where(
+        and(
+          eq(personalIntelligenceClaimVersions.claimId, claimId),
+          eq(personalIntelligenceClaimVersions.userId, userId),
+          notExists(
+            this.db
+              .select({ one: sql`1` })
+              .from(newerClaimVersion)
+              .where(
+                and(
+                  eq(newerClaimVersion.claimId, personalIntelligenceClaimVersions.claimId),
+                  gt(newerClaimVersion.version, personalIntelligenceClaimVersions.version),
+                ),
+              ),
+          ),
+        ),
+      )
+      .limit(1);
+
+    return row ? toDomainVersion(row) : null;
+  }
+
+  // C4 Claim Correction, D1 (same Contract, §17/§22). Resolves the Current
+  // ClaimVersion for every claim owned by the user - one row per claimId,
+  // via the same "no newer sibling" predicate as
+  // findCurrentClaimVersionForUser above, applied per-claim rather than to
+  // a single named claim. Replaces findActiveClaimVersionsForUser as the
+  // backing read for GET /personal-intelligence/claims: `lifecycle` plays
+  // no role in this WHERE clause, matching Option 2's independence of
+  // currentness from lifecycle.
+  async findCurrentClaimVersionsForUser(
+    userId: string,
+    claimType?: PersonalIntelligenceClaimType,
+  ): Promise<PersonalIntelligenceClaimVersion[]> {
+    const rows = await this.db
+      .select({
+        id: personalIntelligenceClaimVersions.id,
+        claimId: personalIntelligenceClaimVersions.claimId,
+        version: personalIntelligenceClaimVersions.version,
+        userId: personalIntelligenceClaimVersions.userId,
+        valueKind: personalIntelligenceClaimVersions.valueKind,
+        valueText: personalIntelligenceClaimVersions.valueText,
+        provenance: personalIntelligenceClaimVersions.provenance,
+        confidence: personalIntelligenceClaimVersions.confidence,
+        lifecycle: personalIntelligenceClaimVersions.lifecycle,
+        evidenceVersionId: personalIntelligenceClaimVersions.evidenceVersionId,
+        inferenceId: personalIntelligenceClaimVersions.inferenceId,
+        evidenceLinkageState: personalIntelligenceClaimVersions.evidenceLinkageState,
+        effectiveFrom: personalIntelligenceClaimVersions.effectiveFrom,
+        effectiveTo: personalIntelligenceClaimVersions.effectiveTo,
+        situationSetting: personalIntelligenceClaimVersions.situationSetting,
+        timeOfDay: personalIntelligenceClaimVersions.timeOfDay,
+        observedAt: personalIntelligenceClaimVersions.observedAt,
+        acceptedAt: personalIntelligenceClaimVersions.acceptedAt,
+        createdAt: personalIntelligenceClaimVersions.createdAt,
+      })
+      .from(personalIntelligenceClaimVersions)
+      .innerJoin(
+        personalIntelligenceClaims,
+        eq(personalIntelligenceClaimVersions.claimId, personalIntelligenceClaims.id),
+      )
+      .where(
+        and(
+          eq(personalIntelligenceClaimVersions.userId, userId),
+          notExists(
+            this.db
+              .select({ one: sql`1` })
+              .from(newerClaimVersion)
+              .where(
+                and(
+                  eq(newerClaimVersion.claimId, personalIntelligenceClaimVersions.claimId),
+                  gt(newerClaimVersion.version, personalIntelligenceClaimVersions.version),
+                ),
+              ),
+          ),
+          claimType ? eq(personalIntelligenceClaims.claimType, claimType) : undefined,
+        ),
+      )
+      .orderBy(asc(personalIntelligenceClaimVersions.createdAt));
+
+    return rows.map(toDomainVersion);
+  }
+
   // Creates the stable claim identity row plus its version 1 row, atomically.
   // Ownership of an optional evidenceVersionId and/or inferenceId (D3
   // Inference -> Claim Promotion Write Path) is verified atomically via the

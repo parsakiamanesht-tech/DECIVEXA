@@ -18,6 +18,7 @@ import {
 import type { RequestContext } from "../../context/request-context";
 import { PersonalIntelligenceClaimUseCase } from "../../application/personal-intelligence/personal-intelligence-claim.use-case";
 import { PersonalIntelligenceClaimConfirmationUseCase } from "../../application/personal-intelligence/personal-intelligence-claim-confirmation.use-case";
+import { PersonalIntelligenceClaimCorrectionUseCase } from "../../application/personal-intelligence/personal-intelligence-claim-correction.use-case";
 import type {
   PersonalIntelligenceClaimType,
   PersonalIntelligenceClaimVersion,
@@ -58,26 +59,43 @@ function parseConfirmationAction(value: unknown): PersonalIntelligenceClaimConfi
   return value as PersonalIntelligenceClaimConfirmationAction;
 }
 
+// C4 Claim Correction (docs/gates/PERSONAL-INTELLIGENCE-CLAIM-CORRECTION-
+// IMPLEMENTATION-INCREMENT-CONTRACT.md §6.1/§16). The client-facing
+// request body is intentionally minimal - valueText and confidence only.
+// Every other substantive field is resolved and preserved by the
+// application layer (PersonalIntelligenceClaimCorrectionUseCase), never
+// accepted from the client: not lifecycle, not evidence linkage, not
+// inference, not temporal/context fields, not observedAt/acceptedAt, and
+// never userId.
+type CorrectionBody = { valueText: unknown; confidence: unknown };
+
+function parseCorrectionBody(body: CorrectionBody | undefined): { valueText: string; confidence: number } {
+  const valueText = body?.valueText;
+  const confidence = body?.confidence;
+  if (typeof valueText !== "string" || valueText.length === 0) {
+    throw new BadRequestException("valueText must be a non-empty string");
+  }
+  if (typeof confidence !== "number" || !Number.isFinite(confidence) || confidence < 0 || confidence > 1) {
+    throw new BadRequestException("confidence must be a number between 0 and 1");
+  }
+  return { valueText, confidence };
+}
+
 // Personal Intelligence Claim Visibility - V1
 // (Founder Implementation Authorization: "PERSONAL INTELLIGENCE CLAIM
 // VISIBILITY V1", read-only Product/Implementation Contract; blocker
 // resolution: "FOUNDER DECISION - BLOCKER RESOLUTION", authorizing
 // findClaimForUser as a fifth read path).
 //
-// This controller exposes exactly five already-existing, read-only
-// PersonalIntelligenceClaimUseCase methods:
-//   - findActiveClaimVersionsForUser (merged with claimType below)
-//   - findClaimForUser (used only to attach each version's existing
-//     claimType - never displayed or used for anything else)
-//   - detectChange
-//   - explainModelChange
-//   - inspectEvidence
-// It introduces no new repository method, no new query, no new domain
-// logic, no AI, and no write path. Every response is either an
-// already-persisted domain object, a mechanical merge of two such
-// objects (listActiveClaims), or a direct pass-through of an existing
-// use-case result (history/diff/evidence). Mirrors the thin-controller
-// shape already established by EvidenceController/PersonalStateController.
+// This controller exposes read-only PersonalIntelligenceClaimUseCase
+// methods (findCurrentClaimVersionsForUser, findClaimForUser,
+// detectChange, explainModelChange, inspectEvidence), the C3 confirmation
+// write path, and (C4) the Claim Correction write path. Every read
+// response is either an already-persisted domain object, a mechanical
+// merge of two such objects (listActiveClaims), or a direct pass-through
+// of an existing use-case result (history/diff/evidence). Mirrors the
+// thin-controller shape already established by
+// EvidenceController/PersonalStateController.
 type ActiveClaimView = PersonalIntelligenceClaimVersion & {
   claimType: PersonalIntelligenceClaimType | null;
 };
@@ -91,8 +109,9 @@ type ActiveClaimView = PersonalIntelligenceClaimVersion & {
 // represented as false/wrong/disputed/corrected/invalid. Every valid
 // action is a new append-only event; redundant actions are recorded,
 // never deduplicated or suppressed. A confirmation may target only the
-// claim's current active version - enforced entirely inside the
-// use-case, not here and not only in the frontend.
+// claim's Current active version (Current = highest version, per Option
+// 2 - independent of "active") - enforced entirely inside the use-case,
+// not here and not only in the frontend.
 type ConfirmationActionBody = { action: unknown };
 
 @Controller("personal-intelligence")
@@ -101,20 +120,25 @@ export class PersonalIntelligenceController {
   constructor(
     private readonly personalIntelligence: PersonalIntelligenceClaimUseCase,
     private readonly confirmation: PersonalIntelligenceClaimConfirmationUseCase,
+    private readonly correction: PersonalIntelligenceClaimCorrectionUseCase,
   ) {}
 
   // GET /personal-intelligence/claims
-  // One entry per active claim (findActiveClaimVersionsForUser already
-  // returns at most one active version per claim). Each version's
-  // existing claimType is attached via findClaimForUser - a merge of two
-  // already-existing, already-tested read results, not a new fact. A
-  // claim that cannot be resolved (should not occur under the existing
-  // ownership invariants) is reported honestly as claimType: null,
-  // never fabricated.
+  // C4 Claim Correction, D1 (docs/gates/PERSONAL-INTELLIGENCE-CLAIM-
+  // CORRECTION-IMPLEMENTATION-INCREMENT-CONTRACT.md §17): one entry per
+  // claim, the Current ClaimVersion (highest `version`) - not the most
+  // recent version whose lifecycle happens to be "active". A Current
+  // version whose lifecycle is non-active is still returned here, never
+  // omitted, and never silently replaced by an older active version.
+  // Each version's existing claimType is attached via findClaimForUser -
+  // a merge of two already-existing, already-tested read results, not a
+  // new fact. A claim that cannot be resolved (should not occur under
+  // the existing ownership invariants) is reported honestly as
+  // claimType: null, never fabricated.
   @Get("claims")
   async listActiveClaims(@Req() request: AuthenticatedRequest): Promise<ActiveClaimView[]> {
     const context = contextOf(request);
-    const versions = await this.personalIntelligence.findActiveClaimVersionsForUser(context.userId);
+    const versions = await this.personalIntelligence.findCurrentClaimVersionsForUser(context.userId);
 
     return Promise.all(
       versions.map(async (version) => {
@@ -223,5 +247,38 @@ export class PersonalIntelligenceController {
       throw new ConflictException("This claim version is no longer the current active version");
     }
     return result.event;
+  }
+
+  // POST /personal-intelligence/claims/:claimId/versions/:version/correction
+  // C4 Claim Correction (docs/gates/PERSONAL-INTELLIGENCE-CLAIM-
+  // CORRECTION-IMPLEMENTATION-INCREMENT-CONTRACT.md §16). Creates a new
+  // ClaimVersion targeting the Current ClaimVersion regardless of its
+  // lifecycle (Current+active, Current+revoked, Current+disputed,
+  // Current+corrected, Current+superseded are all eligible - Option
+  // 2/D4). `:version` in the path is the client's expectedVersion - the
+  // version it believes is Current. 404 when the referenced claim/
+  // version does not exist or cannot be established as owned by the
+  // requester (indistinguishable from one another, matching this
+  // controller's existing convention). 409 when the referenced version
+  // exists and is owned by the requester but is no longer Current
+  // (superseded by an earlier or concurrent correction) - reachable only
+  // after ownership is already established, so no IDOR information is
+  // exposed by this distinction (Contract §19).
+  @Post("claims/:claimId/versions/:version/correction")
+  @HttpCode(HttpStatus.CREATED)
+  async correctClaim(
+    @Param("claimId") claimId: string,
+    @Param("version", ParseIntPipe) version: number,
+    @Body() body: CorrectionBody,
+    @Req() request: AuthenticatedRequest,
+  ): Promise<PersonalIntelligenceClaimVersion> {
+    const context = contextOf(request);
+    const input = parseCorrectionBody(body);
+    const result = await this.correction.correct(context.userId, claimId, version, input);
+    if (result.status === "claim_version_not_found") throw new NotFoundException("Claim version not found");
+    if (result.status === "stale") {
+      throw new ConflictException("This claim version is no longer Current");
+    }
+    return result.version;
   }
 }

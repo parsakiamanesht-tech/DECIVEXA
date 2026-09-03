@@ -9,6 +9,7 @@ import {
   getClaimVersionEvidence,
   getClaimVersionConfirmation,
   recordClaimVersionConfirmation,
+  recordClaimCorrection,
   type ActiveClaim,
   type ClaimVersionExplanation,
   type EffectiveConfirmationState,
@@ -42,17 +43,35 @@ import type { ApiError } from '../../../lib/api';
 // claim's.
 //
 // C3 Claim Confirm/Unconfirm (Founder Implementation Authorization):
-// "Confirm this is accurate" affirms the current active version's
+// "Confirm this is accurate" affirms the Current active version's
 // content; "Retract your confirmation" retracts a prior confirmation -
 // never worded as "wrong," "dispute," "false," or "incorrect," because
 // the domain model does not support that meaning. Every valid action is
 // a new append-only event; both buttons remain enabled regardless of
 // current state, since a redundant action is still a valid, real event
-// (never deduplicated client-side). Appears only on the current claim
-// card, never on historical version entries. The backend is the sole
-// source of truth for the current-active-version invariant - a 409 means
-// the version shown is no longer current, and the UI only refreshes and
+// (never deduplicated client-side). Appears only when the claim's
+// Current version is active, never on historical version entries and
+// never on a Current-but-non-active version. The backend is the sole
+// source of truth for the Current-AND-active invariant - a 409 means the
+// version shown is no longer eligible, and the UI only refreshes and
 // informs, never guesses or overrides.
+//
+// C4 Claim Correction (Founder Implementation Authorization,
+// docs/gates/PERSONAL-INTELLIGENCE-CLAIM-CORRECTION-IMPLEMENTATION-
+// INCREMENT-CONTRACT.md): "Current ClaimVersion" is the version with the
+// highest `version` number for a claim - independent of `lifecycle`
+// (Option 2). GET /personal-intelligence/claims now returns exactly that
+// version per claim, so `claim` below may be non-active. When it is,
+// this page shows "No Active Claim" instead of a normal Active
+// ClaimCard, withholds the confirmation control, and still offers a
+// direct "Correct this claim" action (Current+active and
+// Current+non-active are both correction-eligible - D4). Correction
+// creates a new ClaimVersion; the previous one is never mutated and
+// remains in History. The client sends only valueText/confidence -
+// every other field is resolved and preserved server-side from Current.
+// A successful correction refreshes both the claims list and history
+// from the backend; a 409 means the shown version is no longer Current,
+// and the UI only refreshes and informs, never guesses or overrides.
 
 const CLAIM_TYPE_LABELS: Record<PersonalIntelligenceClaimType, string> = {
   identity_attribute: 'Identity attribute',
@@ -121,44 +140,44 @@ type HistoryView =
   | { status: 'error'; message: string }
   | { status: 'ready'; data: PersonalIntelligenceClaimVersion[] };
 
+// C4 Claim Correction: both hooks below now expose a `refresh` callback
+// alongside their view - a successful correction changes which version
+// is Current, so the claims list and history must be re-fetched from
+// the backend afterward (never assumed or computed client-side; the
+// backend remains the sole source of truth, matching the module-level
+// C3/C4 comments above).
 function useActiveClaims() {
   const [view, setView] = useState<ClaimsView>({ status: 'loading' });
 
-  useEffect(() => {
-    let cancelled = false;
+  const refresh = useCallback(() => {
+    setView({ status: 'loading' });
     getActiveClaims()
-      .then((data) => {
-        if (!cancelled) setView({ status: 'ready', data });
-      })
-      .catch((cause) => {
-        if (!cancelled) setView({ status: 'error', message: errorMessage(cause) });
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then((data) => setView({ status: 'ready', data }))
+      .catch((cause) => setView({ status: 'error', message: errorMessage(cause) }));
   }, []);
 
-  return view;
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { view, refresh };
 }
 
 function useClaimHistory() {
   const [view, setView] = useState<HistoryView>({ status: 'loading' });
 
-  useEffect(() => {
-    let cancelled = false;
+  const refresh = useCallback(() => {
+    setView({ status: 'loading' });
     getClaimHistory()
-      .then((data) => {
-        if (!cancelled) setView({ status: 'ready', data });
-      })
-      .catch((cause) => {
-        if (!cancelled) setView({ status: 'error', message: errorMessage(cause) });
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then((data) => setView({ status: 'ready', data }))
+      .catch((cause) => setView({ status: 'error', message: errorMessage(cause) }));
   }, []);
 
-  return view;
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { view, refresh };
 }
 
 // Evidence linkage for one claim version, fetched only when the user
@@ -281,6 +300,113 @@ function ConfirmationControl({ claimId, version }: { claimId: string; version: n
   );
 }
 
+// C4 Claim Correction - appears on the Current claim card only (both
+// Current+active and Current+non-active), never on historical entries.
+// Directly visible as a "Correct this claim" action (not behind History
+// or any other expansion); clicking it reveals the minimal input form
+// inline, mirroring the EvidenceCheck/VersionDiff click-to-reveal
+// pattern already established on this page. Sends only valueText and
+// confidence - every other field is resolved and preserved server-side
+// from Current (Contract §6). A 409 means the version shown is no
+// longer Current; the control never guesses or overrides, only informs
+// and triggers a refresh via onCorrected.
+function CorrectionControl({
+  claimId,
+  version,
+  currentValueText,
+  currentConfidence,
+  onCorrected,
+}: {
+  claimId: string;
+  version: number;
+  currentValueText: string;
+  currentConfidence: number;
+  onCorrected: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [valueText, setValueText] = useState(currentValueText);
+  const [confidence, setConfidence] = useState(currentConfidence);
+  const [state, setState] = useState<
+    | { status: 'idle' }
+    | { status: 'submitting' }
+    | { status: 'conflict'; message: string }
+    | { status: 'error'; message: string }
+  >({ status: 'idle' });
+
+  const submit = useCallback(
+    (event: { preventDefault: () => void }) => {
+      event.preventDefault();
+      setState({ status: 'submitting' });
+      recordClaimCorrection(claimId, version, { valueText, confidence })
+        .then(() => {
+          setState({ status: 'idle' });
+          setOpen(false);
+          onCorrected();
+        })
+        .catch((cause) => {
+          if (isApiError(cause) && cause.status === 409) {
+            setState({
+              status: 'conflict',
+              message: 'This claim has changed since you loaded it. Refreshing the current state.',
+            });
+            onCorrected();
+          } else {
+            setState({ status: 'error', message: errorMessage(cause) });
+          }
+        });
+    },
+    [claimId, version, valueText, confidence, onCorrected],
+  );
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)}>
+        Correct this claim
+      </button>
+    );
+  }
+
+  const submitting = state.status === 'submitting';
+
+  return (
+    <form onSubmit={submit}>
+      <p>
+        Correcting this claim creates a new version. The version shown above is never changed - it stays exactly as
+        recorded and remains available in History.
+      </p>
+      <label>
+        New value
+        <input
+          type="text"
+          value={valueText}
+          onChange={(event) => setValueText(event.target.value)}
+          required
+        />
+      </label>{' '}
+      <label>
+        Confidence
+        <input
+          type="number"
+          min={0}
+          max={1}
+          step="any"
+          value={confidence}
+          onChange={(event) => setConfidence(Number(event.target.value))}
+          required
+        />
+      </label>{' '}
+      <button type="submit" disabled={submitting}>
+        Submit correction
+      </button>{' '}
+      <button type="button" onClick={() => setOpen(false)} disabled={submitting}>
+        Cancel
+      </button>
+      {state.status === 'conflict' ? <p role="alert">{state.message}</p> : null}
+      {state.status === 'error' ? <p role="alert">{state.message}</p> : null}
+    </form>
+  );
+}
+
 // Comparison between one history entry and the version immediately
 // before it, fetched only on request ("What changed").
 function VersionDiff({ claimId, from, to }: { claimId: string; from: number; to: number }) {
@@ -347,13 +473,35 @@ function ClaimHistoryList({ claimId, versions }: { claimId: string; versions: Pe
   );
 }
 
-function ClaimCard({ claim, history }: { claim: ActiveClaim; history: PersonalIntelligenceClaimVersion[] }) {
+// C4 Claim Correction: `claim` is now the claim's Current ClaimVersion,
+// which may be non-active (Option 2/D3 - Current and active are
+// independent). When it is, this renders the "No Active Claim" state
+// instead of a normal Active ClaimCard: the Current version's content is
+// still shown (never an older active version substituted in its place),
+// the confirmation control is withheld, and a direct correction action
+// remains available (D4 - Current+non-active is correction-eligible).
+function ClaimCard({
+  claim,
+  history,
+  onCorrected,
+}: {
+  claim: ActiveClaim;
+  history: PersonalIntelligenceClaimVersion[];
+  onCorrected: () => void;
+}) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const claimTypeLabel = claim.claimType ? CLAIM_TYPE_LABELS[claim.claimType] : 'Unlabeled claim';
+  const isActive = claim.lifecycle === 'active';
 
   return (
     <article aria-labelledby={`claim-${claim.claimId}-heading`}>
       <h3 id={`claim-${claim.claimId}-heading`}>{claimTypeLabel}</h3>
+      {!isActive ? (
+        <p role="status">
+          No Active Claim — the current record for this claim is {LIFECYCLE_LABELS[claim.lifecycle].toLowerCase()},
+          shown below.
+        </p>
+      ) : null}
       <dl>
         <dt>Current value</dt>
         <dd>{claim.valueText}</dd>
@@ -387,7 +535,14 @@ function ClaimCard({ claim, history }: { claim: ActiveClaim; history: PersonalIn
         <dd>{claim.confidence}</dd>
       </dl>
       <EvidenceCheck claimId={claim.claimId} version={claim.version} />
-      <ConfirmationControl claimId={claim.claimId} version={claim.version} />
+      {isActive ? <ConfirmationControl claimId={claim.claimId} version={claim.version} /> : null}
+      <CorrectionControl
+        claimId={claim.claimId}
+        version={claim.version}
+        currentValueText={claim.valueText}
+        currentConfidence={claim.confidence}
+        onCorrected={onCorrected}
+      />
       {history.length > 1 ? (
         <>
           <button type="button" onClick={() => setHistoryOpen((open) => !open)}>
@@ -402,7 +557,15 @@ function ClaimCard({ claim, history }: { claim: ActiveClaim; history: PersonalIn
   );
 }
 
-function PersonalIntelligenceSection({ claimsView, historyView }: { claimsView: ClaimsView; historyView: HistoryView }) {
+function PersonalIntelligenceSection({
+  claimsView,
+  historyView,
+  onCorrected,
+}: {
+  claimsView: ClaimsView;
+  historyView: HistoryView;
+  onCorrected: () => void;
+}) {
   const historyByClaim = useMemo(() => {
     const map = new Map<string, PersonalIntelligenceClaimVersion[]>();
     if (historyView.status !== 'ready') return map;
@@ -424,15 +587,28 @@ function PersonalIntelligenceSection({ claimsView, historyView }: { claimsView: 
   return (
     <>
       {claimsView.data.map((claim) => (
-        <ClaimCard key={claim.claimId} claim={claim} history={historyByClaim.get(claim.claimId) ?? [claim]} />
+        <ClaimCard
+          key={claim.claimId}
+          claim={claim}
+          history={historyByClaim.get(claim.claimId) ?? [claim]}
+          onCorrected={onCorrected}
+        />
       ))}
     </>
   );
 }
 
 export default function PersonalIntelligencePage() {
-  const claimsView = useActiveClaims();
-  const historyView = useClaimHistory();
+  const { view: claimsView, refresh: refreshClaims } = useActiveClaims();
+  const { view: historyView, refresh: refreshHistory } = useClaimHistory();
+
+  // C4 Claim Correction: a successful correction changes which version
+  // is Current for its claim - both the claims list and history are
+  // re-fetched from the backend afterward, never assumed client-side.
+  const onCorrected = useCallback(() => {
+    refreshClaims();
+    refreshHistory();
+  }, [refreshClaims, refreshHistory]);
 
   return (
     <RequireAuth>
@@ -441,7 +617,7 @@ export default function PersonalIntelligencePage() {
         <p>What DECIVEXA currently understands about you, based only on what has actually been recorded.</p>
         <section aria-labelledby="personal-intelligence-heading">
           <h2 id="personal-intelligence-heading">Your Claims</h2>
-          <PersonalIntelligenceSection claimsView={claimsView} historyView={historyView} />
+          <PersonalIntelligenceSection claimsView={claimsView} historyView={historyView} onCorrected={onCorrected} />
         </section>
       </main>
     </RequireAuth>

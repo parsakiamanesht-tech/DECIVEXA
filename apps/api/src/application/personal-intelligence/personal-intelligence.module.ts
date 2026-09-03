@@ -3,6 +3,7 @@ import { PersistenceModule } from "../../infrastructure/persistence/persistence.
 import { PersonalIntelligenceClaimUseCase } from "./personal-intelligence-claim.use-case";
 import { PersonalIntelligenceInferenceUseCase } from "./personal-intelligence-inference.use-case";
 import { PersonalIntelligenceClaimConfirmationUseCase } from "./personal-intelligence-claim-confirmation.use-case";
+import { PersonalIntelligenceClaimCorrectionUseCase } from "./personal-intelligence-claim-correction.use-case";
 
 @Module({
   imports: [PersistenceModule],
@@ -10,11 +11,13 @@ import { PersonalIntelligenceClaimConfirmationUseCase } from "./personal-intelli
     PersonalIntelligenceClaimUseCase,
     PersonalIntelligenceInferenceUseCase,
     PersonalIntelligenceClaimConfirmationUseCase,
+    PersonalIntelligenceClaimCorrectionUseCase,
   ],
   exports: [
     PersonalIntelligenceClaimUseCase,
     PersonalIntelligenceInferenceUseCase,
     PersonalIntelligenceClaimConfirmationUseCase,
+    PersonalIntelligenceClaimCorrectionUseCase,
   ],
 })
 export class PersonalIntelligenceModule {}

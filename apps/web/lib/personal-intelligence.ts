@@ -171,3 +171,29 @@ export function recordClaimVersionConfirmation(
     { method: 'POST', body: JSON.stringify({ action }) },
   );
 }
+
+// C4 Claim Correction (Founder Implementation Authorization,
+// docs/gates/PERSONAL-INTELLIGENCE-CLAIM-CORRECTION-IMPLEMENTATION-
+// INCREMENT-CONTRACT.md §6.1/§16). The request body is intentionally
+// minimal - valueText and confidence only. Every other substantive field
+// (provenance, evidence linkage, inference linkage, temporal validity,
+// context, lifecycle, observedAt/acceptedAt) is resolved and preserved
+// entirely server-side from the Current version; this function never
+// sends them. `version` is the client's belief about which version is
+// Current - a 409 means it no longer is.
+export type RecordClaimCorrectionInput = {
+  valueText: string;
+  confidence: number;
+};
+
+// POST /personal-intelligence/claims/:claimId/versions/:version/correction
+export function recordClaimCorrection(
+  claimId: string,
+  version: number,
+  input: RecordClaimCorrectionInput,
+): Promise<PersonalIntelligenceClaimVersion> {
+  return apiFetch<PersonalIntelligenceClaimVersion>(
+    `/personal-intelligence/claims/${encodeURIComponent(claimId)}/versions/${version}/correction`,
+    { method: 'POST', body: JSON.stringify(input) },
+  );
+}

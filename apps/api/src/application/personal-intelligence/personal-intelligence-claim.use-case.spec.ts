@@ -16,6 +16,8 @@ class FakePersonalIntelligenceClaimRepository implements PersonalIntelligenceCla
   public findClaimForUserCalls: Array<[string, string]> = [];
   public findClaimVersionForUserCalls: Array<[string, string, number]> = [];
   public findActiveClaimVersionsForUserCalls: Array<[string, string | undefined]> = [];
+  public findCurrentClaimVersionForUserCalls: Array<[string, string]> = [];
+  public findCurrentClaimVersionsForUserCalls: Array<[string, string | undefined]> = [];
   public createCalls: CreateClaimInput[] = [];
   public appendCorrectionCalls: AppendClaimCorrectionInput[] = [];
   public findVersionsForUserCalls: Array<[string, Date | undefined]> = [];
@@ -24,6 +26,8 @@ class FakePersonalIntelligenceClaimRepository implements PersonalIntelligenceCla
   public findClaimForUserResult: PersonalIntelligenceClaim | null = null;
   public findClaimVersionForUserResult: PersonalIntelligenceClaimVersion | null = null;
   public findActiveClaimVersionsForUserResult: PersonalIntelligenceClaimVersion[] = [];
+  public findCurrentClaimVersionForUserResult: PersonalIntelligenceClaimVersion | null = null;
+  public findCurrentClaimVersionsForUserResult: PersonalIntelligenceClaimVersion[] = [];
   public createResult: PersonalIntelligenceClaimVersion | undefined;
   public appendCorrectionResult: PersonalIntelligenceClaimVersion | null = null;
   public findVersionsForUserResult: PersonalIntelligenceClaimVersion[] = [];
@@ -39,6 +43,8 @@ class FakePersonalIntelligenceClaimRepository implements PersonalIntelligenceCla
   public findClaimForUserRejection: Error | undefined;
   public findClaimVersionForUserRejection: Error | undefined;
   public findActiveClaimVersionsForUserRejection: Error | undefined;
+  public findCurrentClaimVersionForUserRejection: Error | undefined;
+  public findCurrentClaimVersionsForUserRejection: Error | undefined;
   public findVersionsForUserRejection: Error | undefined;
   public findEvidenceVersionForUserRejection: Error | undefined;
 
@@ -68,6 +74,27 @@ class FakePersonalIntelligenceClaimRepository implements PersonalIntelligenceCla
     this.findActiveClaimVersionsForUserCalls.push([userId, claimType]);
     if (this.findActiveClaimVersionsForUserRejection) throw this.findActiveClaimVersionsForUserRejection;
     return this.findActiveClaimVersionsForUserResult;
+  }
+
+  // C4 Claim Correction (docs/gates/PERSONAL-INTELLIGENCE-CLAIM-CORRECTION-
+  // IMPLEMENTATION-INCREMENT-CONTRACT.md §4).
+  async findCurrentClaimVersionForUser(
+    userId: string,
+    claimId: string,
+  ): Promise<PersonalIntelligenceClaimVersion | null> {
+    this.findCurrentClaimVersionForUserCalls.push([userId, claimId]);
+    if (this.findCurrentClaimVersionForUserRejection) throw this.findCurrentClaimVersionForUserRejection;
+    return this.findCurrentClaimVersionForUserResult;
+  }
+
+  // C4 Claim Correction, D1 (same Contract, §17).
+  async findCurrentClaimVersionsForUser(
+    userId: string,
+    claimType?: string,
+  ): Promise<PersonalIntelligenceClaimVersion[]> {
+    this.findCurrentClaimVersionsForUserCalls.push([userId, claimType]);
+    if (this.findCurrentClaimVersionsForUserRejection) throw this.findCurrentClaimVersionsForUserRejection;
+    return this.findCurrentClaimVersionsForUserResult;
   }
 
   async create(input: CreateClaimInput): Promise<PersonalIntelligenceClaimVersion> {
@@ -155,7 +182,14 @@ function makeAppendCorrectionInput(): AppendClaimCorrectionInput {
 // call that should only ever reach exactly one of them.
 function assertOnlyCalled(
   repository: FakePersonalIntelligenceClaimRepository,
-  called: "create" | "appendCorrection" | "findClaimForUser" | "findClaimVersionForUser" | "findActiveClaimVersionsForUser",
+  called:
+    | "create"
+    | "appendCorrection"
+    | "findClaimForUser"
+    | "findClaimVersionForUser"
+    | "findActiveClaimVersionsForUser"
+    | "findCurrentClaimVersionForUser"
+    | "findCurrentClaimVersionsForUser",
 ): void {
   const counts = {
     create: repository.createCalls.length,
@@ -163,6 +197,8 @@ function assertOnlyCalled(
     findClaimForUser: repository.findClaimForUserCalls.length,
     findClaimVersionForUser: repository.findClaimVersionForUserCalls.length,
     findActiveClaimVersionsForUser: repository.findActiveClaimVersionsForUserCalls.length,
+    findCurrentClaimVersionForUser: repository.findCurrentClaimVersionForUserCalls.length,
+    findCurrentClaimVersionsForUser: repository.findCurrentClaimVersionsForUserCalls.length,
   };
   for (const [operation, count] of Object.entries(counts)) {
     if (operation === called) continue;
@@ -305,6 +341,55 @@ test("findActiveClaimVersionsForUser delegates to repository.findActiveClaimVers
   assertOnlyCalled(repository, "findActiveClaimVersionsForUser");
 });
 
+// C4 Claim Correction (docs/gates/PERSONAL-INTELLIGENCE-CLAIM-CORRECTION-
+// IMPLEMENTATION-INCREMENT-CONTRACT.md §4).
+test("findCurrentClaimVersionForUser delegates to repository.findCurrentClaimVersionForUser exactly once with the same arguments", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const expected: PersonalIntelligenceClaimVersion = {
+    id: "version-2",
+    claimId: "claim-1",
+    version: 2,
+    userId: "user-a",
+    valueKind: "text",
+    valueText: "likes dark mode",
+    provenance: "declared",
+    confidence: 0.8,
+    lifecycle: "revoked",
+    evidenceVersionId: null,
+    inferenceId: null,
+    evidenceLinkageState: "linkage_pending",
+    effectiveFrom: null,
+    effectiveTo: null,
+    situationSetting: null,
+    timeOfDay: null,
+    observedAt: new Date(),
+    acceptedAt: new Date(),
+    createdAt: new Date(),
+  };
+  repository.findCurrentClaimVersionForUserResult = expected;
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const result = await useCase.findCurrentClaimVersionForUser("user-a", "claim-1");
+
+  assert.deepEqual(repository.findCurrentClaimVersionForUserCalls, [["user-a", "claim-1"]]);
+  assert.equal(result, expected);
+  assertOnlyCalled(repository, "findCurrentClaimVersionForUser");
+});
+
+// C4 Claim Correction, D1 (same Contract, §17).
+test("findCurrentClaimVersionsForUser delegates to repository.findCurrentClaimVersionsForUser exactly once with the same arguments", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const expected: PersonalIntelligenceClaimVersion[] = [];
+  repository.findCurrentClaimVersionsForUserResult = expected;
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  const result = await useCase.findCurrentClaimVersionsForUser("user-a");
+
+  assert.deepEqual(repository.findCurrentClaimVersionsForUserCalls, [["user-a", undefined]]);
+  assert.equal(result, expected);
+  assertOnlyCalled(repository, "findCurrentClaimVersionsForUser");
+});
+
 test("a repository rejection propagates unchanged from the use case, without being swallowed or replaced", async () => {
   const repository = new FakePersonalIntelligenceClaimRepository();
   const rejection = new Error("evidence version ownership mismatch");
@@ -348,6 +433,24 @@ test("findActiveClaimVersionsForUser propagates a repository rejection unchanged
   const useCase = new PersonalIntelligenceClaimUseCase(repository);
 
   await assert.rejects(() => useCase.findActiveClaimVersionsForUser("user-a"), rejection);
+});
+
+test("findCurrentClaimVersionForUser propagates a repository rejection unchanged, without being swallowed or replaced", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const rejection = new Error("connection lost");
+  repository.findCurrentClaimVersionForUserRejection = rejection;
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await assert.rejects(() => useCase.findCurrentClaimVersionForUser("user-a", "claim-1"), rejection);
+});
+
+test("findCurrentClaimVersionsForUser propagates a repository rejection unchanged, without being swallowed or replaced", async () => {
+  const repository = new FakePersonalIntelligenceClaimRepository();
+  const rejection = new Error("connection lost");
+  repository.findCurrentClaimVersionsForUserRejection = rejection;
+  const useCase = new PersonalIntelligenceClaimUseCase(repository);
+
+  await assert.rejects(() => useCase.findCurrentClaimVersionsForUser("user-a"), rejection);
 });
 
 // ---------------------------------------------------------------------

@@ -61,6 +61,26 @@ export class PersonalIntelligenceClaimUseCase {
     return this.repository.findActiveClaimVersionsForUser(userId);
   }
 
+  // C4 Claim Correction (docs/gates/PERSONAL-INTELLIGENCE-CLAIM-CORRECTION-
+  // IMPLEMENTATION-INCREMENT-CONTRACT.md §4). Thin delegation, exactly like
+  // every other method on this use-case - resolves the Current
+  // ClaimVersion for one claim, independent of lifecycle.
+  findCurrentClaimVersionForUser(
+    userId: string,
+    claimId: string,
+  ): Promise<PersonalIntelligenceClaimVersion | null> {
+    return this.repository.findCurrentClaimVersionForUser(userId, claimId);
+  }
+
+  // C4 Claim Correction, D1 (same Contract, §17). Thin delegation. Backs
+  // GET /personal-intelligence/claims in place of
+  // findActiveClaimVersionsForUser - see the Contract's obsolete/
+  // conflicting-text section (§26) for why the prior lifecycle-filtered
+  // read no longer defines "currentness."
+  findCurrentClaimVersionsForUser(userId: string): Promise<PersonalIntelligenceClaimVersion[]> {
+    return this.repository.findCurrentClaimVersionsForUser(userId);
+  }
+
   // Read-only, deterministic, IMPLEMENTATION_INCREMENT_PIC-D4-01. Exposes
   // the user's full claim-version history (any lifecycle) - each returned
   // version already self-describes what kind of change it represents via

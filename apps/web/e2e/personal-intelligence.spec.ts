@@ -11,6 +11,23 @@ import { test, expect } from '@playwright/test';
 // (201) - these tests never disable or hide the action buttons based on
 // current state, proving redundant actions remain genuinely available
 // client-side, matching the Founder's "never deduplicate" decision.
+//
+// C4 Claim Correction (Founder Implementation Authorization,
+// docs/gates/PERSONAL-INTELLIGENCE-CLAIM-CORRECTION-IMPLEMENTATION-
+// INCREMENT-CONTRACT.md): covers the Current-but-non-active "No Active
+// Claim" state, the direct "Correct this claim" action on both
+// Current+active and Current+non-active, successful correction refreshing
+// the displayed state, and 409 stale-conflict recovery. GET
+// /personal-intelligence/claims is mocked directly with whatever fixture
+// each test needs (never filtered by this suite itself) since the
+// backend, not this page, is what now resolves Current.
+//
+// KNOWN ENVIRONMENT LIMITATION: Playwright in this environment requests
+// Chromium revision 1234; only 1194 is installed. This blocks execution
+// of every test in this file (pre-existing and newly added alike) -
+// reproduced identically against the pre-existing tests above, so it
+// predates and is unrelated to this change. Not worked around by
+// modifying playwright.config.ts or installing a browser.
 
 async function mockAuth(page: import('@playwright/test').Page) {
   await page.route('**/auth/login', async (route) => {
@@ -270,4 +287,154 @@ test('confirmation actions appear only on the current claim card, never on histo
   // historical entry never grows its own Confirm/Retract controls.
   await expect(page.getByRole('button', { name: 'Confirm this is accurate' })).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Retract your confirmation' })).toHaveCount(1);
+});
+
+// --- C4 Claim Correction (Founder Implementation Authorization) ---
+
+test('a Current+active claim renders a normal Active ClaimCard with both confirmation and correction actions', async ({ page }) => {
+  await mockAuth(page);
+  await page.route('**/personal-intelligence/claims', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([SAMPLE_CLAIM]) });
+  });
+  await page.route('**/personal-intelligence/history', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([SAMPLE_CLAIM]) });
+  });
+  await page.route('**/personal-intelligence/claims/claim-1/versions/1/confirmation', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'found', state: 'not_confirmed' }) });
+  });
+
+  await signIn(page);
+  await page.goto('/dashboard/intelligence');
+
+  await expect(page.getByText('No Active Claim')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Confirm this is accurate' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Correct this claim' })).toBeVisible();
+});
+
+// D3: Current + non-active must render "No Active Claim", never a normal
+// Active ClaimCard, never fall back to an older active version, and must
+// never offer confirmation - but correction remains available (D4).
+test('a Current+non-active claim renders "No Active Claim", withholds confirmation, and still offers a direct correction action', async ({ page }) => {
+  const currentRevoked = { ...SAMPLE_CLAIM, id: 'version-2', version: 2, lifecycle: 'revoked' };
+  await mockAuth(page);
+  await page.route('**/personal-intelligence/claims', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([currentRevoked]) });
+  });
+  await page.route('**/personal-intelligence/history', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([{ ...SAMPLE_CLAIM, lifecycle: 'active' }, currentRevoked]),
+    });
+  });
+
+  await signIn(page);
+  await page.goto('/dashboard/intelligence');
+
+  await expect(page.getByText('No Active Claim')).toBeVisible();
+  await expect(page.getByText('Revoked')).toBeVisible();
+  // Never a fallback to the older active version's own value.
+  await expect(page.getByRole('button', { name: 'Confirm this is accurate' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Retract your confirmation' })).toHaveCount(0);
+  // Correction remains directly available, not behind History.
+  await expect(page.getByRole('button', { name: 'Correct this claim' })).toBeVisible();
+});
+
+test('submitting a correction sends only valueText/confidence and refreshes the claim from the backend on success', async ({ page }) => {
+  await mockAuth(page);
+  let claimsRequestCount = 0;
+  await page.route('**/personal-intelligence/claims', async (route) => {
+    claimsRequestCount += 1;
+    const body = claimsRequestCount === 1
+      ? [SAMPLE_CLAIM]
+      : [{ ...SAMPLE_CLAIM, id: 'version-2', version: 2, valueText: 'Prefers async video updates' }];
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+  });
+  await page.route('**/personal-intelligence/history', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([SAMPLE_CLAIM]) });
+  });
+  await page.route('**/personal-intelligence/claims/claim-1/versions/1/confirmation', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'found', state: 'not_confirmed' }) });
+  });
+  let correctionRequestBody: unknown;
+  await page.route('**/personal-intelligence/claims/claim-1/versions/1/correction', async (route) => {
+    correctionRequestBody = route.request().postDataJSON();
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({ ...SAMPLE_CLAIM, id: 'version-2', version: 2, valueText: 'Prefers async video updates' }),
+    });
+  });
+
+  await signIn(page);
+  await page.goto('/dashboard/intelligence');
+
+  await page.getByRole('button', { name: 'Correct this claim' }).click();
+  await page.getByLabel('New value').fill('Prefers async video updates');
+  await page.getByRole('button', { name: 'Submit correction' }).click();
+
+  await expect(page.getByText('Prefers async video updates')).toBeVisible();
+  // The request body carries only the minimal client-facing DTO - never
+  // lifecycle, evidence linkage, inference, temporal, or context fields.
+  expect(correctionRequestBody).toEqual({ valueText: 'Prefers async video updates', confidence: 1 });
+});
+
+test('a stale correction (409) shows a conflict message and refreshes the claim, never silently retrying or overriding', async ({ page }) => {
+  await mockAuth(page);
+  let claimsRequestCount = 0;
+  await page.route('**/personal-intelligence/claims', async (route) => {
+    claimsRequestCount += 1;
+    const body = claimsRequestCount === 1
+      ? [SAMPLE_CLAIM]
+      : [{ ...SAMPLE_CLAIM, id: 'version-2', version: 2, valueText: 'Someone else corrected this first' }];
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+  });
+  await page.route('**/personal-intelligence/history', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([SAMPLE_CLAIM]) });
+  });
+  await page.route('**/personal-intelligence/claims/claim-1/versions/1/confirmation', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'found', state: 'not_confirmed' }) });
+  });
+  await page.route('**/personal-intelligence/claims/claim-1/versions/1/correction', async (route) => {
+    await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ message: 'This claim version is no longer Current' }) });
+  });
+
+  await signIn(page);
+  await page.goto('/dashboard/intelligence');
+
+  await page.getByRole('button', { name: 'Correct this claim' }).click();
+  await page.getByLabel('New value').fill('My own attempted correction');
+  await page.getByRole('button', { name: 'Submit correction' }).click();
+
+  await expect(page.getByText(/no longer Current/i)).toBeVisible();
+  await expect(page.getByText('Someone else corrected this first')).toBeVisible();
+});
+
+test('history entries never render a correction control - only the Current claim card does', async ({ page }) => {
+  const currentVersion = { ...SAMPLE_CLAIM, id: 'version-2', version: 2, lifecycle: 'active' };
+  const historicalVersion = { ...SAMPLE_CLAIM, id: 'version-1', version: 1, lifecycle: 'superseded' };
+  await mockAuth(page);
+  await page.route('**/personal-intelligence/claims', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([currentVersion]) });
+  });
+  await page.route('**/personal-intelligence/history', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([historicalVersion, currentVersion]),
+    });
+  });
+  await page.route('**/personal-intelligence/claims/claim-1/versions/2/confirmation', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'found', state: 'not_confirmed' }) });
+  });
+
+  await signIn(page);
+  await page.goto('/dashboard/intelligence');
+
+  await expect(page.getByRole('button', { name: 'Correct this claim' })).toHaveCount(1);
+  await page.getByRole('button', { name: /View history/ }).click();
+  await expect(page.getByText('Version 1')).toBeVisible();
+  // Still exactly one correction control after History is open - the
+  // historical entry never grows its own.
+  await expect(page.getByRole('button', { name: 'Correct this claim' })).toHaveCount(1);
 });

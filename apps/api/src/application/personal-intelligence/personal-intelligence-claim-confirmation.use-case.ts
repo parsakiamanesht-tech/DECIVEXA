@@ -14,12 +14,14 @@ import {
 // reconciling docs/gates/PERSONAL-INTELLIGENCE-PIC-CLAIM-ONTOLOGY-TAXONOMY-
 // IMPLEMENTATION-INCREMENT-CONTRACT.md §3.3). Thin - every fact recorded
 // or derived here is produced by the already-existing, already-tested
-// PersonalIntelligenceClaimRepository.findClaimVersionForUser and
+// PersonalIntelligenceClaimRepository read methods and
 // PersonalIntelligenceClaimConfirmationRepository methods. This use-case
-// introduces exactly one new rule: a confirmation action may target only
-// the claim's current active version - enforced here, before the write,
-// using data findClaimVersionForUser already returns (no new repository
-// method). Confirmed/unconfirmed carry exactly the meaning the Contract
+// enforces exactly one rule: a confirmation action may target only the
+// claim's Current active version - Current (highest `version`) and
+// active (lifecycle) are independent facts under Option 2, both
+// verified here, before the write (C4 Claim Correction reconciliation,
+// docs/gates/PERSONAL-INTELLIGENCE-CLAIM-CORRECTION-IMPLEMENTATION-
+// INCREMENT-CONTRACT.md §10). Confirmed/unconfirmed carry exactly the meaning the Contract
 // defines: "confirmed" affirms the referenced version's content is
 // accurate; "unconfirmed" retracts a prior confirmation - never "false,"
 // "wrong," "disputed," or "invalid." Every valid action is recorded as a
@@ -55,11 +57,17 @@ export class PersonalIntelligenceClaimConfirmationUseCase {
     private readonly confirmations: PersonalIntelligenceClaimConfirmationRepository,
   ) {}
 
-  // Enforces the current-active-version invariant before ever calling
-  // recordConfirmationEvent - a confirmation targeting a superseded,
-  // corrected, revoked, or disputed version is rejected here, honestly,
-  // rather than silently accepted or silently redirected to the current
-  // version.
+  // Enforces the Current-AND-active invariant before ever calling
+  // recordConfirmationEvent (C4 Claim Correction reconciliation,
+  // docs/gates/PERSONAL-INTELLIGENCE-CLAIM-CORRECTION-IMPLEMENTATION-
+  // INCREMENT-CONTRACT.md §10, Option 2/D3). Currentness (the highest
+  // `version` for this claimId) and `lifecycle === "active"` are two
+  // independent facts - a version that is Current but non-active (e.g.
+  // revoked) is rejected here exactly like a version that is active but
+  // no longer Current (a historical active row): neither alone is
+  // sufficient. Both facts are resolved from existing, already-tested
+  // reads (findClaimVersionForUser, findCurrentClaimVersionForUser) - no
+  // new repository method beyond what C4 already introduces.
   async recordAction(
     userId: string,
     claimId: string,
@@ -68,7 +76,11 @@ export class PersonalIntelligenceClaimConfirmationUseCase {
   ): Promise<RecordClaimConfirmationActionResult> {
     const claimVersion = await this.claims.findClaimVersionForUser(userId, claimId, version);
     if (!claimVersion) return { status: "claim_version_not_found" };
-    if (claimVersion.lifecycle !== "active") return { status: "not_current_version" };
+
+    const current = await this.claims.findCurrentClaimVersionForUser(userId, claimId);
+    if (!current || current.version !== version || claimVersion.lifecycle !== "active") {
+      return { status: "not_current_version" };
+    }
 
     const now = new Date();
     const event = await this.confirmations.recordConfirmationEvent({

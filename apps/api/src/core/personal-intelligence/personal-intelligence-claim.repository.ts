@@ -120,6 +120,31 @@ export interface PersonalIntelligenceClaimRepository {
     userId: string,
     claimType?: PersonalIntelligenceClaimType,
   ): Promise<PersonalIntelligenceClaimVersion[]>;
+  // C4 Claim Correction (docs/gates/PERSONAL-INTELLIGENCE-CLAIM-CORRECTION-
+  // IMPLEMENTATION-INCREMENT-CONTRACT.md §4/§17/§22). Resolves the Current
+  // ClaimVersion for one claim - the row with the maximum `version` for
+  // (userId, claimId), independent of `lifecycle`. Distinct responsibility
+  // from findClaimVersionForUser (exact-version lookup by a caller-supplied
+  // version number) and from findActiveClaimVersionsForUser (lifecycle
+  // filter, not recency). Returns null only when the claim has no version
+  // at all for this user (nonexistent or not owned - the same
+  // ownership-blind null convention every other read method here uses).
+  findCurrentClaimVersionForUser(
+    userId: string,
+    claimId: string,
+  ): Promise<PersonalIntelligenceClaimVersion | null>;
+  // C4 Claim Correction, D1 (same Contract, §17). Resolves the Current
+  // ClaimVersion for every claim the user owns - one row per claimId, the
+  // row with the maximum `version`, independent of `lifecycle`. Replaces
+  // findActiveClaimVersionsForUser as the backing read for
+  // GET /personal-intelligence/claims: `lifecycle = active` no longer
+  // defines currentness (Option 2), so a Current-but-non-active version is
+  // still returned here - never silently omitted or replaced by an older
+  // active version.
+  findCurrentClaimVersionsForUser(
+    userId: string,
+    claimType?: PersonalIntelligenceClaimType,
+  ): Promise<PersonalIntelligenceClaimVersion[]>;
   create(input: CreateClaimInput): Promise<PersonalIntelligenceClaimVersion>;
   appendCorrection(
     input: AppendClaimCorrectionInput,

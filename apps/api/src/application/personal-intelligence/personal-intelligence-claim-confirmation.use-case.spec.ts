@@ -55,9 +55,17 @@ function confirmationEvent(
   };
 }
 
+// C4 Claim Correction (docs/gates/PERSONAL-INTELLIGENCE-CLAIM-CORRECTION-
+// IMPLEMENTATION-INCREMENT-CONTRACT.md §10): findCurrentClaimVersionForUser
+// defaults to the same single version findClaimVersionForUser returns, so
+// every pre-existing test (a single-version claim where that version is
+// both the requested target and Current) continues to exercise the
+// Current-AND-active rule unchanged. Tests that need a Current/target
+// mismatch override findCurrentClaimVersionForUser explicitly.
 function fakeClaims(overrides: Partial<PersonalIntelligenceClaimRepository> = {}) {
   return {
     findClaimVersionForUser: async () => claimVersion(),
+    findCurrentClaimVersionForUser: async () => claimVersion(),
     ...overrides,
   } as unknown as PersonalIntelligenceClaimRepository;
 }
@@ -158,6 +166,54 @@ for (const lifecycle of ["superseded", "corrected", "revoked", "disputed"] as co
     assert.equal(calls.recordConfirmationEvent, undefined);
   });
 }
+
+// C4 Claim Correction reconciliation (docs/gates/PERSONAL-INTELLIGENCE-
+// CLAIM-CORRECTION-IMPLEMENTATION-INCREMENT-CONTRACT.md §10, Option
+// 2/D3): the case the lifecycle loop above cannot exercise -
+// currentness and activeness are independent axes, so a version that
+// IS active but is no longer Current (a historical active row, e.g.
+// superseded by a later correction) must be rejected too, not only a
+// Current-but-non-active one.
+test("recordAction against a historical 'active' version (not Current) returns 'not_current_version' and never writes an event", async () => {
+  const claims = fakeClaims({
+    findClaimVersionForUser: async () => claimVersion({ version: 1, lifecycle: "active" }),
+    findCurrentClaimVersionForUser: async () => claimVersion({ version: 2, lifecycle: "active" }),
+  });
+  const { fake: confirmations, calls } = fakeConfirmations({
+    recordConfirmationEvent: async (...args: unknown[]) => {
+      calls.recordConfirmationEvent = [args];
+      throw new Error("must not be called");
+    },
+  });
+  const useCase = new PersonalIntelligenceClaimConfirmationUseCase(claims, confirmations);
+
+  const result = await useCase.recordAction("user-1", "claim-1", 1, "confirmed");
+
+  assert.deepEqual(result, { status: "not_current_version" });
+  assert.equal(calls.recordConfirmationEvent, undefined);
+});
+
+// The positive counterpart: the current, active version of a claim that
+// also has older/other versions must remain confirmable - proves the
+// new currentness check does not over-reject.
+test("recordAction against the Current active version succeeds even when the claim has other, non-Current versions", async () => {
+  const claims = fakeClaims({
+    findClaimVersionForUser: async () => claimVersion({ version: 3, lifecycle: "active" }),
+    findCurrentClaimVersionForUser: async () => claimVersion({ version: 3, lifecycle: "active" }),
+  });
+  const { fake: confirmations, calls } = fakeConfirmations({
+    recordConfirmationEvent: async (...args: unknown[]) => {
+      calls.recordConfirmationEvent = [args];
+      return confirmationEvent({ action: "confirmed" });
+    },
+  });
+  const useCase = new PersonalIntelligenceClaimConfirmationUseCase(claims, confirmations);
+
+  const result = await useCase.recordAction("user-1", "claim-1", 3, "confirmed");
+
+  assert.equal(result.status, "recorded");
+  assert.equal(calls.recordConfirmationEvent.length, 1);
+});
 
 // Founder Decision: redundant actions are always recorded as real new
 // events, never deduplicated or suppressed.
