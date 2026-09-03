@@ -72,6 +72,31 @@ test("renders the authenticated user's active claims from the existing endpoint,
   await expect(page.getByText('Active')).toBeVisible();
   await expect(page.getByText('You told DECIVEXA this directly')).toBeVisible();
   await expect(page.getByText('Self-reported (no evidence expected)')).toBeVisible();
+  // Claim-Level Context Visibility: SAMPLE_CLAIM has null
+  // situationSetting/timeOfDay - null context must produce no fabricated
+  // UI, so neither label may appear.
+  await expect(page.getByText('Situation')).toHaveCount(0);
+  await expect(page.getByText('Time of day')).toHaveCount(0);
+});
+
+test('Claim-Level Context Visibility: displays non-null situationSetting and timeOfDay exactly as stored, on both the current claim and its history entry', async ({ page }) => {
+  const claimWithContext = { ...SAMPLE_CLAIM, situationSetting: 'work', timeOfDay: 'morning' };
+  await mockAuth(page);
+  await page.route('**/personal-intelligence/claims', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([claimWithContext]) });
+  });
+  await page.route('**/personal-intelligence/history', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([claimWithContext]) });
+  });
+
+  await signIn(page);
+  await page.goto('/dashboard/intelligence');
+
+  await expect(page.getByRole('heading', { name: 'Preference' })).toBeVisible();
+  await expect(page.getByText('Situation')).toBeVisible();
+  await expect(page.getByText('work', { exact: true })).toBeVisible();
+  await expect(page.getByText('Time of day')).toBeVisible();
+  await expect(page.getByText('morning', { exact: true })).toBeVisible();
 });
 
 test('shows an honest empty state when no claims have been recorded yet', async ({ page }) => {

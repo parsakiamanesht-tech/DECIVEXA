@@ -28,6 +28,14 @@ import type { ApiError } from '../../../lib/api';
 // findClaimForUser, detectChange, explainModelChange, inspectEvidence) -
 // nothing here interprets, scores, or infers beyond what those already
 // return.
+//
+// Claim-Level Context Visibility (Founder Implementation Authorization):
+// situationSetting/timeOfDay were already present in every relevant API
+// response before this addition - this is presentation-only, exposing
+// two already-flowing fields. Each is shown literally, only when
+// non-null, never transformed into a sentence or interpretation. Each
+// history entry shows its own version's stored value, never the current
+// claim's.
 
 const CLAIM_TYPE_LABELS: Record<PersonalIntelligenceClaimType, string> = {
   identity_attribute: 'Identity attribute',
@@ -224,6 +232,10 @@ function ClaimHistoryList({ claimId, versions }: { claimId: string; versions: Pe
       {ordered.map((entry, index) => (
         <li key={entry.id}>
           Version {entry.version} — {LIFECYCLE_LABELS[entry.lifecycle]} — {PROVENANCE_LABELS[entry.provenance]} — recorded {entry.createdAt}
+          {/* Each version's own stored context, never the current claim's -
+              entry is this specific historical version's own object. */}
+          {entry.situationSetting ? <> — Situation: {entry.situationSetting}</> : null}
+          {entry.timeOfDay ? <> — Time of day: {entry.timeOfDay}</> : null}
           <br />
           <EvidenceCheck claimId={claimId} version={entry.version} />
           {index > 0 ? (
@@ -260,6 +272,18 @@ function ClaimCard({ claim, history }: { claim: ActiveClaim; history: PersonalIn
             <dd>{claim.effectiveFrom ?? '—'}</dd>
             <dt>Valid until</dt>
             <dd>{claim.effectiveTo ?? '—'}</dd>
+          </>
+        ) : null}
+        {claim.situationSetting ? (
+          <>
+            <dt>Situation</dt>
+            <dd>{claim.situationSetting}</dd>
+          </>
+        ) : null}
+        {claim.timeOfDay ? (
+          <>
+            <dt>Time of day</dt>
+            <dd>{claim.timeOfDay}</dd>
           </>
         ) : null}
         <dt>Stored confidence value</dt>
