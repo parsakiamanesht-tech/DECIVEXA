@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { ConflictException, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { PersonalIntelligenceController } from "./personal-intelligence.controller";
 import { PersonalIntelligenceClaimUseCase } from "../../application/personal-intelligence/personal-intelligence-claim.use-case";
+import { PersonalIntelligenceClaimConfirmationUseCase } from "../../application/personal-intelligence/personal-intelligence-claim-confirmation.use-case";
 import { createRequestContext } from "../../context/request-context";
 import type { PersonalIntelligenceClaim, PersonalIntelligenceClaimVersion } from "../../core/personal-intelligence/personal-intelligence-claim.model";
 
@@ -42,6 +43,32 @@ function fakeUseCase(overrides: Partial<PersonalIntelligenceClaimUseCase> = {}) 
   return { fake: fake as unknown as PersonalIntelligenceClaimUseCase, calls };
 }
 
+// Default fake for PersonalIntelligenceClaimConfirmationUseCase - unused
+// by any pre-existing test, but required as the controller's second
+// constructor argument since C3's implementation. Overridable per-test
+// exactly like fakeUseCase above.
+function fakeConfirmationUseCase(overrides: Partial<PersonalIntelligenceClaimConfirmationUseCase> = {}) {
+  const calls: Record<string, unknown[]> = {};
+  const record = (name: string, args: unknown[]) => {
+    calls[name] = calls[name] ?? [];
+    calls[name].push(args);
+  };
+
+  const fake = {
+    recordAction: async (...args: unknown[]) => {
+      record("recordAction", args);
+      return { status: "claim_version_not_found" };
+    },
+    getEffectiveConfirmation: async (...args: unknown[]) => {
+      record("getEffectiveConfirmation", args);
+      return { status: "claim_version_not_found" };
+    },
+    ...overrides,
+  };
+
+  return { fake: fake as unknown as PersonalIntelligenceClaimConfirmationUseCase, calls };
+}
+
 function version(overrides: Partial<PersonalIntelligenceClaimVersion> = {}): PersonalIntelligenceClaimVersion {
   return {
     id: "version-1",
@@ -71,13 +98,19 @@ function version(overrides: Partial<PersonalIntelligenceClaimVersion> = {}): Per
 // PersonalStateController / AIRuntimeController convention exactly).
 test("every endpoint requires authentication", async () => {
   const { fake } = fakeUseCase();
-  const controller = new PersonalIntelligenceController(fake);
+  const { fake: fakeConfirmation } = fakeConfirmationUseCase();
+  const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
 
   await assert.rejects(() => controller.listActiveClaims({}), UnauthorizedException);
   await assert.rejects(() => controller.history(undefined, {}), UnauthorizedException);
   await assert.rejects(() => controller.diff("claim-1", "1", "2", {}), UnauthorizedException);
   await assert.rejects(
     () => controller.evidence("claim-1", 1, {}),
+    UnauthorizedException,
+  );
+  await assert.rejects(() => controller.getConfirmation("claim-1", 1, {}), UnauthorizedException);
+  await assert.rejects(
+    () => controller.recordConfirmation("claim-1", 1, { action: "confirmed" }, {}),
     UnauthorizedException,
   );
 });
@@ -101,7 +134,8 @@ test("listActiveClaims merges each active version with its claim's existing clai
       return claim;
     },
   });
-  const controller = new PersonalIntelligenceController(fake);
+  const { fake: fakeConfirmation } = fakeConfirmationUseCase();
+  const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
 
   const result = await controller.listActiveClaims({ context: AUTHENTICATED_CONTEXT });
 
@@ -120,7 +154,8 @@ test("listActiveClaims reports claimType: null, never fabricated, when the paren
     findActiveClaimVersionsForUser: async () => [version()],
     findClaimForUser: async () => null,
   });
-  const controller = new PersonalIntelligenceController(fake);
+  const { fake: fakeConfirmation } = fakeConfirmationUseCase();
+  const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
 
   const result = await controller.listActiveClaims({ context: AUTHENTICATED_CONTEXT });
 
@@ -129,7 +164,8 @@ test("listActiveClaims reports claimType: null, never fabricated, when the paren
 
 test("history delegates to detectChange with the authenticated user id and an optional parsed since date", async () => {
   const { fake, calls } = fakeUseCase();
-  const controller = new PersonalIntelligenceController(fake);
+  const { fake: fakeConfirmation } = fakeConfirmationUseCase();
+  const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
 
   await controller.history(undefined, { context: AUTHENTICATED_CONTEXT });
   assert.deepEqual(calls.detectChange[0], ["user-1", undefined]);
@@ -142,7 +178,8 @@ test("history delegates to detectChange with the authenticated user id and an op
 
 test("history rejects an unparseable since value with a 400, never silently ignoring it", async () => {
   const { fake } = fakeUseCase();
-  const controller = new PersonalIntelligenceController(fake);
+  const { fake: fakeConfirmation } = fakeConfirmationUseCase();
+  const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
 
   await assert.rejects(
     () => controller.history("not-a-date", { context: AUTHENTICATED_CONTEXT }),
@@ -161,7 +198,8 @@ test("diff delegates to explainModelChange with the authenticated user id, claim
       return explanation;
     },
   });
-  const controller = new PersonalIntelligenceController(fake);
+  const { fake: fakeConfirmation } = fakeConfirmationUseCase();
+  const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
 
   const result = await controller.diff("claim-1", "1", "2", { context: AUTHENTICATED_CONTEXT });
 
@@ -171,7 +209,8 @@ test("diff delegates to explainModelChange with the authenticated user id, claim
 
 test("diff maps a null explainModelChange result to 404, never fabricating an explanation", async () => {
   const { fake } = fakeUseCase({ explainModelChange: async () => null });
-  const controller = new PersonalIntelligenceController(fake);
+  const { fake: fakeConfirmation } = fakeConfirmationUseCase();
+  const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
 
   await assert.rejects(
     () => controller.diff("claim-1", "1", "2", { context: AUTHENTICATED_CONTEXT }),
@@ -181,7 +220,8 @@ test("diff maps a null explainModelChange result to 404, never fabricating an ex
 
 test("diff rejects missing or invalid from/to query parameters with a 400", async () => {
   const { fake } = fakeUseCase();
-  const controller = new PersonalIntelligenceController(fake);
+  const { fake: fakeConfirmation } = fakeConfirmationUseCase();
+  const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
 
   await assert.rejects(
     () => controller.diff("claim-1", undefined, "2", { context: AUTHENTICATED_CONTEXT }),
@@ -207,7 +247,8 @@ test("evidence delegates to inspectEvidence with the authenticated user id, clai
         return { status };
       },
     });
-    const controller = new PersonalIntelligenceController(fake);
+    const { fake: fakeConfirmation } = fakeConfirmationUseCase();
+    const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
 
     const result = await controller.evidence("claim-1", 3, { context: AUTHENTICATED_CONTEXT });
 
@@ -218,7 +259,8 @@ test("evidence delegates to inspectEvidence with the authenticated user id, clai
 
 test("evidence maps 'claim_version_not_found' to 404, never returning it as a 200 body", async () => {
   const { fake } = fakeUseCase({ inspectEvidence: async () => ({ status: "claim_version_not_found" }) });
-  const controller = new PersonalIntelligenceController(fake);
+  const { fake: fakeConfirmation } = fakeConfirmationUseCase();
+  const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
 
   await assert.rejects(
     () => controller.evidence("claim-1", 99, { context: AUTHENTICATED_CONTEXT }),
@@ -226,10 +268,153 @@ test("evidence maps 'claim_version_not_found' to 404, never returning it as a 20
   );
 });
 
+// --- C3 Claim Confirm/Unconfirm (Founder Implementation Authorization) ---
+
+test("getConfirmation delegates to getEffectiveConfirmation with the authenticated user id, claimId, and version, and returns the state as-is", async () => {
+  const { fake } = fakeUseCase();
+  const { fake: fakeConfirmation, calls } = fakeConfirmationUseCase({
+    getEffectiveConfirmation: async (...args: unknown[]) => {
+      calls.getEffectiveConfirmation = [args];
+      return { status: "found", state: "confirmed" };
+    },
+  });
+  const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
+
+  const result = await controller.getConfirmation("claim-1", 1, { context: AUTHENTICATED_CONTEXT });
+
+  assert.deepEqual(calls.getEffectiveConfirmation[0], ["user-1", "claim-1", 1]);
+  assert.deepEqual(result, { status: "found", state: "confirmed" });
+});
+
+test("getConfirmation maps 'claim_version_not_found' to 404, never returning it as a 200 body", async () => {
+  const { fake } = fakeUseCase();
+  const { fake: fakeConfirmation } = fakeConfirmationUseCase();
+  const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
+
+  await assert.rejects(
+    () => controller.getConfirmation("claim-1", 99, { context: AUTHENTICATED_CONTEXT }),
+    NotFoundException,
+  );
+});
+
+test("recordConfirmation delegates to recordAction with the authenticated user id, claimId, version, and parsed action, for both 'confirmed' and 'unconfirmed'", async () => {
+  for (const action of ["confirmed", "unconfirmed"] as const) {
+    const event = {
+      id: "event-1",
+      claimId: "claim-1",
+      claimVersionId: "version-1",
+      userId: "user-1",
+      sequence: 1,
+      action,
+      occurredAt: new Date("2026-01-01T00:00:00.000Z"),
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+    const { fake } = fakeUseCase();
+    const { fake: fakeConfirmation, calls } = fakeConfirmationUseCase({
+      recordAction: async (...args: unknown[]) => {
+        calls.recordAction = [args];
+        return { status: "recorded", event };
+      },
+    });
+    const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
+
+    const result = await controller.recordConfirmation("claim-1", 1, { action }, { context: AUTHENTICATED_CONTEXT });
+
+    assert.deepEqual(calls.recordAction[0], ["user-1", "claim-1", 1, action]);
+    assert.deepEqual(result, event);
+  }
+});
+
+// Founder Decision: redundant actions are always recorded, never
+// deduplicated or suppressed. This test proves the controller places no
+// dedup/idempotency logic of its own in front of recordAction - two
+// identical calls both reach the use-case and both return a "recorded"
+// result, exactly as a fake use-case that never deduplicates would
+// produce.
+test("recordConfirmation never deduplicates a redundant action - two identical calls both reach recordAction and both return 'recorded'", async () => {
+  const { fake } = fakeUseCase();
+  let callCount = 0;
+  const { fake: fakeConfirmation, calls } = fakeConfirmationUseCase({
+    recordAction: async (...args: unknown[]) => {
+      callCount += 1;
+      calls.recordAction = calls.recordAction ?? [];
+      calls.recordAction.push(args);
+      return {
+        status: "recorded",
+        event: {
+          id: `event-${callCount}`,
+          claimId: "claim-1",
+          claimVersionId: "version-1",
+          userId: "user-1",
+          sequence: callCount,
+          action: "confirmed",
+          occurredAt: new Date("2026-01-01T00:00:00.000Z"),
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+      };
+    },
+  });
+  const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
+
+  const first = await controller.recordConfirmation("claim-1", 1, { action: "confirmed" }, { context: AUTHENTICATED_CONTEXT });
+  const second = await controller.recordConfirmation("claim-1", 1, { action: "confirmed" }, { context: AUTHENTICATED_CONTEXT });
+
+  assert.equal(callCount, 2);
+  assert.equal(first.id, "event-1");
+  assert.equal(second.id, "event-2");
+});
+
+test("recordConfirmation rejects an invalid action with a 400, never calling recordAction", async () => {
+  const { fake } = fakeUseCase();
+  const { fake: fakeConfirmation, calls } = fakeConfirmationUseCase({
+    recordAction: async (...args: unknown[]) => {
+      calls.recordAction = [args];
+      throw new Error("must not be called for an invalid action");
+    },
+  });
+  const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
+
+  await assert.rejects(
+    () => controller.recordConfirmation("claim-1", 1, { action: "wrong" }, { context: AUTHENTICATED_CONTEXT }),
+    (error: unknown) => {
+      assert.equal((error as { status?: number }).status, 400);
+      return true;
+    },
+  );
+  assert.equal(calls.recordAction, undefined);
+});
+
+test("recordConfirmation maps 'claim_version_not_found' to 404, never fabricating an event", async () => {
+  const { fake } = fakeUseCase();
+  const { fake: fakeConfirmation } = fakeConfirmationUseCase({
+    recordAction: async () => ({ status: "claim_version_not_found" }),
+  });
+  const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
+
+  await assert.rejects(
+    () => controller.recordConfirmation("claim-1", 99, { action: "confirmed" }, { context: AUTHENTICATED_CONTEXT }),
+    NotFoundException,
+  );
+});
+
+test("recordConfirmation maps 'not_current_version' to 409, never silently accepting a confirmation on a non-active version", async () => {
+  const { fake } = fakeUseCase();
+  const { fake: fakeConfirmation } = fakeConfirmationUseCase({
+    recordAction: async () => ({ status: "not_current_version" }),
+  });
+  const controller = new PersonalIntelligenceController(fake, fakeConfirmation);
+
+  await assert.rejects(
+    () => controller.recordConfirmation("claim-1", 1, { action: "confirmed" }, { context: AUTHENTICATED_CONTEXT }),
+    ConflictException,
+  );
+});
+
 // Structural check, mirroring ai-runtime.controller.spec.ts's convention:
-// this controller must never introduce AI, a write path, or reach beyond
-// the five authorized read methods.
-test("personal-intelligence.controller.ts never references AI execution, a write method, or an unauthorized repository/use-case method (structural)", async () => {
+// this controller must never introduce AI or a write path beyond the one
+// Founder-authorized C3 confirmation write, and must never reach into
+// Relationship/Matching territory.
+test("personal-intelligence.controller.ts never references AI execution or an unauthorized repository/use-case method (structural)", async () => {
   const { readFile } = await import("node:fs/promises");
   const { join } = await import("node:path");
   const source = await readFile(
@@ -244,7 +429,6 @@ test("personal-intelligence.controller.ts never references AI execution, a write
     ".create(",
     ".appendCorrection(",
     "PersonalIntelligenceRelationship",
-    "PersonalIntelligenceClaimConfirmation",
   ];
   for (const token of forbidden) {
     assert.equal(source.includes(token), false, `personal-intelligence.controller.ts must not reference "${token}"`);

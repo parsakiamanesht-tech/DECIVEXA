@@ -89,6 +89,35 @@ export type EvidenceInspectionResult =
   | { status: 'not_linked' }
   | { status: 'evidence_missing' };
 
+// C3 Claim Confirm/Unconfirm (Founder Implementation Authorization).
+// "confirmed" affirms the referenced version's content is accurate;
+// "unconfirmed" retracts a prior confirmation - never represented as
+// false/wrong/disputed/corrected/invalid. Mirrors
+// PersonalIntelligenceClaimConfirmationAction exactly.
+export type PersonalIntelligenceClaimConfirmationAction = 'confirmed' | 'unconfirmed';
+
+export type ClaimConfirmationEvent = {
+  id: string;
+  claimId: string;
+  claimVersionId: string;
+  userId: string;
+  sequence: number;
+  action: PersonalIntelligenceClaimConfirmationAction;
+  occurredAt: string;
+  createdAt: string;
+};
+
+// "not_confirmed" (no event yet) is distinct from "unconfirmed" (an
+// explicit retraction is the latest event) - both are honest, valid
+// states the UI must be able to show, never collapsed into one.
+export type EffectiveConfirmationState = 'not_confirmed' | 'confirmed' | 'unconfirmed';
+
+// GET .../confirmation success shape - minus "claim_version_not_found",
+// surfaced as an HTTP 404 (an ApiError), same convention as
+// EvidenceInspectionResult above. Mirrors EffectiveConfirmationResult's
+// "found" case exactly.
+export type EffectiveConfirmation = { status: 'found'; state: EffectiveConfirmationState };
+
 // GET /personal-intelligence/claims - no parameters, no caller-supplied
 // user id. The authenticated owner is derived entirely server-side.
 export function getActiveClaims(): Promise<ActiveClaim[]> {
@@ -115,5 +144,30 @@ export function getClaimVersionDiff(claimId: string, from: number, to: number): 
 export function getClaimVersionEvidence(claimId: string, version: number): Promise<EvidenceInspectionResult> {
   return apiFetch<EvidenceInspectionResult>(
     `/personal-intelligence/claims/${encodeURIComponent(claimId)}/versions/${version}/evidence`,
+  );
+}
+
+// GET /personal-intelligence/claims/:claimId/versions/:version/confirmation
+export function getClaimVersionConfirmation(claimId: string, version: number): Promise<EffectiveConfirmation> {
+  return apiFetch<EffectiveConfirmation>(
+    `/personal-intelligence/claims/${encodeURIComponent(claimId)}/versions/${version}/confirmation`,
+  );
+}
+
+// POST /personal-intelligence/claims/:claimId/versions/:version/confirmation
+// Every valid call records a new append-only event - including a
+// redundant one (re-confirming an already-confirmed version, or
+// re-retracting an already-retracted one). This function never
+// deduplicates or suppresses a call; that discipline is the caller's
+// responsibility to preserve (never disable the action button based on
+// current state).
+export function recordClaimVersionConfirmation(
+  claimId: string,
+  version: number,
+  action: PersonalIntelligenceClaimConfirmationAction,
+): Promise<ClaimConfirmationEvent> {
+  return apiFetch<ClaimConfirmationEvent>(
+    `/personal-intelligence/claims/${encodeURIComponent(claimId)}/versions/${version}/confirmation`,
+    { method: 'POST', body: JSON.stringify({ action }) },
   );
 }

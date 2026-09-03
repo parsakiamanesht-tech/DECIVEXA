@@ -7,9 +7,13 @@ import {
   getClaimHistory,
   getClaimVersionDiff,
   getClaimVersionEvidence,
+  getClaimVersionConfirmation,
+  recordClaimVersionConfirmation,
   type ActiveClaim,
   type ClaimVersionExplanation,
+  type EffectiveConfirmationState,
   type EvidenceInspectionResult,
+  type PersonalIntelligenceClaimConfirmationAction,
   type PersonalIntelligenceClaimType,
   type PersonalIntelligenceClaimVersion,
   type PersonalIntelligenceEvidenceLinkageState,
@@ -36,6 +40,19 @@ import type { ApiError } from '../../../lib/api';
 // non-null, never transformed into a sentence or interpretation. Each
 // history entry shows its own version's stored value, never the current
 // claim's.
+//
+// C3 Claim Confirm/Unconfirm (Founder Implementation Authorization):
+// "Confirm this is accurate" affirms the current active version's
+// content; "Retract your confirmation" retracts a prior confirmation -
+// never worded as "wrong," "dispute," "false," or "incorrect," because
+// the domain model does not support that meaning. Every valid action is
+// a new append-only event; both buttons remain enabled regardless of
+// current state, since a redundant action is still a valid, real event
+// (never deduplicated client-side). Appears only on the current claim
+// card, never on historical version entries. The backend is the sole
+// source of truth for the current-active-version invariant - a 409 means
+// the version shown is no longer current, and the UI only refreshes and
+// informs, never guesses or overrides.
 
 const CLAIM_TYPE_LABELS: Record<PersonalIntelligenceClaimType, string> = {
   identity_attribute: 'Identity attribute',
@@ -66,6 +83,12 @@ const EVIDENCE_LINKAGE_LABELS: Record<PersonalIntelligenceEvidenceLinkageState, 
   linked: 'Backed by evidence',
   self_reported_no_evidence_required: 'Self-reported (no evidence expected)',
   linkage_pending: 'Evidence linkage pending',
+};
+
+const CONFIRMATION_STATE_LABELS: Record<EffectiveConfirmationState, string> = {
+  not_confirmed: 'Not confirmed',
+  confirmed: 'Confirmed',
+  unconfirmed: 'Unconfirmed',
 };
 
 const CHANGED_FIELD_LABELS: Record<string, string> = {
@@ -184,6 +207,80 @@ function EvidenceCheck({ claimId, version }: { claimId: string; version: number 
   return <span role="alert">This claim references evidence that could not be found.</span>;
 }
 
+// C3 Claim Confirm/Unconfirm - current claim card only, never rendered
+// for historical entries. Fetches effective state automatically (it is
+// core current-state information, same category as lifecycle/provenance
+// above, not an on-demand lookup like EvidenceCheck/VersionDiff).
+function ConfirmationControl({ claimId, version }: { claimId: string; version: number }) {
+  const [stateView, setStateView] = useState<
+    | { status: 'loading' }
+    | { status: 'error'; message: string }
+    | { status: 'ready'; state: EffectiveConfirmationState }
+  >({ status: 'loading' });
+
+  const refresh = useCallback(() => {
+    setStateView({ status: 'loading' });
+    getClaimVersionConfirmation(claimId, version)
+      .then((result) => setStateView({ status: 'ready', state: result.state }))
+      .catch((cause) => setStateView({ status: 'error', message: errorMessage(cause) }));
+  }, [claimId, version]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const [actionState, setActionState] = useState<
+    | { status: 'idle' }
+    | { status: 'submitting' }
+    | { status: 'conflict'; message: string }
+    | { status: 'error'; message: string }
+  >({ status: 'idle' });
+
+  // Both buttons call this identically regardless of the current
+  // effective state - a redundant action is still a real, valid,
+  // append-only event and must never be suppressed or disabled here.
+  const act = useCallback(
+    (action: PersonalIntelligenceClaimConfirmationAction) => {
+      setActionState({ status: 'submitting' });
+      recordClaimVersionConfirmation(claimId, version, action)
+        .then(() => {
+          setActionState({ status: 'idle' });
+          refresh();
+        })
+        .catch((cause) => {
+          if (isApiError(cause) && cause.status === 409) {
+            setActionState({
+              status: 'conflict',
+              message: 'This claim version is no longer current. Refreshing the current state.',
+            });
+            refresh();
+          } else {
+            setActionState({ status: 'error', message: errorMessage(cause) });
+          }
+        });
+    },
+    [claimId, version, refresh],
+  );
+
+  const submitting = actionState.status === 'submitting';
+
+  return (
+    <div>
+      {stateView.status === 'loading' ? <p>Loading confirmation state…</p> : null}
+      {stateView.status === 'error' ? <p role="alert">{stateView.message}</p> : null}
+      {stateView.status === 'ready' ? <p>{CONFIRMATION_STATE_LABELS[stateView.state]}</p> : null}
+      <button type="button" onClick={() => act('confirmed')} disabled={submitting}>
+        Confirm this is accurate
+      </button>{' '}
+      <button type="button" onClick={() => act('unconfirmed')} disabled={submitting}>
+        Retract your confirmation
+      </button>
+      {actionState.status === 'conflict' ? <p role="alert">{actionState.message}</p> : null}
+      {actionState.status === 'error' ? <p role="alert">{actionState.message}</p> : null}
+    </div>
+  );
+}
+
 // Comparison between one history entry and the version immediately
 // before it, fetched only on request ("What changed").
 function VersionDiff({ claimId, from, to }: { claimId: string; from: number; to: number }) {
@@ -290,6 +387,7 @@ function ClaimCard({ claim, history }: { claim: ActiveClaim; history: PersonalIn
         <dd>{claim.confidence}</dd>
       </dl>
       <EvidenceCheck claimId={claim.claimId} version={claim.version} />
+      <ConfirmationControl claimId={claim.claimId} version={claim.version} />
       {history.length > 1 ? (
         <>
           <button type="button" onClick={() => setHistoryOpen((open) => !open)}>

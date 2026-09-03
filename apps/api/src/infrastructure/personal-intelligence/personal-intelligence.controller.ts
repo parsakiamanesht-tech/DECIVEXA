@@ -1,10 +1,15 @@
 import {
   BadRequestException,
+  Body,
+  ConflictException,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
   ParseIntPipe,
+  Post,
   Query,
   Req,
   UnauthorizedException,
@@ -12,10 +17,12 @@ import {
 } from "@nestjs/common";
 import type { RequestContext } from "../../context/request-context";
 import { PersonalIntelligenceClaimUseCase } from "../../application/personal-intelligence/personal-intelligence-claim.use-case";
+import { PersonalIntelligenceClaimConfirmationUseCase } from "../../application/personal-intelligence/personal-intelligence-claim-confirmation.use-case";
 import type {
   PersonalIntelligenceClaimType,
   PersonalIntelligenceClaimVersion,
 } from "../../core/personal-intelligence/personal-intelligence-claim.model";
+import type { PersonalIntelligenceClaimConfirmationAction } from "../../core/personal-intelligence/personal-intelligence-claim-confirmation.model";
 import { AuthenticationGuard } from "../auth/authentication.guard";
 
 type AuthenticatedRequest = { context?: RequestContext };
@@ -37,6 +44,18 @@ function parseVersionQueryParam(value: string | undefined, field: string): numbe
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed < 1) throw new BadRequestException(`Invalid ${field}`);
   return parsed;
+}
+
+const CONFIRMATION_ACTIONS: readonly PersonalIntelligenceClaimConfirmationAction[] = [
+  "confirmed",
+  "unconfirmed",
+];
+
+function parseConfirmationAction(value: unknown): PersonalIntelligenceClaimConfirmationAction {
+  if (typeof value !== "string" || !CONFIRMATION_ACTIONS.includes(value as PersonalIntelligenceClaimConfirmationAction)) {
+    throw new BadRequestException('action must be "confirmed" or "unconfirmed"');
+  }
+  return value as PersonalIntelligenceClaimConfirmationAction;
 }
 
 // Personal Intelligence Claim Visibility - V1
@@ -63,10 +82,26 @@ type ActiveClaimView = PersonalIntelligenceClaimVersion & {
   claimType: PersonalIntelligenceClaimType | null;
 };
 
+// C3 Claim Confirm/Unconfirm (Founder Implementation Authorization,
+// reconciling docs/gates/PERSONAL-INTELLIGENCE-PIC-CLAIM-ONTOLOGY-
+// TAXONOMY-IMPLEMENTATION-INCREMENT-CONTRACT.md §3.3): two additional
+// routes below delegate to PersonalIntelligenceClaimConfirmationUseCase
+// only. "confirmed" affirms the referenced version's content is
+// accurate; "unconfirmed" retracts a prior confirmation - never
+// represented as false/wrong/disputed/corrected/invalid. Every valid
+// action is a new append-only event; redundant actions are recorded,
+// never deduplicated or suppressed. A confirmation may target only the
+// claim's current active version - enforced entirely inside the
+// use-case, not here and not only in the frontend.
+type ConfirmationActionBody = { action: unknown };
+
 @Controller("personal-intelligence")
 @UseGuards(AuthenticationGuard)
 export class PersonalIntelligenceController {
-  constructor(private readonly personalIntelligence: PersonalIntelligenceClaimUseCase) {}
+  constructor(
+    private readonly personalIntelligence: PersonalIntelligenceClaimUseCase,
+    private readonly confirmation: PersonalIntelligenceClaimConfirmationUseCase,
+  ) {}
 
   // GET /personal-intelligence/claims
   // One entry per active claim (findActiveClaimVersionsForUser already
@@ -148,5 +183,45 @@ export class PersonalIntelligenceController {
     const result = await this.personalIntelligence.inspectEvidence(context.userId, claimId, version);
     if (result.status === "claim_version_not_found") throw new NotFoundException("Claim version not found");
     return result;
+  }
+
+  // GET /personal-intelligence/claims/:claimId/versions/:version/confirmation
+  // Read-only. Returns the effective confirmation state derived from
+  // existing confirmation events - no new state, metadata, reason,
+  // confidence, or score is introduced.
+  @Get("claims/:claimId/versions/:version/confirmation")
+  async getConfirmation(
+    @Param("claimId") claimId: string,
+    @Param("version", ParseIntPipe) version: number,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const context = contextOf(request);
+    const result = await this.confirmation.getEffectiveConfirmation(context.userId, claimId, version);
+    if (result.status === "claim_version_not_found") throw new NotFoundException("Claim version not found");
+    return result;
+  }
+
+  // POST /personal-intelligence/claims/:claimId/versions/:version/confirmation
+  // Records a new confirmation/unconfirmation event against the claim's
+  // current active version only. 409 when the target version exists but
+  // is not currently active - the request is well-formed but conflicts
+  // with the claim's current state, mirroring PersonalStateController's
+  // existing 409-for-state-conflict convention.
+  @Post("claims/:claimId/versions/:version/confirmation")
+  @HttpCode(HttpStatus.CREATED)
+  async recordConfirmation(
+    @Param("claimId") claimId: string,
+    @Param("version", ParseIntPipe) version: number,
+    @Body() body: ConfirmationActionBody,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const context = contextOf(request);
+    const action = parseConfirmationAction(body?.action);
+    const result = await this.confirmation.recordAction(context.userId, claimId, version, action);
+    if (result.status === "claim_version_not_found") throw new NotFoundException("Claim version not found");
+    if (result.status === "not_current_version") {
+      throw new ConflictException("This claim version is no longer the current active version");
+    }
+    return result.event;
   }
 }
