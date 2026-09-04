@@ -196,7 +196,7 @@ and in `findClaimVersionForUser` (`:158-176`).
 **IDOR behavior**: a request naming a `claimId`/`version` pair that
 exists but belongs to a different user is indistinguishable, at the
 wire level, from a request naming a `claimId`/`version` pair that does
-not exist at all. Both resolve to `404 Not Found` (§13). No C4 route,
+not exist at all. Both resolve to `404 Not Found` (§19). No C4 route,
 use-case, or DTO may introduce a code path that reveals whether a given
 `claimId` exists for a user other than the requester.
 
@@ -298,13 +298,13 @@ evidenced elsewhere in this codebase's design comments.
 | `valueKind` | Application-derived/preserved | Read from Current — see §6.3 |
 | `provenance` | Application-derived/preserved | Read from Current, re-supplied unchanged (§2.7) |
 | `lifecycle` | System-controlled | Fixed to `"active"` by the application layer (§2.6) |
-| `evidenceVersionId` | Application-derived/preserved | Read from Current, re-supplied unchanged (§19) |
-| `evidenceLinkageState` | Application-derived/preserved | Read from Current, re-supplied unchanged (§19) |
-| `inferenceId` | Application-derived/preserved | Read from Current, re-supplied unchanged (§20) |
-| `effectiveFrom` | Application-derived/preserved | Read from Current, re-supplied unchanged (§17) |
-| `effectiveTo` | Application-derived/preserved | Read from Current, re-supplied unchanged (§17) |
-| `situationSetting` | Application-derived/preserved | Read from Current, re-supplied unchanged (§16) |
-| `timeOfDay` | Application-derived/preserved | Read from Current, re-supplied unchanged (§16) |
+| `evidenceVersionId` | Application-derived/preserved | Read from Current, re-supplied unchanged (§14) |
+| `evidenceLinkageState` | Application-derived/preserved | Read from Current, re-supplied unchanged (§14) |
+| `inferenceId` | Application-derived/preserved | Read from Current, re-supplied unchanged (§15) |
+| `effectiveFrom` | Application-derived/preserved | Read from Current, re-supplied unchanged (§12) |
+| `effectiveTo` | Application-derived/preserved | Read from Current, re-supplied unchanged (§12) |
+| `situationSetting` | Application-derived/preserved | Read from Current, re-supplied unchanged (§11) |
+| `timeOfDay` | Application-derived/preserved | Read from Current, re-supplied unchanged (§11) |
 | `observedAt` | System-controlled | Set to the correction write event's "now" (§2.7) |
 | `acceptedAt` | System-controlled | Set to the correction write event's "now" (§2.7) |
 | `now` | System-controlled | The correction write event's own timestamp |
@@ -342,10 +342,10 @@ Resolve target claim/version (claimId, expectedVersion)
         ↓
 Verify ownership (userId scoping — §3)
         ↓
-Resolve Current (§4 — the D1 current-version capability, §22)
+Resolve Current (§4 — the D1 current-version capability, §17)
         ↓
 Verify expectedVersion == Current.version
-   (mismatch → 409, §9/§13)
+   (mismatch → 409, §19/§20)
         ↓
 Build complete AppendClaimCorrectionInput
         ↓
@@ -540,10 +540,10 @@ evidence was found suggesting a materially more consistent alternative.
   `BadRequestException` usage (`:38,45,56`).
 - **`404 Not Found`**: the referenced `claimId`/`version` does not
   exist for the requesting user, or belongs to a different user (§3,
-  §24).
+  §19).
 - **`409 Conflict`**: the referenced version exists and is owned by the
   requesting user, but is no longer Current (§9 of the FD-C4
-  reconciliation; §24 below).
+  reconciliation; §19 below).
 - **Ownership behavior**: identical to every other route in this
   controller — enforced by the `userId`-scoped repository query, never
   by the client-supplied path parameters alone (§3).
@@ -572,7 +572,7 @@ repository query resolving, for a given `userId` (optionally scoped by
 `claimType`), the single highest-`version` `ClaimVersion` row for each
 distinct `claimId` — a `GROUP BY claimId` / window-function-shaped query
 against the existing schema. No schema change is required to support
-it (§20).
+it (§22).
 
 **Behavior when Current is non-active**: the claim still appears in the
 response — as its Current, non-active version, per D3 (§2.4). It is
