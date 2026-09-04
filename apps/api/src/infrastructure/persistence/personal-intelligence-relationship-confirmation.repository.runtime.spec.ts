@@ -211,3 +211,216 @@ test("personal_intelligence_relationship_confirmation_events_relationship_id_seq
     .where(and(eq(personalIntelligenceRelationshipConfirmationEvents.relationshipId, relationshipId), eq(personalIntelligenceRelationshipConfirmationEvents.sequence, 1)));
   assert.equal(rows.length, 1, "exactly one row may exist at (relationship_id, sequence=1) - the rejected duplicate must not have been persisted");
 });
+
+// Founder-authorized coverage closure ("MIGRATION 0015 — REMAINING RUNTIME
+// COVERAGE CLOSURE"), following the PostgreSQL 18 CI Evidence
+// Reconciliation Audit's finding that 5 of the 9 required runtime
+// behaviors had no implementing test at all for this table. Adds exactly:
+// full multi-event sequence progression, read ordering, the three live
+// CHECK-constraint rejections (action/actor/sequence), and a deterministic
+// timestamp round-trip - no other behavior. Reuses the existing
+// seedRelationship/seedClaimVersion helpers and the existing raw-SQL-insert
+// pattern already established by the forced-collision test above; no new
+// production code, repository method, schema, or migration is introduced.
+
+function extractPgErrorCode(error: unknown): string | undefined {
+  const pgError = error as { code?: string; cause?: { code?: string } };
+  return pgError.code ?? pgError.cause?.code;
+}
+
+test("create(): sequential creates against the real database allocate strictly increasing sequence numbers for the same relationship (1 -> 2 -> 3)", async () => {
+  const relationshipId = await seedRelationship(userAId, `q1-runtime-relconfirm-progression-${runId}`, "pending");
+
+  const first = await repo.create({
+    id: randomUUID(),
+    relationshipId,
+    userId: userAId,
+    action: "pending",
+    actor: "user",
+    occurredAt: new Date(),
+    now: new Date(),
+  });
+  assert.ok(first, "expected the first create() to succeed");
+  assert.equal(first!.sequence, 1);
+
+  const second = await repo.create({
+    id: randomUUID(),
+    relationshipId,
+    userId: userAId,
+    action: "confirmed",
+    actor: "user",
+    occurredAt: new Date(),
+    now: new Date(),
+  });
+  assert.ok(second, "expected the second create() to succeed");
+  assert.equal(second!.sequence, 2);
+
+  const third = await repo.create({
+    id: randomUUID(),
+    relationshipId,
+    userId: userAId,
+    action: "rejected",
+    actor: "user",
+    occurredAt: new Date(),
+    now: new Date(),
+  });
+  assert.ok(third, "expected the third create() to succeed");
+  assert.equal(third!.sequence, 3);
+});
+
+test("findConfirmationEventsForRelationship(): returns events in sequence ASC order against real PostgreSQL, independent of insertion order", async () => {
+  const relationshipId = await seedRelationship(userAId, `q1-runtime-relconfirm-ordering-${runId}`, "pending");
+
+  const idForSeq3 = randomUUID();
+  const idForSeq1 = randomUUID();
+  const idForSeq2 = randomUUID();
+  const now = new Date();
+
+  // Deliberately inserted out of natural (ascending-sequence) order via a
+  // raw insert - bypassing the repository's own next-sequence computation
+  // entirely, exactly like the forced-collision test above - so this
+  // proves findConfirmationEventsForRelationship's real ORDER BY sequence
+  // ASC clause, not merely that it returns rows in whatever order they
+  // were inserted.
+  await db.execute(
+    sql`insert into decivexa.personal_intelligence_relationship_confirmation_events
+        (id, relationship_id, user_id, sequence, action, actor, occurred_at, created_at)
+        values (${idForSeq3}, ${relationshipId}, ${userAId}, 3, 'rejected', 'user', ${now}, ${now})`,
+  );
+  await db.execute(
+    sql`insert into decivexa.personal_intelligence_relationship_confirmation_events
+        (id, relationship_id, user_id, sequence, action, actor, occurred_at, created_at)
+        values (${idForSeq1}, ${relationshipId}, ${userAId}, 1, 'pending', 'user', ${now}, ${now})`,
+  );
+  await db.execute(
+    sql`insert into decivexa.personal_intelligence_relationship_confirmation_events
+        (id, relationship_id, user_id, sequence, action, actor, occurred_at, created_at)
+        values (${idForSeq2}, ${relationshipId}, ${userAId}, 2, 'confirmed', 'user', ${now}, ${now})`,
+  );
+
+  const events = await repo.findConfirmationEventsForRelationship(userAId, relationshipId);
+
+  assert.deepEqual(events.map((event) => event.sequence), [1, 2, 3], "expected ascending sequence order regardless of insertion order");
+  assert.deepEqual(events.map((event) => event.id), [idForSeq1, idForSeq2, idForSeq3], "expected the row inserted second (sequence=1) to be returned first, proving ORDER BY sequence rather than insertion order");
+});
+
+test("personal_intelligence_relationship_confirmation_events_action_check: PostgreSQL itself rejects an action value outside ('pending','confirmed','rejected'), independent of any application-code validation", async () => {
+  const relationshipId = await seedRelationship(userAId, `q1-runtime-relconfirm-actioncheck-${runId}`, "pending");
+  const invalidId = randomUUID();
+  const now = new Date();
+
+  // 'not_required' is deliberately chosen: it is a genuine value of the
+  // shared confirmationState vocabulary but is explicitly never a valid
+  // Confirmation Event action (personal-intelligence-relationship-confirmation.model.ts's
+  // own comment: "not_required is never a valid event action") - a value
+  // definitely outside this column's CHECK vocabulary, not an arbitrary
+  // typo.
+  await assert.rejects(
+    () =>
+      db.execute(
+        sql`insert into decivexa.personal_intelligence_relationship_confirmation_events
+            (id, relationship_id, user_id, sequence, action, actor, occurred_at, created_at)
+            values (${invalidId}, ${relationshipId}, ${userAId}, 1, 'not_required', 'user', ${now}, ${now})`,
+      ),
+    (error: unknown) => {
+      const code = extractPgErrorCode(error);
+      assert.equal(code, "23514", `expected PostgreSQL check_violation (23514) for an invalid action, got ${code}`);
+      return true;
+    },
+  );
+
+  const rows = await db
+    .select()
+    .from(personalIntelligenceRelationshipConfirmationEvents)
+    .where(eq(personalIntelligenceRelationshipConfirmationEvents.id, invalidId));
+  assert.equal(rows.length, 0, "the rejected row must not have been persisted");
+});
+
+test("personal_intelligence_relationship_confirmation_events_actor_check: PostgreSQL itself rejects an actor value outside ('user'), independent of any application-code validation", async () => {
+  const relationshipId = await seedRelationship(userAId, `q1-runtime-relconfirm-actorcheck-${runId}`, "pending");
+  const invalidId = randomUUID();
+  const now = new Date();
+
+  await assert.rejects(
+    () =>
+      db.execute(
+        sql`insert into decivexa.personal_intelligence_relationship_confirmation_events
+            (id, relationship_id, user_id, sequence, action, actor, occurred_at, created_at)
+            values (${invalidId}, ${relationshipId}, ${userAId}, 1, 'confirmed', 'system', ${now}, ${now})`,
+      ),
+    (error: unknown) => {
+      const code = extractPgErrorCode(error);
+      assert.equal(code, "23514", `expected PostgreSQL check_violation (23514) for an invalid actor, got ${code}`);
+      return true;
+    },
+  );
+
+  const rows = await db
+    .select()
+    .from(personalIntelligenceRelationshipConfirmationEvents)
+    .where(eq(personalIntelligenceRelationshipConfirmationEvents.id, invalidId));
+  assert.equal(rows.length, 0, "the rejected row must not have been persisted");
+});
+
+test("personal_intelligence_relationship_confirmation_events_sequence_check: PostgreSQL itself rejects a sequence value below 1, independent of any application-code validation", async () => {
+  const relationshipId = await seedRelationship(userAId, `q1-runtime-relconfirm-sequencecheck-${runId}`, "pending");
+  const invalidId = randomUUID();
+  const now = new Date();
+
+  await assert.rejects(
+    () =>
+      db.execute(
+        sql`insert into decivexa.personal_intelligence_relationship_confirmation_events
+            (id, relationship_id, user_id, sequence, action, actor, occurred_at, created_at)
+            values (${invalidId}, ${relationshipId}, ${userAId}, 0, 'confirmed', 'user', ${now}, ${now})`,
+      ),
+    (error: unknown) => {
+      const code = extractPgErrorCode(error);
+      assert.equal(code, "23514", `expected PostgreSQL check_violation (23514) for a sequence below 1, got ${code}`);
+      return true;
+    },
+  );
+
+  const rows = await db
+    .select()
+    .from(personalIntelligenceRelationshipConfirmationEvents)
+    .where(eq(personalIntelligenceRelationshipConfirmationEvents.id, invalidId));
+  assert.equal(rows.length, 0, "the rejected row must not have been persisted");
+});
+
+test("create(): occurredAt and createdAt survive a real PostgreSQL round-trip at millisecond precision", async () => {
+  const relationshipId = await seedRelationship(userAId, `q1-runtime-relconfirm-timestamp-${runId}`, "pending");
+
+  // A deterministic timestamp with a non-trivial, non-zero millisecond
+  // component - not "new Date()" at assertion time - so a truncation or
+  // timezone-normalization defect would be caught rather than accidentally
+  // passing because the value happened to align to a round second.
+  const occurredAt = new Date("2026-03-17T08:42:19.437Z");
+  const now = new Date("2026-03-17T08:42:20.918Z");
+
+  const created = await repo.create({
+    id: randomUUID(),
+    relationshipId,
+    userId: userAId,
+    action: "confirmed",
+    actor: "user",
+    occurredAt,
+    now,
+  });
+  assert.ok(created, "expected create() to succeed");
+
+  // Read back through a genuinely separate SELECT (findConfirmationEventsForRelationship),
+  // not merely the INSERT...RETURNING result already held in `created` -
+  // proving a real application-value -> INSERT -> SELECT -> application-value
+  // round trip.
+  const readBack = (await repo.findConfirmationEventsForRelationship(userAId, relationshipId))[0];
+  assert.ok(readBack, "expected exactly one persisted event to be readable back");
+
+  // PostgreSQL `timestamp with time zone` stores microsecond precision -
+  // strictly finer than JavaScript's Date (millisecond precision) - so no
+  // precision loss is expected in either direction; comparing exact
+  // getTime() values is the correct assertion, not a normalized/truncated
+  // one.
+  assert.equal(readBack!.occurredAt.getTime(), occurredAt.getTime(), "occurredAt must round-trip exactly at millisecond precision");
+  assert.equal(readBack!.createdAt.getTime(), now.getTime(), "createdAt must round-trip exactly at millisecond precision");
+});
