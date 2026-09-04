@@ -174,6 +174,67 @@ verification itself — requires its own separate, explicit Founder
 authorization, exactly as the historical Contract's own §26 already
 states.
 
+### Present-Day Founder Ratification — 2026-09-04
+
+This subsection is additive. It records a present-day Founder
+ratification decision and does not delete, rewrite, or backdate any
+historical statement made above — including the "Authorization"
+subsection's own finding that no independently verifiable historical
+Founder Execution Directive was found for commit `21caa84`, and the
+"Runtime Verification Gap" subsection's own historical "NOT SATISFIED"
+finding. It was authorized by an explicit "FOUNDER AUTHORIZATION —
+RATIFICATION OF RELATIONSHIP CONFIRMATION" directive dated 2026-09-04,
+itself following closure of the previously-outstanding Runtime
+Verification Gap (Acceptance Criterion 6, above) via a separately
+Founder-authorized runtime-test coverage increment (commit `3aec74e`)
+and its first passing CI execution.
+
+**§1 — historical authorization status, reaffirmed.** The repository
+still does not contain an independently verifiable historical Founder
+Execution Directive authorizing `21caa84` at the time it was written
+(2026-09-01). This is not fabricated, reconstructed, or claimed
+otherwise anywhere in this subsection.
+
+**§2 — runtime verification, now complete.** At `HEAD` =
+`3aec74e99d5625d6782db1355eb3f3014a1729e3` (`origin/main` equal), CI run
+`33840722701` (job `100922300519`), step "Q1 persistence runtime
+verification", executed against a real PostgreSQL `18.6` server
+(confirmed directly via `SHOW server_version` and the server's own boot
+log — not configuration alone), completed with `# tests 30 # pass 30
+# fail 0`. All nine behaviors this Contract's Acceptance Criterion 6
+required are proven at this exact commit with direct log-level
+evidence: the `not_required` guard; ownership isolation; the unique
+`(relationship_id, sequence)` collision backstop; strict sequence
+progression (`1 → 2 → 3`); sequence-ordered reads independent of
+insertion order; the `action`, `actor`, and `sequence >= 1` CHECK
+constraints; and timestamp round-trip at millisecond precision.
+Acceptance Criterion 6 is therefore satisfied as of this commit — a
+present-day fact this subsection records, not one the historical
+Contract text above is rewritten to claim it always held.
+
+**§3 — present-day Founder ratification.** Founder Parsa Kiamanesh,
+Founder & Owner of DECIVEXA, ratifies and authorizes the already-shipped
+Relationship Confirmation implementation represented by commit
+`21caa84`, together with the runtime-test coverage closure represented
+by commit `3aec74e`. This ratification is effective 2026-09-04. It is
+not historical authorization and must not be represented as
+authorization existing at or before either commit's date. The
+ratification is subject to the governing Contract, all of its
+exclusions and invariants, current scope boundaries, and all existing
+DECIVEXA governance constraints.
+
+**§4 — boundary, reaffirmed once more.** This ratification does not
+authorize, suggest, or advance, in any way: Cross-Claim Matching
+implementation; candidate generation; similarity/ranking algorithms;
+reopening Decision 7 (which remains NOT APPROVED); new Relationship
+features; Memory API exposure; Personal Intelligence Inference API
+exposure; AI product capability implementation; AI provider execution;
+Gate 7 reopening; Biznet GIO infrastructure implementation; Goal OS
+implementation; Decision Engine implementation; schema expansion
+unrelated to this ratified implementation; architectural refactoring;
+product-direction changes; or any other scope expansion. It is not
+general permission to continue development.
+
 ---
 
 ## 1. Identity / Increment Name
