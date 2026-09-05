@@ -814,9 +814,9 @@ Provider selection is a runtime policy concern, not a domain concern.
 
 ### Provider status
 
-> **No AI provider has been selected by this architecture.**
+> **No AI provider is selected by this architecture.**
 
-OpenAI, Anthropic, Google, self-hosted/open-weight systems, or other providers are architectural possibilities only until a later Founder-approved implementation decision selects one or more concrete routes.
+OpenAI, Anthropic, Google, self-hosted/open-weight systems, local/edge inference, or other providers remain architectural possibilities only until a later Founder-approved implementation decision selects one or more concrete routes.
 
 ---
 
