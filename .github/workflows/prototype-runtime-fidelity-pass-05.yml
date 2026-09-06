@@ -1,0 +1,25 @@
+name: Prototype Runtime Fidelity Pass 05
+
+on:
+  push:
+    branches: [prototype/runtime-fidelity-pass-05]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'prototype/decivexa-v1-runtime-fidelity-05/**'
+      - '.github/workflows/prototype-runtime-fidelity-pass-05.yml'
+
+jobs:
+  browser-validation:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: prototype/decivexa-v1-runtime-fidelity-05
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
