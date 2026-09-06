@@ -66,8 +66,10 @@ test('modal traps focus and restores focus to invoker', async ({ page }) => {
   await expect(trigger).toBeFocused();
 });
 
-test('mobile and RTL/LTR semantics remain available', async ({ page }) => {
+test('mobile and RTL/LTR semantics remain available', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'Mobile semantics are validated only in the mobile device project.');
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await expect(page.locator('#mobileLang')).toBeVisible();
   await page.locator('#mobileLang').click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
   await expect(page.getByRole('navigation').last()).toBeVisible();
