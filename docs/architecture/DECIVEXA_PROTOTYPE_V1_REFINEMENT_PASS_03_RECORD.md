@@ -117,7 +117,11 @@ Responsive structure remains explicit, including fixed mobile navigation, semant
 
 ## 5. Accessibility Refinement Basis
 
-The prototype retains visible focus indicators and strengthens modal focus behavior. WCAG 2.2 requires a keyboard-operable interface to provide a mode in which keyboard focus is visible, and the Focus Not Obscured criterion requires focused components not to be entirely hidden by author-created content. citehttps://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html citehttps://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum.html
+The prototype retains visible focus indicators and strengthens modal focus behavior. WCAG 2.2 requires a keyboard-operable interface to provide a mode in which keyboard focus is visible, and the Focus Not Obscured criterion requires focused components not to be entirely hidden by author-created content.
+
+Reference: https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html
+
+Reference: https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum.html
 
 The fixed mobile navigation and modal overlay therefore remain explicit targets for the next re-validation pass rather than being treated as automatically compliant.
 
