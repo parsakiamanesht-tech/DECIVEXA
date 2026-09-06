@@ -33,10 +33,10 @@ test('correction confirmation creates a review-required dependent state', async 
   await page.getByRole('button', { name: /اصلاح این درک|Correct this understanding/ }).click();
   await page.getByRole('button', { name: /تأیید اصلاح|Confirm correction/ }).click();
   await expect(page.getByText('CONFIRMED', { exact: true })).toBeVisible();
-  await expect(page.getByText('REVIEW REQUIRED', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('REVIEW REQUIRED', { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByText('CONFIRMED', { exact: true })).toBeVisible();
-  await expect(page.getByText(/DEPENDENTS: REVIEW REQUIRED/)).toBeVisible();
+  await expect(page.getByText('REVIEW REQUIRED', { exact: true })).toBeVisible();
 });
 
 test('retry creates a new attempt after incomplete application', async ({ page }) => {
@@ -68,7 +68,7 @@ test('modal traps focus and restores focus to invoker', async ({ page }) => {
 
 test('mobile and RTL/LTR semantics remain available', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
-  await page.locator('#lang').click({ force: true });
+  await page.locator('#mobileLang').click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
   await expect(page.getByRole('navigation').last()).toBeVisible();
 });
