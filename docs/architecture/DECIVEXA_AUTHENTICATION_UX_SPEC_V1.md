@@ -782,3 +782,433 @@ D01–D03 remain Founder-approved and locked. D04–D12 are recorded as professi
 **Implementation authorization:** NONE.  
 **Claude implementation prompt:** NOT CREATED.  
 **Next design layer:** typography, geometry, controls, iconography, state language, motion, and responsive visual rules.
+
+---
+
+# 22. Authentication Visual Design V1 — Visual System Layer
+
+This layer converts the approved visual-language foundation into a coherent system of typography, geometry, controls, states, motion, responsiveness, and semantic tokens. Exact production values remain subject to final visual QA unless explicitly frozen below.
+
+## 22.1 AUTH-V1-D13 — Typography Architecture
+
+**Selected professional design direction:** One primary neutral-modern sans family with restrained character and high functional legibility.
+
+Authentication should use one primary type family rather than mixing decorative display fonts with a utility font. Brand expression should come from composition, spacing, visual environment, and typographic hierarchy—not from an ornamental typeface.
+
+### Selection criteria
+
+The eventual family must demonstrate:
+
+- excellent screen readability at small and medium sizes;
+- clear differentiation between common letterforms in credentials and supporting text;
+- strong weight consistency;
+- broad Latin coverage and clean behavior if additional language support is introduced;
+- reliable rendering across modern browsers and operating systems;
+- a character that feels contemporary and human without becoming futuristic or editorially theatrical.
+
+### Rejected directions
+
+- **Decorative/display-led typography:** rejected for authentication because it increases cognitive load and weakens trust-critical clarity.
+- **Multiple unrelated font families:** rejected because it fragments the system.
+- **Tech/monospace-led identity:** rejected as the primary authentication typography because it over-signals engineering/AI rather than human-centered confidence.
+
+**Governance:** Design-lead direction pending Founder approval. Font family is not yet frozen.
+
+## 22.2 AUTH-V1-D14 — Typographic Hierarchy
+
+**Selected direction:** Functional hierarchy with restrained contrast.
+
+The hierarchy must distinguish:
+
+`Brand identity → page title → supporting explanation → field label → entered value → helper/state text → primary action → secondary action`.
+
+The page title should establish orientation without becoming a marketing headline. Supporting copy should be short. Labels remain persistent and visually associated with their controls. Secondary actions are intentionally quieter but remain clearly interactive.
+
+### Rule
+
+Typography must create hierarchy primarily through scale, weight, spacing, and placement—not through excessive color variation or decorative effects.
+
+**Governance:** Design-lead direction pending Founder approval.
+
+## 22.3 AUTH-V1-D15 — Form Geometry
+
+**Selected direction:** Controlled, calm geometry.
+
+All authentication controls should share a coherent geometric language. The system should use moderate corner rounding rather than sharp industrial geometry or exaggerated pill shapes.
+
+### Geometry principles
+
+- One coherent control family across fields, buttons, and related surfaces.
+- No pill-shaped primary controls as a default.
+- Radius should communicate calmness without looking playful.
+- Field and button heights must support comfortable interaction and visual rhythm.
+- Form width should optimize scanning and input confidence rather than maximize content density.
+- Alignment should be exact and repeatable across all auth states.
+
+Exact radius, control height, field width, and spacing values remain open until the final visual system is validated together.
+
+**Governance:** Design-lead direction pending Founder approval.
+
+## 22.4 AUTH-V1-D16 — Input Language
+
+**Selected direction:** Label-first, state-clear input design.
+
+Each field must have a persistent visible label. Placeholder text may provide format guidance but must never carry the identity of the field.
+
+### Input states
+
+The visual system must distinguish at minimum:
+
+`Default → Hover (where applicable) → Focus → Filled → Invalid → Valid/confirmed where meaningful → Disabled → Loading/locked where applicable`.
+
+Focus must be unmistakable without relying only on a subtle color shift. Error presentation must preserve the same field geometry while adding clear state communication and accessible association.
+
+### Password controls
+
+Show/hide password is a functional affordance. Its visual treatment must remain subordinate to the password field and must not resemble a decorative icon.
+
+**Governance:** Design-lead direction pending Founder approval.
+
+## 22.5 AUTH-V1-D17 — Primary Action Language
+
+**Selected direction:** Single, high-confidence primary action.
+
+Each authentication state should have one visually dominant action appropriate to that state: for example `Log in`, `Create account`, `Send reset link`, `Reset password`, `Verify`, or `Continue`.
+
+The primary action must not rely on gradients, glow, animation, oversized typography, or ornamental effects to appear important. Its priority should come from hierarchy, contrast, proportion, placement, and clear action language.
+
+### Failure rule
+
+If two actions appear equally primary, the hierarchy is considered unresolved and must be redesigned.
+
+**Governance:** Design-lead direction pending Founder approval.
+
+## 22.6 AUTH-V1-D18 — Secondary Action Language
+
+**Selected direction:** Clearly interactive, deliberately subordinate.
+
+Registration, password recovery, return-to-login, resend, and similar secondary routes should use a quieter visual treatment than the primary action while remaining unmistakably actionable.
+
+Secondary actions must not look disabled, hidden, or like ordinary body copy.
+
+**Governance:** Design-lead direction pending Founder approval.
+
+## 22.7 AUTH-V1-D19 — Iconography
+
+**Selected direction:** Functional minimal iconography.
+
+Icons are permitted only where they improve comprehension or direct manipulation. The system should prefer simple, consistent forms with restrained visual weight.
+
+### Explicitly avoid
+
+- decorative icon clusters;
+- emoji as interface state indicators;
+- mixed icon styles;
+- icons used merely to fill empty space;
+- icon-only critical actions where a textual action would be clearer.
+
+Where an icon communicates an error, success, visibility state, or other status, the accompanying semantic text remains authoritative.
+
+**Governance:** Design-lead direction pending Founder approval.
+
+## 22.8 AUTH-V1-D20 — State Language
+
+**Selected direction:** Multichannel state communication.
+
+No important authentication state may be communicated by color alone.
+
+The visual system should combine appropriate combinations of:
+
+- semantic color,
+- typography,
+- placement,
+- structural treatment,
+- and, where useful, a restrained icon.
+
+### State principles
+
+- **Error:** immediate, specific enough to guide correction, never technical.
+- **Success:** calm confirmation without celebratory excess.
+- **Loading:** clear progress/processing indication without implying a background AI process.
+- **Disabled:** visibly unavailable while retaining readable contrast.
+- **Session expired:** explain the need for re-authentication and restore a clear path forward.
+
+State styling must remain consistent across login, registration, recovery, verification, and future auth extensions.
+
+**Governance:** Design-lead direction pending Founder approval.
+
+## 22.9 AUTH-V1-D21 — Responsive Visual Rules
+
+**Selected direction:** Content-priority responsive transformation.
+
+Responsive behavior must transform the composition rather than merely shrink it.
+
+### Wide desktop
+
+Maintain the split, Brand-led composition and preserve comfortable authentication geometry.
+
+### Constrained desktop / tablet
+
+Reduce Brand complexity, decorative scale, and non-essential visual depth before compromising authentication controls.
+
+### Mobile
+
+Collapse into a vertical experience with this priority:
+
+`DECIVEXA identity → authentication task → supporting paths`.
+
+The Brand Environment may become materially simpler or partially absent, but the identity of the product must remain recognizable.
+
+### Interaction constraints
+
+The design must account for virtual keyboards, browser zoom, dynamic text size, autofill, password managers, and touch interaction. No essential action should depend on hover.
+
+**Governance:** Design-lead direction pending Founder approval.
+
+## 22.10 AUTH-V1-D22 — Motion Language
+
+**Selected direction:** Quiet continuity.
+
+Motion should explain change rather than advertise the interface.
+
+Appropriate uses include:
+
+- transition into loading;
+- validation/state appearance;
+- success or completion transition;
+- responsive continuity where a layout transformation could otherwise feel abrupt.
+
+### Motion constraints
+
+- No perpetual decorative motion.
+- No attention-grabbing entrance choreography.
+- No bouncing, pulsing, or glow used as a primary status language.
+- No motion that implies artificial consciousness or emotional presence.
+- Reduced-motion preferences must be respected.
+
+Exact duration/easing tokens remain open pending visual QA.
+
+**Governance:** Design-lead direction pending Founder approval.
+
+## 22.11 AUTH-V1-D23 — Accessibility as a Visual Gate
+
+**Selected direction:** Accessibility is a release criterion for visual design, not a later compliance pass.
+
+The final system must be reviewed for at least:
+
+- text and interactive contrast;
+- visible keyboard focus;
+- non-color-only state communication;
+- readable hierarchy under text enlargement;
+- reflow without loss of essential controls;
+- touch-safe target sizing;
+- predictable focus movement after validation and submission;
+- reduced-motion behavior;
+- error association and visibility;
+- compatibility with browser and assistive-technology interaction patterns.
+
+The design must target a professional accessibility baseline consistent with modern WCAG AA expectations, with stricter treatment applied where a trust-critical state benefits from it.
+
+**Governance:** Design-lead direction pending Founder approval.
+
+## 22.12 AUTH-V1-D24 — Semantic Design Token Architecture
+
+**Selected direction:** Semantic tokens over component-specific styling.
+
+The final visual system should be expressed through semantic roles rather than scattered literal values.
+
+Conceptual token families:
+
+```text
+color.brand.*
+color.surface.*
+color.text.*
+color.interactive.*
+color.focus.*
+color.error.*
+color.success.*
+color.boundary.*
+
+space.*
+type.*
+radius.*
+control.*
+motion.*
+```
+
+Components should consume semantic intent rather than encode independent visual decisions. Exact token values are not frozen by this section.
+
+### Why this matters
+
+It allows the authentication system to evolve from light-first presentation to future themes or broader application surfaces without rewriting the conceptual design language.
+
+**Governance:** Design-lead direction pending Founder approval.
+
+## 22.13 AUTH-V1-D25 — Cross-Screen Consistency
+
+**Selected direction:** One authentication system, multiple states.
+
+Login, registration, verification, password recovery, reset, session-expired, and related states must feel like different states of the same DECIVEXA entry system.
+
+The user should not experience a new visual language when moving between flows.
+
+Only the content hierarchy and current action should change materially; identity, geometry, typography, state semantics, and interaction conventions should remain stable.
+
+**Governance:** Design-lead direction pending Founder approval.
+
+## 22.14 AUTH-V1-D26 — Brand Environment Continuity
+
+**Selected direction:** The authentication Brand Environment establishes the visual grammar for the future product shell without becoming a preview of the product UI.
+
+The visual vocabulary introduced here should be capable of extending into later DECIVEXA surfaces through:
+
+- spatial rhythm;
+- semantic color relationships;
+- restrained depth;
+- typographic hierarchy;
+- abstract environmental motifs;
+- calm transition language.
+
+The authentication page must therefore feel like the entrance to DECIVEXA, not a one-off campaign page.
+
+**Governance:** Design-lead direction pending Founder approval.
+
+## 22.15 Design System Integration Test
+
+Before the visual system can be considered complete, it must pass the following integrated test:
+
+1. A first-time user immediately understands where they are.
+2. The primary action is visually unambiguous.
+3. Input states remain understandable without relying on color alone.
+4. The Brand Environment is distinctive without becoming marketing content.
+5. The form is contained without becoming a generic SaaS card.
+6. Typography remains readable at constrained sizes.
+7. Mobile transformation preserves identity and task clarity.
+8. Error, success, loading, and session states feel like one system.
+9. The design can be tokenized semantically without losing its visual intent.
+10. The visual system can extend into the broader DECIVEXA shell without requiring a redesign of its fundamental grammar.
+
+Failure in any critical item blocks visual completion.
+
+## 22.16 Updated Decision Register
+
+| Decision ID | Design Area | Decision | Status | Authority |
+|---|---|---|---|---|
+| AUTH-V1-D01 | Canvas + Overall Composition | Split Composition | LOCKED | Founder |
+| AUTH-V1-D02 | Relationship Between Areas | Brand-led | LOCKED | Founder |
+| AUTH-V1-D03 | Spatial Proportion | Strong Brand Dominance | LOCKED | Founder |
+| AUTH-V1-D04 | Boundary Treatment | Soft Division | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D05 | Authentication Surface | Restrained Form Surface | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D06 | Brand Territory | Brand Environment | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D07 | Visual Narrative | Today → Possibility → Entry | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D08 | Hierarchy | State-dependent Brand → Auth hierarchy | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D09 | Foundation | Light-first adaptive | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D10 | Color | Semantic architecture before palette | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D11 | Density | Deliberately low | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D12 | Logo | Quietly persistent | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D13 | Typography | One neutral-modern primary sans | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D14 | Type Hierarchy | Functional restrained hierarchy | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D15 | Geometry | Controlled calm geometry | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D16 | Inputs | Label-first state-clear | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D17 | Primary Action | Single high-confidence action | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D18 | Secondary Actions | Interactive but subordinate | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D19 | Iconography | Functional minimal | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D20 | State Language | Multichannel state communication | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D21 | Responsive Rules | Content-priority transformation | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D22 | Motion | Quiet continuity | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D23 | Accessibility | Visual release gate | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D24 | Tokens | Semantic token architecture | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D25 | Cross-screen | One auth system | PENDING FOUNDER APPROVAL | Design Direction |
+| AUTH-V1-D26 | Brand Continuity | Entrance to product shell | PENDING FOUNDER APPROVAL | Design Direction |
+
+## 22.17 Current Design State — Visual System Layer
+
+The architecture now extends to:
+
+```text
+RESPONSIVE VIEWPORT-NATIVE EXPERIENCE
+            │
+            ▼
+      SPLIT COMPOSITION
+            │
+            ▼
+       BRAND-LED MODEL
+            │
+            ▼
+   STRONG BRAND DOMINANCE
+            │
+            ▼
+      SOFT DIVISION
+            │
+            ▼
+   RESTRAINED FORM SURFACE
+            │
+            ▼
+     BRAND ENVIRONMENT
+            │
+            ▼
+ TODAY → POSSIBILITY → ENTRY
+            │
+            ▼
+ STATE-DEPENDENT HIERARCHY
+            │
+            ▼
+ LIGHT-FIRST ADAPTIVE FOUNDATION
+            │
+            ▼
+   SEMANTIC COLOR SYSTEM
+            │
+            ▼
+   DELIBERATELY LOW DENSITY
+            │
+            ▼
+ QUIETLY PERSISTENT IDENTITY
+            │
+            ▼
+ ONE PRIMARY TYPE SYSTEM
+            │
+            ▼
+ FUNCTIONAL TYPOGRAPHIC HIERARCHY
+            │
+            ▼
+ CONTROLLED FORM GEOMETRY
+            │
+            ▼
+ LABEL-FIRST INPUT LANGUAGE
+            │
+            ▼
+ SINGLE HIGH-CONFIDENCE ACTION
+            │
+            ▼
+ FUNCTIONAL MINIMAL ICONOGRAPHY
+            │
+            ▼
+ MULTICHANNEL STATE LANGUAGE
+            │
+            ▼
+ CONTENT-PRIORITY RESPONSIVENESS
+            │
+            ▼
+ QUIET CONTINUITY MOTION
+            │
+            ▼
+ ACCESSIBILITY VISUAL GATE
+            │
+            ▼
+ SEMANTIC TOKEN ARCHITECTURE
+            │
+            ▼
+ CROSS-SCREEN AUTH CONSISTENCY
+            │
+            ▼
+ BRAND-TO-PRODUCT CONTINUITY
+```
+
+## 22.18 Design Checkpoint — 2026-09-06
+
+**Completed layer:** Visual System Layer — typography architecture, geometry, controls, iconography, state language, responsive rules, motion, accessibility gate, token architecture, and cross-screen consistency.  
+**New design directions recorded:** AUTH-V1-D13 through AUTH-V1-D26.  
+**Founder approval state:** D01–D03 locked; D04–D26 pending explicit Founder approval.  
+**Implementation authorization:** NONE.  
+**Claude implementation prompt:** NOT CREATED.  
+**Next design layer:** exact visual calibration — font selection, palette construction, type scale, spacing/radius/control values, composition calibration, and final multi-state visual QA.
