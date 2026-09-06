@@ -8,12 +8,12 @@ import {
   Req,
   UseGuards,
   UnauthorizedException,
-  ConflictException,
 } from "@nestjs/common";
 import { createRequestContext, type RequestContext } from "../../context/request-context";
 import { AuthenticateUserUseCase } from "../../application/auth/authenticate-user.use-case";
 import { RegisterUserUseCase } from "../../application/auth/register-user.use-case";
 import { AuthenticationGuard } from "./authentication.guard";
+import { mapAuthenticationError } from "./auth-error.mapper";
 
 @Controller("auth")
 export class AuthController {
@@ -25,22 +25,24 @@ export class AuthController {
   @Post("register")
   @HttpCode(HttpStatus.CREATED)
   async registerUser(@Body() body: { email?: string; password?: string }) {
+    const context = createRequestContext("registration");
     const result = await this.register.execute(
       { email: body.email ?? "", password: body.password ?? "" },
-      createRequestContext("registration"),
+      context,
     );
-    if (!result.ok) throw new ConflictException(result.error.message);
+    if (!result.ok) throw mapAuthenticationError(result.error, context);
     return result.value;
   }
 
   @Post("login")
   @HttpCode(HttpStatus.OK)
   async login(@Body() body: { email?: string; password?: string }) {
+    const context = createRequestContext("login");
     const result = await this.authenticate.execute(
       { email: body.email ?? "", password: body.password ?? "" },
-      createRequestContext("login"),
+      context,
     );
-    if (!result.ok) throw new UnauthorizedException("Invalid credentials");
+    if (!result.ok) throw mapAuthenticationError(result.error, context);
     return result.value;
   }
 
