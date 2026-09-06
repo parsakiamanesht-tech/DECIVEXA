@@ -1,7 +1,7 @@
 # DECIVEXA Authentication Runtime State Coverage Audit V1
 
 **Date:** 2026-09-06  
-**Status:** EVIDENCE AUDIT — NO IMPLEMENTATION AUTHORIZED  
+**Status:** EVIDENCE AUDIT — FULL 20-STATE SCOPE APPROVED; IMPLEMENTATION/TEST EXECUTION NOT YET AUTHORIZED BY THIS DOCUMENT  
 **Scope:** Authentication visual QA readiness  
 **Repository:** `parsakiamanesht-tech/DECIVEXA`  
 **Base:** `main`
@@ -16,15 +16,18 @@ It is deliberately evidence-first:
 - an E2E assertion is not treated as visual evidence;
 - a missing test is not automatically treated as a product defect;
 - absence of evidence is recorded as **UNVERIFIED** rather than inferred PASS;
-- no implementation is authorized by this document.
+- a Founder scope decision is recorded explicitly;
+- no visual state is marked PASS until the product state exists, can be entered deterministically, and can be rendered under required runtime conditions.
 
 ## 2. Evidence Sources
 
-The current web application contains dedicated `/login` and `/register` routes, plus `/dashboard`. The app tree confirms those routes exist. 
+The current web application contains dedicated `/login` and `/register` routes, plus `/dashboard`. The current Login implementation contains credential entry, loading behavior, and caught-error rendering. fileciteturn46file0L2-L2
 
-The current Login implementation contains only the basic credential-entry flow: email, password, submit, loading state, and an alert for a caught login error. fileciteturn46file0L2-L2
+The current Registration implementation contains email/password entry, an eight-character minimum, loading behavior, and caught-error rendering. fileciteturn50file0L2-L2
 
-The current Playwright configuration defines only one project, Chromium/Desktop Chrome, with the web app started locally. It does not currently define the four canonical responsive viewport bands, RTL/LTR projects, localization projects, accessibility tooling, or screenshot-specific projects. fileciteturn47file0L2-L2
+The current root application declares English as the document language and does not yet establish bilingual/RTL runtime behavior. fileciteturn52file0L2-L2
+
+The current Playwright configuration defines only one project, Chromium/Desktop Chrome. It does not currently define the four canonical responsive viewport bands, RTL/LTR projects, localization projects, accessibility tooling, or screenshot-specific projects. fileciteturn47file0L2-L2
 
 The existing Authentication E2E suite contains two tests: unauthenticated dashboard redirect and a successful login UI contract using mocked authentication endpoints. fileciteturn49file0L2-L2
 
@@ -59,38 +62,65 @@ Legend:
 | 2 | Login focus | Native inputs exist; no visual focus evidence | PARTIAL | Must verify keyboard + visual focus |
 | 3 | Login error | `role="alert"` error rendering exists | PARTIAL | Must verify context, wrapping, geometry |
 | 4 | Login loading | `loading` state disables button and changes label | PARTIAL | Must verify geometry/contrast/focus behavior |
-| 5 | Registration empty | `/register` route exists | PARTIAL | Implementation details require runtime inspection |
-| 6 | Registration password guidance | No evidence of dedicated password-guidance state in audited Login surface | UNVERIFIED | Required before freeze if canonical state remains |
-| 7 | Registration error | Registration route exists; visual/error evidence not established here | UNVERIFIED | Required |
-| 8 | Verification waiting | No `/verification` route/state established in audited web tree | NOT PRESENT / BLOCKED | Requires product implementation or explicit canonical mapping |
-| 9 | Verification resend cooldown | No evidence | NOT PRESENT / BLOCKED | Requires product implementation or explicit canonical mapping |
-| 10 | Verification success | No evidence | NOT PRESENT / BLOCKED | Requires product implementation or explicit canonical mapping |
-| 11 | Verification expired | No evidence | NOT PRESENT / BLOCKED | Requires product implementation or explicit canonical mapping |
-| 12 | Forgot password initial | No route/state found in audited app tree | NOT PRESENT / BLOCKED | Requires implementation or explicit scope decision |
-| 13 | Forgot password confirmation | No evidence | NOT PRESENT / BLOCKED | Requires implementation or explicit scope decision |
-| 14 | Reset entry | No evidence | NOT PRESENT / BLOCKED | Requires implementation or explicit scope decision |
-| 15 | Reset error | No evidence | NOT PRESENT / BLOCKED | Requires implementation or explicit scope decision |
-| 16 | Reset success | No evidence | NOT PRESENT / BLOCKED | Requires implementation or explicit scope decision |
-| 17 | Session expired | Current Login code has no dedicated session-expired presentation | UNVERIFIED | Required if canonical state remains |
+| 5 | Registration empty | `/register` exists with controlled credential fields | PARTIAL | Must render and screenshot |
+| 6 | Registration password guidance | `minLength={8}` exists, but no dedicated visible guidance state is evidenced | UNVERIFIED | Required before freeze |
+| 7 | Registration error | Registration route has caught-error rendering; visual evidence not established | UNVERIFIED | Required |
+| 8 | Verification waiting | No `/verification` route/state established in audited web tree | NOT PRESENT / BLOCKED | Requires implementation |
+| 9 | Verification resend cooldown | No evidence | NOT PRESENT / BLOCKED | Requires implementation |
+| 10 | Verification success | No evidence | NOT PRESENT / BLOCKED | Requires implementation |
+| 11 | Verification expired | No evidence | NOT PRESENT / BLOCKED | Requires implementation |
+| 12 | Forgot password initial | No route/state found in audited app tree | NOT PRESENT / BLOCKED | Requires implementation |
+| 13 | Forgot password confirmation | No evidence | NOT PRESENT / BLOCKED | Requires implementation |
+| 14 | Reset entry | No evidence | NOT PRESENT / BLOCKED | Requires implementation |
+| 15 | Reset error | No evidence | NOT PRESENT / BLOCKED | Requires implementation |
+| 16 | Reset success | No evidence | NOT PRESENT / BLOCKED | Requires implementation |
+| 17 | Session expired | Current Login code has no dedicated session-expired presentation | UNVERIFIED | Required |
 | 18 | Network/server failure | Generic caught login error exists, but no dedicated network/server visual treatment is evidenced | PARTIAL | Must verify distinct behavior and messaging |
-| 19 | Rate-limit | No dedicated rate-limit state evidenced | UNVERIFIED | Required if canonical state remains |
+| 19 | Rate-limit | No dedicated rate-limit state evidenced | UNVERIFIED | Required |
 | 20 | Mobile collapsed | Current page is responsive only by implication; no mobile visual evidence | UNVERIFIED | Must render at canonical mobile bands |
 
-## 5. Critical Finding: The 20-State Matrix Is Currently Larger Than the Implemented Authentication Surface
+## 5. Founder Scope Decision — OPTION A APPROVED
 
-The repository can currently support direct visual evidence for a subset of the matrix, primarily Login states and the existence of Registration.
+On 2026-09-06, the Founder explicitly selected **Option A — Full matrix is in current Authentication scope**.
 
-A substantial portion of the canonical matrix concerns flows that are not evidenced as implemented in the current web surface: verification, password recovery/reset, session expiry, and rate limiting.
+Therefore:
 
-This must **not** be silently solved by inventing mock screens merely to make the QA matrix green.
+> **All 20 canonical Authentication visual states are current scope and must become deterministic, renderable product states before final Visual Freeze evidence can be accepted.**
 
-The correct governance treatment is:
+This resolves the previous scope ambiguity. It does **not** retroactively convert missing states into implemented states, and it does not permit fabricated screenshots or synthetic PASS results.
 
-> **A visual QA state may only be marked PASS when the product state exists, can be entered deterministically, and can be rendered under the required runtime conditions.**
+The following states remain implementation gaps until real product behavior exists:
 
-If a state is intentionally out of current implementation scope, that must be recorded as an explicit scope decision rather than disguised as a passing visual test.
+- Verification waiting
+- Verification resend cooldown
+- Verification success
+- Verification expired
+- Forgot password initial
+- Forgot password confirmation
+- Reset entry
+- Reset error
+- Reset success
+- Session expired presentation
+- Rate-limit presentation
+- Registration password-guidance presentation
+- Dedicated network/server failure presentation where required by the canonical state definition
+- Mobile collapsed runtime presentation
 
-## 6. Existing E2E Tests Do Not Constitute Visual QA
+## 6. Evidence-First Rule After Scope Approval
+
+The scope decision increases the required evidence surface; it does not lower the evidence standard.
+
+A state may advance through the gate only when all of the following are true:
+
+1. The state exists as a real product state, not a QA-only fake.
+2. The state can be entered deterministically.
+3. The state renders consistently in the supported runtime.
+4. The state can be exercised under the required language and direction conditions.
+5. The state can be captured/verified at the canonical responsive conditions applicable to it.
+6. Accessibility-relevant behavior can be inspected under runtime conditions.
+7. No visual PASS is inferred solely from source code or a functional E2E assertion.
+
+## 7. Existing E2E Tests Do Not Constitute Visual QA
 
 The current successful-login E2E test proves a narrow UI contract: fields can be filled, the mocked login endpoint returns a token, navigation reaches `/dashboard`, and the token is stored. fileciteturn49file0L2-L2
 
@@ -109,74 +139,62 @@ It does **not** prove:
 - password-manager/autofill presentation;
 - the complete 20-state matrix.
 
-## 7. RTL / LTR Readiness Finding
+## 8. RTL / LTR Readiness Finding
 
-The current Login source is English-only in its visible copy and the current root application was previously identified as using a fixed English document language. No repository evidence in the audited surface establishes a Persian locale, RTL document direction, bilingual typography runtime, or mixed-direction authentication test.
+The current root application declares `lang="en"`, while no audited evidence establishes Persian locale handling, RTL document direction, bilingual typography runtime, or mixed-direction authentication tests. fileciteturn52file0L2-L2
 
 Therefore:
 
 **Bilingual/RTL visual readiness = UNVERIFIED.**
 
-This is especially material because D38 explicitly made Vazirmatn the leading typography candidate subject to rendering and language QA, and D45 made localization stress testing a mandatory freeze condition. fileciteturn40file0L2-L2
+This remains a mandatory evidence area because D38 made Vazirmatn the leading typography candidate subject to rendering and language QA, and D45 made localization stress testing a mandatory freeze condition. fileciteturn40file0L2-L2
 
-## 8. Responsive Readiness Finding
+## 9. Responsive Readiness Finding
 
 The current Playwright project is Desktop Chrome only. fileciteturn47file0L2-L2
 
 Therefore there is currently no repository-level evidence for the four canonical responsive reference bands.
 
-The correct next implementation/test-infrastructure requirement is to add evidence generation for the canonical bands and D44 compositional modes **only after the Founder authorizes the required implementation/test changes**.
+Because Option A is now approved, the eventual evidence harness must cover the four canonical bands and the D44 composition model without creating a competing breakpoint authority.
 
-## 9. Accessibility Readiness Finding
+## 10. Accessibility Readiness Finding
 
 The Login implementation contains several positive semantic foundations: native form submission, explicit labels, appropriate input types, autocomplete attributes, required fields, an alert role for errors, and a disabled loading action. fileciteturn46file0L2-L2
+
+The Registration implementation similarly uses explicit labels, appropriate input types, autocomplete, required fields, an eight-character minimum, alert-based errors, and a disabled loading action. fileciteturn50file0L2-L2
 
 However, source semantics alone do not establish the full visual/accessibility gate. Runtime evidence remains required for focus visibility, reflow, text enlargement, target sizing, directionality, non-color state communication, and related contextual behavior.
 
 **Accessibility freeze evidence = NOT ESTABLISHED.**
 
-## 10. Governance Decision
+## 11. Governance Boundary
 
-This audit does **not** authorize:
+The Founder decision in this audit authorizes the **scope** of the 20-state matrix. It does not authorize arbitrary architectural changes, redesign, token promotion, or unbounded feature expansion.
 
-- modifying Authentication UI;
-- adding localization implementation;
-- changing `playwright.config.ts`;
-- adding viewport projects;
-- adding screenshot baselines;
-- adding accessibility dependencies;
-- creating missing authentication flows;
-- promoting calibration candidates to final tokens;
-- creating the Claude implementation prompt;
-- declaring Visual Design Freeze.
+Any implementation must remain bounded to making the approved 20 states real, deterministic, testable, and evidence-ready.
 
-## 11. Required Founder-Level Decision Before Execution
+The following remain gated until separately evidenced/authorized as applicable:
 
-Before runtime evidence execution can begin, the project needs an explicit decision on one point:
+- final visual token consolidation;
+- promotion of calibration candidates to frozen tokens;
+- declaration of Founder Visual Design Freeze;
+- final Claude implementation prompt;
+- unrelated Authentication feature expansion;
+- architecture changes not required to satisfy the approved matrix.
 
-### Scope status of the 20 canonical states
+## 12. Required Execution Sequence
 
-**Option A — Full matrix is in current Authentication scope**
+With Option A resolved, the correct professional sequence is now:
 
-All 20 states must become deterministic, renderable product states before final Visual Freeze evidence is accepted.
-
-**Option B — Matrix is a future-state reference**
-
-Only states currently implemented/in-scope are evaluated now; future states remain explicitly `OUT OF CURRENT SCOPE`, and the Visual Freeze gate is limited accordingly.
-
-No assumption should be made between A and B without Founder approval.
-
-## 12. Recommended Professional Path
-
-The recommended sequence is:
-
-1. Founder resolves the 20-state scope question.
-2. If full scope is approved, implementation work for missing states is separately authorized and tracked.
-3. If current-scope-only is approved, the matrix is formally partitioned into current vs future states.
-4. Only then is the Runtime Evidence Harness implementation authorized.
-5. Runtime evidence is generated across language, direction, responsive bands, state, accessibility, and browser conditions.
-6. Findings are reviewed before token consolidation.
-7. Founder Visual Design Freeze is considered only after evidence is complete.
+1. **Freeze the scope record** — completed by this decision.
+2. **Inventory the canonical 20 states against actual product behavior** — this audit establishes the baseline.
+3. **Define the minimum deterministic state-entry contract** for each missing state without inventing behavior beyond the canonical definition.
+4. **Implement the missing product states and only the supporting infrastructure required by them.**
+5. **Expand the runtime evidence harness** for state, language, RTL/LTR, four responsive bands, accessibility, and screenshot evidence.
+6. **Execute the complete 20-state evidence matrix.**
+7. **Resolve failures and regressions without silently weakening the matrix.**
+8. **Re-run evidence and consolidate findings.**
+9. **Only after evidence completion, evaluate token consolidation and Founder Visual Design Freeze.**
 
 ## 13. Current Gate Status
 
@@ -184,22 +202,22 @@ The recommended sequence is:
 |---|---|
 | Canonical responsive authority | ESTABLISHED |
 | D44 composition model | ESTABLISHED |
+| 20-state scope decision | **FOUNDER APPROVED — OPTION A** |
 | Existing Login functional contract | PARTIALLY VERIFIED |
+| Existing Registration functional contract | PARTIALLY VERIFIED |
 | Existing visual evidence | INSUFFICIENT |
-| 20-state runtime coverage | INSUFFICIENT |
+| 20-state runtime coverage | INSUFFICIENT — IMPLEMENTATION GAPS REMAIN |
 | Bilingual/RTL runtime coverage | UNVERIFIED |
 | Four-band responsive evidence | UNVERIFIED |
 | Accessibility runtime evidence | INSUFFICIENT |
 | Visual token freeze | BLOCKED |
 | Founder Visual Design Freeze | NOT REACHED |
-| Implementation authorization | NOT GRANTED |
+| Evidence harness execution | NOT STARTED |
 
 ## 14. Conclusion
 
-The project is now at the correct decision boundary.
+The scope ambiguity is now resolved in favor of the **full 20-state Authentication matrix**.
 
-The next move should **not** be more styling speculation. The material unknown is scope and runtime coverage.
+The project must therefore not reduce the matrix to match the current implementation. Instead, the implementation and evidence surface must be brought up to the approved scope, while preserving the evidence-first rule and the existing Founder governance boundary.
 
-The repository evidence shows a functioning Login foundation, but the canonical 20-state visual matrix currently exceeds what the audited Authentication surface demonstrably implements. fileciteturn46file0L2-L2
-
-The system should therefore remain **PRE-FREEZE** until the scope of those states is explicitly resolved and the corresponding runtime evidence can be generated without inventing product behavior.
+The next execution unit is the **deterministic 20-state Authentication state-entry contract and implementation inventory**. No state should be visually marked PASS before it is a real, reproducible product state under the required runtime conditions.
