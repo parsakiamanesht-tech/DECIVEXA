@@ -514,3 +514,271 @@ Any material change to a locked Founder-approved decision requires explicit Foun
 **Implementation authorization:** NONE  
 **Claude implementation prompt:** NOT CREATED  
 **Next design work:** continue visual architecture from the locked composition foundation; no implementation activity permitted.
+
+---
+
+# 21. Authentication Visual Design V1 — Visual Language Layer
+
+## 21.1 AUTH-V1-D05 — Authentication Surface Treatment
+
+**Selected professional design direction:** Restrained Form Surface.
+
+The authentication area should have a perceivable visual boundary, but it should not behave like a conventional SaaS card floating above the page.
+
+The preferred construction is a calm, contained form surface with restrained separation from its surrounding environment. The surface may use tonal contrast, spacing, subtle structural edges, or a very restrained elevation cue, but must not depend on thick borders, strong shadows, glassmorphism, or decorative framing.
+
+### Problem being solved
+
+A conventional card makes the authentication area feel like an interchangeable SaaS template. A completely frameless form can lose orientation when the Brand / World territory is visually rich. Restrained Form Surface provides enough containment for usability without turning the form into the visual centerpiece.
+
+### Rejected directions
+
+- **Heavy SaaS Card:** rejected because it is visually generic and conflicts with the Brand-led architecture.
+- **Glass / Frosted Panel:** rejected because it introduces a fashionable effect without adding meaningful trust or usability.
+- **Completely Frameless Form:** rejected as the default because sufficient spatial orientation must remain available across different Brand environments.
+
+### Governance status
+
+Design-lead direction pending Founder approval. This decision does not authorize implementation.
+
+## 21.2 AUTH-V1-D06 — Brand Territory Model
+
+**Selected professional design direction:** Brand Environment.
+
+The Brand / World territory is an environment, not a marketing hero.
+
+Its purpose is to establish the emotional and conceptual context of DECIVEXA before the user interacts with the form. It should communicate identity, possibility, depth, and continuity without asking the user to consume a block of marketing information.
+
+### Content rule
+
+The Brand Environment should prefer:
+
+`Identity → atmosphere → meaning → continuity`
+
+over:
+
+`headline → feature list → social proof → CTA → marketing content`.
+
+### Visual rule
+
+The environment may contain a distinctive abstract visual language, but it must not depict humans, robots, brains, artificial consciousness, dashboards, circuitry, or generic futuristic technology as the primary metaphor.
+
+### Governance status
+
+Design-lead direction pending Founder approval.
+
+## 21.3 AUTH-V1-D07 — Visual Narrative
+
+**Selected professional design direction:** Today → Possibility → Entry.
+
+The Brand Environment should imply a quiet progression:
+
+```text
+CURRENT HUMAN STATE
+        ↓
+   POSSIBILITY
+        ↓
+     ENTRY
+```
+
+This is a conceptual narrative, not a requirement to literally depict a person, journey, road, or future scene.
+
+The visual language should communicate that DECIVEXA is a place the user enters in order to become more capable of shaping their life, without claiming that the product itself guarantees transformation.
+
+### Anti-pattern
+
+Do not use motivational poster language, exaggerated promises, artificial “AI companion” imagery, or emotional dependency cues.
+
+### Governance status
+
+Design-lead direction pending Founder approval.
+
+## 21.4 AUTH-V1-D08 — Brand-to-Authentication Hierarchy
+
+The hierarchy is intentionally state-dependent.
+
+### First impression
+
+`DECIVEXA → World / Meaning → Entry → Authentication → Action`
+
+### During interaction
+
+`Authentication → Current Action → Supporting Information → Brand Context`
+
+This prevents the Brand Environment from competing with the task once the user begins entering credentials.
+
+### Principle
+
+> **Brand dominates the first impression; usability dominates the interaction.**
+
+### Governance status
+
+Design-lead direction pending Founder approval.
+
+## 21.5 AUTH-V1-D09 — Visual Foundation: Calm Light, Not Dark-by-Default
+
+**Selected professional design direction:** Light-first adaptive foundation.
+
+Authentication should not be designed around a permanently dark canvas. The default foundation should be capable of expressing DECIVEXA's depth and identity while remaining highly readable and calm in ordinary authentication use.
+
+A dark or deep visual treatment may exist as a deliberate Brand Environment mode where it materially strengthens DECIVEXA identity, but the authentication surface itself must preserve a stable, high-clarity reading environment.
+
+### Rationale
+
+Authentication is a trust-critical interaction. A light-first adaptive foundation provides stronger baseline readability and reduces the risk that brand atmosphere becomes visual fatigue. It also allows a future dark theme without making darkness a prerequisite for DECIVEXA's identity.
+
+### Rejected direction
+
+**Dark-only authentication:** rejected as the canonical foundation because it would make atmospheric styling a requirement for basic account access and could reduce clarity across devices and contexts.
+
+### Governance status
+
+Design-lead direction pending Founder approval.
+
+## 21.6 AUTH-V1-D10 — Color Architecture Before Exact Palette
+
+Color will be designed as a semantic architecture before exact HEX values are frozen.
+
+The system must distinguish at minimum:
+
+1. **Brand atmosphere** — identity-bearing visual field.
+2. **Authentication background** — stable reading field.
+3. **Primary text** — high-confidence reading hierarchy.
+4. **Secondary text** — supporting information.
+5. **Interactive accent** — primary action and active states.
+6. **Focus indicator** — unmistakable keyboard focus.
+7. **Validation/error** — error communication.
+8. **Success** — successful completion.
+9. **Structural boundary** — restrained separation.
+
+No single “brand color” should be forced into every semantic role.
+
+### Color principle
+
+> **Brand color creates recognition; semantic color creates usability.**
+
+### Constraint
+
+Exact HEX values remain intentionally open until typography, surface treatment, contrast, and Brand Environment composition are evaluated together.
+
+### Governance status
+
+Design-lead direction pending Founder approval.
+
+## 21.7 AUTH-V1-D11 — Visual Density
+
+**Selected professional design direction:** Deliberately low visual density.
+
+The authentication experience should contain only the visual information needed to establish context, support orientation, and complete the current action.
+
+The design should favor:
+
+- generous breathing room,
+- clear grouping,
+- strong alignment,
+- restrained decoration,
+- predictable scanning.
+
+It should avoid:
+
+- dense supporting copy,
+- multiple competing visual focal points,
+- decorative badges,
+- unnecessary icons,
+- feature lists,
+- visual noise around input fields.
+
+### Rationale
+
+Authentication is a gateway, not a product tour. Reducing visual density directly supports the existing principle: **Less interface. More confidence.**
+
+### Governance status
+
+Design-lead direction pending Founder approval.
+
+## 21.8 AUTH-V1-D12 — Logo Presence
+
+**Selected professional design direction:** Quietly persistent identity.
+
+The DECIVEXA logo should be clearly present but should not become an oversized centerpiece inside the authentication form.
+
+The Brand Environment may carry the stronger identity expression. The Authentication territory should use the logo as orientation and reassurance rather than decoration.
+
+### Rule
+
+The logo must remain visually connected to DECIVEXA without forcing the user to interpret a large brand mark before performing a simple authentication action.
+
+### Governance status
+
+Design-lead direction pending Founder approval.
+
+## 21.9 Visual Language Layer — Consolidated Design Test
+
+The current visual language is considered coherent only if all of the following remain true simultaneously:
+
+- The page unmistakably belongs to DECIVEXA.
+- The authentication task can be understood immediately.
+- The Brand Environment does not become a marketing page.
+- The form does not look like a generic SaaS card.
+- The interface does not rely on futuristic AI clichés.
+- Light and dark contexts can coexist without changing the product's identity.
+- Semantic colors remain understandable independent of the brand palette.
+- The user can visually separate primary action, secondary navigation, and state feedback.
+- The design remains usable when the Brand Environment is reduced on smaller screens.
+
+If a later visual proposal violates one of these conditions, the proposal must be revised rather than rationalized after the fact.
+
+## 21.10 Current Design State — Updated
+
+The authentication visual architecture now extends as follows:
+
+```text
+RESPONSIVE VIEWPORT-NATIVE EXPERIENCE
+            │
+            ▼
+      SPLIT COMPOSITION
+            │
+            ▼
+       BRAND-LED MODEL
+            │
+            ▼
+   STRONG BRAND DOMINANCE
+            │
+            ▼
+      SOFT DIVISION
+            │
+            ▼
+   RESTRAINED FORM SURFACE
+            │
+            ▼
+     BRAND ENVIRONMENT
+            │
+            ▼
+ TODAY → POSSIBILITY → ENTRY
+            │
+            ▼
+ STATE-DEPENDENT HIERARCHY
+            │
+            ▼
+ LIGHT-FIRST ADAPTIVE FOUNDATION
+            │
+            ▼
+   SEMANTIC COLOR SYSTEM
+            │
+            ▼
+   DELIBERATELY LOW DENSITY
+            │
+            ▼
+ QUIETLY PERSISTENT IDENTITY
+```
+
+D01–D03 remain Founder-approved and locked. D04–D12 are recorded as professional design directions pending Founder approval. No implementation is authorized.
+
+## 21.11 Design Checkpoint — 2026-09-06
+
+**Completed layer:** Composition + Visual Language foundation.  
+**New design directions recorded:** AUTH-V1-D05 through AUTH-V1-D12.  
+**Founder approval state:** D01–D03 locked; D04–D12 pending explicit Founder approval.  
+**Implementation authorization:** NONE.  
+**Claude implementation prompt:** NOT CREATED.  
+**Next design layer:** typography, geometry, controls, iconography, state language, motion, and responsive visual rules.
