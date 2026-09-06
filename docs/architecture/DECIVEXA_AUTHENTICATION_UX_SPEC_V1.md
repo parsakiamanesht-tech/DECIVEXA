@@ -225,7 +225,7 @@ For sufficiently wide viewports, the canonical composition is:
 └──────────────────────────────────────────────────────────────┘
 ```
 
-This diagram is conceptual. It does **not** define final pixel dimensions, colors, typography, spacing, borders, cards, or component geometry.
+This diagram is conceptual. It does **not** define final pixel dimensions, colors, typography, spacing, borders, or component geometry.
 
 The Brand territory must remain the dominant visual field. The Authentication territory must remain a clear, stable interaction zone.
 
@@ -1212,3 +1212,305 @@ RESPONSIVE VIEWPORT-NATIVE EXPERIENCE
 **Implementation authorization:** NONE.  
 **Claude implementation prompt:** NOT CREATED.  
 **Next design layer:** exact visual calibration — font selection, palette construction, type scale, spacing/radius/control values, composition calibration, and final multi-state visual QA.
+
+---
+
+# 23. Authentication Visual Design V1 — Exact Visual Calibration Layer
+
+This layer records the professional production-level visual proposal derived from the locked composition foundation and the visual-system rules above. These values are **proposed calibration values**, not implementation instructions and not Founder-approved locks. They must be validated as one system before any value is frozen.
+
+## 23.1 AUTH-V1-D27 — Primary Typeface Candidate
+
+**Proposed candidate:** Inter.
+
+Inter is selected as the leading candidate because authentication requires exceptional screen legibility, restrained contemporary character, broad Latin language support, and reliable behavior across dense credential-entry contexts. It also avoids the decorative/editorial and overtly technical character rejected in D13.
+
+### Evaluation position
+
+Inter is not being selected because it is fashionable or familiar. It is the current best baseline candidate for a high-trust product surface where clarity must outrank typographic novelty.
+
+### Alternative candidates considered
+
+- **Manrope:** attractive and contemporary, but its stronger personality can compete with the quiet-authentication principle.
+- **Plus Jakarta Sans:** polished and human, but its personality is more pronounced than necessary for the gateway surface.
+- **IBM Plex Sans:** highly functional, but its technical/enterprise character is less aligned with DECIVEXA's human-growth positioning.
+
+### Decision status
+
+**PROPOSED — PENDING FOUNDER APPROVAL / FINAL VISUAL QA.**
+
+No implementation dependency on Inter is authorized by this proposal.
+
+## 23.2 AUTH-V1-D28 — Typography Scale Proposal
+
+**Proposed scale:** a compact responsive type system rather than a large marketing scale.
+
+| Role | Proposed size range | Weight direction | Purpose |
+|---|---:|---|---|
+| Brand mark / identity text | 16–20 px | Medium/Semibold | orientation |
+| Authentication title | 28–36 px | Semibold | immediate task orientation |
+| Supporting text | 14–16 px | Regular | concise explanation |
+| Field label | 13–14 px | Medium | persistent field identification |
+| Input value | 15–16 px | Regular/Medium | comfortable credential entry |
+| Helper / state text | 12–14 px | Regular/Medium | guidance and feedback |
+| Primary action | 14–16 px | Medium/Semibold | action clarity |
+| Secondary action | 13–15 px | Medium | subordinate navigation |
+
+The ranges intentionally leave room for viewport, language, and accessibility calibration. The title must not become a marketing hero heading.
+
+**Decision status:** Proposed, not frozen.
+
+## 23.3 AUTH-V1-D29 — Color Palette Architecture and Candidate Values
+
+**Proposed direction:** DECIVEXA's recognizable purple identity is retained as a restrained brand accent/environmental color, while authentication readability is protected by neutral semantic surfaces.
+
+The earlier exploratory purple value `#7464DE` is **not automatically promoted to canonical authentication use**. A fresh calibration is required.
+
+### Candidate semantic palette
+
+| Semantic role | Candidate | Purpose |
+|---|---|---|
+| Brand accent | `#6E5FE0` | recognition / selected interactive emphasis |
+| Brand deep | `#30276F` | deep Brand Environment structure |
+| Auth surface | `#FFFFFF` | primary reading surface |
+| Auth background | `#F7F7FA` | stable surrounding neutral |
+| Primary text | `#17171C` | high-confidence reading |
+| Secondary text | `#5F606B` | supporting information |
+| Structural boundary | `#DCDDE5` | restrained separation |
+| Focus ring | `#5B4BD6` | unmistakable focus |
+| Error | `#B42318` | validation/error semantics |
+| Success | `#18794E` | successful completion |
+
+These are calibration candidates, not locked values. They must be checked for actual contrast, state differentiation, color-vision robustness, and interaction context before approval.
+
+### Critical rule
+
+The purple brand accent must not be forced into every semantic state. Error and success must retain their independent semantic identities.
+
+**Decision status:** Proposed, not frozen.
+
+## 23.4 AUTH-V1-D30 — Geometry and Spacing Proposal
+
+**Proposed geometry language:** restrained 12px-class surface radius, 8px-based spacing rhythm, and comfortable control sizing.
+
+### Candidate values
+
+- Authentication surface radius: **16 px** where a contained surface is used.
+- Field/control radius: **10–12 px**.
+- Primary control height: **48–52 px**.
+- Minimum practical touch target: **44 px** or greater.
+- Form content width: approximately **360–440 px**, calibrated against language length and viewport.
+- Major vertical spacing rhythm: multiples of **8 px**, with smaller 4px subdivisions where necessary.
+- Primary form section gaps: approximately **20–32 px** depending on hierarchy.
+
+These values intentionally favor calmness and touch usability without creating oversized playful controls.
+
+**Decision status:** Proposed, not frozen.
+
+## 23.5 AUTH-V1-D31 — Desktop Composition Calibration
+
+**Proposed direction:** Brand dominance should be visibly strong without creating a rigid mathematical split.
+
+For a sufficiently wide desktop viewport, the initial calibration target is approximately **60–65% Brand Environment / 35–40% Authentication territory** by usable composition area, subject to content and accessibility validation.
+
+This is a starting calibration range, not a permanent 60/40 rule. The final composition must be judged visually and functionally at multiple desktop widths.
+
+### Alignment principle
+
+The Authentication form should sit within a stable reading column with consistent horizontal margins and enough surrounding negative space to prevent the form from feeling like a floating modal.
+
+The Brand Environment should carry the larger visual field, but its focal intensity should remain lower once the user enters the form.
+
+**Decision status:** Proposed, not frozen.
+
+## 23.6 AUTH-V1-D32 — Brand Environment Visual Treatment
+
+**Proposed direction:** abstract depth + controlled light.
+
+The Brand Environment should use a restrained spatial field rather than literal illustration. A deep tonal environment may transition subtly toward a distant, soft light or structured focal point, communicating possibility without depicting a human, road, robot, brain, or technological interface.
+
+The visual should feel:
+
+`space → depth → direction → possibility`
+
+rather than:
+
+`technology → AI → spectacle`.
+
+No decorative particles, floating UI panels, glowing circuitry, holograms, or synthetic “AI consciousness” effects are permitted.
+
+**Decision status:** Proposed, not frozen.
+
+## 23.7 AUTH-V1-D33 — Authentication Surface Calibration
+
+**Proposed direction:** restrained contained surface.
+
+The Authentication territory should not use a large floating card with a dramatic shadow. Instead, the form should sit inside a calm structural surface whose boundary is established primarily through tonal contrast, spacing, and a subtle edge treatment.
+
+### Candidate construction
+
+- Surface: white or near-white semantic surface.
+- Boundary: very low-contrast structural edge where required.
+- Shadow: none or extremely restrained.
+- Radius: within the proposed controlled geometry range.
+- Internal padding: generous enough to establish a stable reading field without creating excessive whitespace.
+
+The visual objective is **contained, not floating**.
+
+**Decision status:** Proposed, not frozen.
+
+## 23.8 AUTH-V1-D34 — Control State Calibration
+
+The state system should use a consistent visual progression:
+
+```text
+DEFAULT
+  ↓
+FOCUS
+  ↓
+FILLED
+  ↓
+INVALID / VALID-AS-RELEVANT
+  ↓
+DISABLED / LOADING
+```
+
+### Proposed treatment
+
+- Default: neutral surface + quiet boundary.
+- Focus: clear ring/outline with sufficient contrast and no layout shift.
+- Filled: preserve the same geometry; do not visually “reward” completion with decorative effects.
+- Error: semantic error color + concise text + structural emphasis; never color alone.
+- Success: semantic success color + confirmation text; avoid celebration effects.
+- Loading: primary action remains structurally stable while its content changes minimally to communicate processing.
+
+**Decision status:** Proposed, not frozen.
+
+## 23.9 AUTH-V1-D35 — Responsive Breakpoint Strategy
+
+Breakpoints should be derived from content fit rather than device labels.
+
+### Proposed behavioral thresholds
+
+- **Wide:** split composition with full Brand Environment.
+- **Constrained:** split retained while Brand visual density is reduced.
+- **Compact:** authentication receives increasing visual priority.
+- **Mobile:** vertical composition; Brand Environment becomes reduced but identity remains.
+
+The exact CSS breakpoint values should be chosen from observed content collision and form-width requirements, not from arbitrary device categories.
+
+**Decision status:** Proposed, not frozen.
+
+## 23.10 AUTH-V1-D36 — Motion Calibration
+
+**Proposed timing family:** short, restrained transitions generally within approximately **150–250 ms**, with state changes prioritized over decorative movement.
+
+Use motion only when it improves continuity or comprehension. The final implementation must respect reduced-motion preferences.
+
+No authentication action should be delayed merely to accommodate an animation.
+
+**Decision status:** Proposed, not frozen.
+
+## 23.11 AUTH-V1-D37 — Exact Visual Calibration Governance
+
+Exact values introduced in D27–D36 are intentionally classified as **calibration candidates**, not final implementation tokens.
+
+They must pass a combined review for:
+
+1. visual distinctiveness;
+2. readability;
+3. contrast;
+4. responsive behavior;
+5. state clarity;
+6. browser rendering;
+7. touch interaction;
+8. localization resilience;
+9. consistency with the Brand Environment;
+10. consistency across every authentication flow.
+
+A value may be changed during calibration without constituting a design failure. Once the Founder approves the final calibrated set, the approved values must be frozen in a subsequent versioned decision record.
+
+---
+
+# 24. Authentication Visual Design V1 — Multi-State Composition QA
+
+The visual design is not complete when Login looks good. Completion requires the same visual grammar to survive every canonical authentication state.
+
+## 24.1 Required state set
+
+The final visual QA set must include at minimum:
+
+1. Login — empty.
+2. Login — focused field.
+3. Login — validation error.
+4. Login — loading.
+5. Registration — empty.
+6. Registration — password guidance.
+7. Registration — validation error.
+8. Email verification — waiting.
+9. Email verification — resend cooldown.
+10. Email verification — success.
+11. Email verification — invalid/expired link.
+12. Forgot password — initial.
+13. Forgot password — submission confirmation.
+14. Password reset — entry.
+15. Password reset — validation error.
+16. Password reset — success.
+17. Session expired — re-authentication required.
+18. Network/server failure.
+19. Rate-limit state.
+20. Mobile collapsed composition.
+
+## 24.2 QA rule
+
+No state may introduce a new visual language unless the state itself requires a genuinely different semantic treatment.
+
+The following must remain stable across states:
+
+- brand identity;
+- typography family and hierarchy;
+- form geometry;
+- control geometry;
+- spacing rhythm;
+- semantic color roles;
+- focus language;
+- error/success language;
+- primary/secondary action hierarchy.
+
+## 24.3 Visual regression principle
+
+Any final implementation should later be visually tested against the approved design specification at representative viewport sizes and relevant browser states. Visual regression is a validation activity after implementation authorization; it is not permission to implement now.
+
+---
+
+# 25. Authentication Visual Design V1 — Final Design Gate
+
+The visual design may be considered **DESIGN COMPLETE** only when all of the following conditions are satisfied:
+
+- Founder-controlled material decisions have explicit approval status.
+- Typography has a final approved family and calibrated hierarchy.
+- Semantic palette has final approved values and passes contrast review.
+- Geometry and spacing are calibrated across representative viewports.
+- Brand Environment and Authentication territory work as one composition.
+- The authentication surface is contained without becoming a generic SaaS card.
+- All canonical authentication states use one coherent visual grammar.
+- Mobile is a true transformation of the desktop design intent, not a shrunken desktop.
+- Accessibility visual QA passes.
+- No prohibited AI/futuristic visual clichés have entered the final design.
+- Semantic design tokens can represent the final system without component-specific exceptions becoming the norm.
+- The complete design can be handed to implementation without requiring the implementation agent to invent missing visual decisions.
+
+Until these conditions are met, the document remains **VISUAL DESIGN IN PROGRESS** and implementation remains unauthorized.
+
+---
+
+# 26. Governance Checkpoint — 2026-09-06
+
+**New layer completed:** Exact Visual Calibration proposal + Multi-State Composition QA framework.  
+**New design directions recorded:** AUTH-V1-D27 through AUTH-V1-D37.  
+**Current status:** Calibration candidates proposed; not Founder-approved locks.  
+**Founder-approved locks:** AUTH-V1-D01 through AUTH-V1-D03 only.  
+**Implementation authorization:** NONE.  
+**Claude implementation prompt:** NOT CREATED.  
+**Next required design action:** Founder review of the accumulated design directions, followed by final visual calibration/approval or explicit revision of selected decisions.  
+**Governance:** No agent may convert calibration candidates into implementation requirements without the applicable Founder approval and implementation gate.
