@@ -10,6 +10,18 @@ The canonical Founder-approved synthesis of DECIVEXA's philosophy, purpose, visi
 
 **[DECIVEXA — Master Philosophy, Vision & Intelligence Architecture](./docs/DECIVEXA_MASTER_ARCHITECTURE_AND_VISION.md)**
 
+## Goal Growth Intelligence — Architecture Candidate v1
+
+The living Goal Tree / Goal Growth concept is formally documented as an architecture candidate in the following specification set:
+
+1. **[Goal Growth Intelligence Master Specification v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_INTELLIGENCE_MASTER_SPEC_V1.md)** — product/domain architecture, principles, lifecycle, graph/tree model, intelligence, adaptation, governance, V1 scope and invariants.
+2. **[Goal Growth Domain Model v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_DOMAIN_MODEL_V1.md)** — canonical entities, relationships, state machines, events, domain services, application use cases and invariants.
+3. **[Goal Growth AI & Intelligence Contract v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_AI_AND_INTELLIGENCE_CONTRACT_V1.md)** — AI boundary, evidence discipline, structured proposals, validation, governance, failure behavior and evaluation.
+4. **[Goal Growth Persistence & API Specification v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_PERSISTENCE_AND_API_SPEC_V1.md)** — PostgreSQL direction, conceptual tables, transaction/concurrency rules, API resources, authorization, audit and read models.
+5. **[Goal Growth Implementation Handoff to Claude Code v1](./docs/architecture/DECIVEXA_GOAL_GROWTH_IMPLEMENTATION_HANDOFF_TO_CLAUDE_CODE_V1.md)** — execution boundary, implementation sequence, tests, stop conditions and definition of done.
+
+**Important:** These documents are architecture proposals and implementation guidance. They do **not** constitute Build Authorization. Founder-controlled gates remain mandatory.
+
 ## Canonical AI Architecture
 
 The **master AI specification** consolidates the complete AI architecture, resilience model, privacy/security boundaries, memory integrity, context architecture, routing, model/provider independence, evaluation, observability, offline continuity, agent-readiness, v1 scope, and implementation invariants:
