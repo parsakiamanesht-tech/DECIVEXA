@@ -6,7 +6,7 @@ This document is the authoritative governance record for Founder-approved archit
 
 ## ADR-001 through ADR-009
 
-Existing architectural decisions remain authoritative within their recorded scope.
+Existing architectural decisions remain authoritative within their recorded scope. Their full detailed text is preserved, live and repository-resident, at `docs/DECIVEXA/ARCHITECTURE_DECISIONS_ARCHIVE_ADR-001-009.md`. This cross-reference is documentary relocation only — it does not supersede, reinterpret, or modify ADR-001 through ADR-009.
 
 ---
 
