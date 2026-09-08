@@ -10,6 +10,7 @@ export default defineConfig({
     "./src/persistence/schema/evidence.schema.ts",
     "./src/persistence/schema/personal-intelligence.schema.ts",
     "./src/persistence/schema/personal-intelligence-inference.schema.ts",
+    "./src/persistence/schema/personal-intelligence-evaluation.schema.ts",
     "./src/persistence/schema/memory.schema.ts",
   ],
   out: "./src/persistence/migrations",
