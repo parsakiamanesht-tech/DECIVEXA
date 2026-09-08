@@ -400,3 +400,196 @@ test("create(): a cross-user EvidenceVersion reference rolls back the entire tra
   const row = await evaluationRepo.findEvaluationForUser(userAId, evaluationId);
   assert.equal(row, null, "the Evaluation row must not persist when a supplied EvidenceVersion reference fails real ownership verification");
 });
+
+// Surgical Correction Gate — Finding 1 (Post-Increment 1 Semantic Impact
+// Audit): claimVersionId and evaluationStandardVersionId previously
+// carried no ownership enforcement at all — a User A Evaluation could
+// reference a ClaimVersion or Evaluation Standard Version owned by User
+// B with zero rejection. The two tests below prove the corrected
+// behavior against real PostgreSQL, mirroring the exact rollback test
+// above and DrizzlePersonalIntelligenceRelationshipRepository's own
+// two-referenced-row ownership check.
+
+test("create(): a cross-user ClaimVersion reference is rejected — no Evaluation persisted (Finding 1, Test A)", async () => {
+  const foreignClaimVersionId = await seedClaimVersion(userBId, `dt-runtime-eval-foreign-claim-${runId}`);
+  const evidenceVersionId = await seedEvidenceVersion(userAId, `dt-runtime-eval-evidence-finding1-a-${runId}`);
+  const { versionId: standardVersionId } = await seedStandard(
+    userAId,
+    `dt-runtime-eval-standard-finding1-a-${runId}`,
+    "criteria for Finding 1 ClaimVersion ownership test",
+  );
+
+  const evaluationId = `dt-runtime-eval-finding1-a-${runId}`;
+  createdEvaluationIds.push(evaluationId);
+  const now = new Date();
+
+  await assert.rejects(() =>
+    evaluationRepo.create({
+      evaluationId,
+      userId: userAId,
+      claimVersionId: foreignClaimVersionId,
+      evaluationStandardVersionId: standardVersionId,
+      result: "sufficient",
+      evaluatorType: "human",
+      producerCapabilityId: null,
+      producerCapabilityVersion: null,
+      producerProviderId: null,
+      producerModelId: null,
+      modelReportedConfidence: null,
+      systemAdjustedConfidence: null,
+      supersedesEvaluationId: null,
+      evaluatedAt: now,
+      now,
+      evidenceVersionIds: [evidenceVersionId],
+    }),
+  );
+
+  const row = await evaluationRepo.findEvaluationForUser(userAId, evaluationId);
+  assert.equal(row, null, "a ClaimVersion owned by a different user must never be accepted — existence alone is not ownership");
+});
+
+test("create(): a same-user ClaimVersion succeeds (Finding 1, Test C)", async () => {
+  const claimVersionId = await seedClaimVersion(userAId, `dt-runtime-eval-claim-finding1-c-${runId}`);
+  const evidenceVersionId = await seedEvidenceVersion(userAId, `dt-runtime-eval-evidence-finding1-c-${runId}`);
+  const { versionId: standardVersionId } = await seedStandard(
+    userAId,
+    `dt-runtime-eval-standard-finding1-c-${runId}`,
+    "criteria for Finding 1 same-user ClaimVersion test",
+  );
+
+  const evaluationId = `dt-runtime-eval-finding1-c-${runId}`;
+  createdEvaluationIds.push(evaluationId);
+  const now = new Date();
+
+  const evaluation = await evaluationRepo.create({
+    evaluationId,
+    userId: userAId,
+    claimVersionId,
+    evaluationStandardVersionId: standardVersionId,
+    result: "sufficient",
+    evaluatorType: "human",
+    producerCapabilityId: null,
+    producerCapabilityVersion: null,
+    producerProviderId: null,
+    producerModelId: null,
+    modelReportedConfidence: null,
+    systemAdjustedConfidence: null,
+    supersedesEvaluationId: null,
+    evaluatedAt: now,
+    now,
+    evidenceVersionIds: [evidenceVersionId],
+  });
+
+  assert.equal(evaluation.claimVersionId, claimVersionId, "a ClaimVersion owned by the same user must be accepted");
+});
+
+test("create(): a cross-user EvaluationStandardVersion reference is rejected — no Evaluation persisted (Finding 1, Test B)", async () => {
+  const claimVersionId = await seedClaimVersion(userAId, `dt-runtime-eval-claim-finding1-b-${runId}`);
+  const evidenceVersionId = await seedEvidenceVersion(userAId, `dt-runtime-eval-evidence-finding1-b-${runId}`);
+  const { versionId: foreignStandardVersionId } = await seedStandard(
+    userBId,
+    `dt-runtime-eval-standard-finding1-b-${runId}`,
+    "criteria owned by a different user",
+  );
+
+  const evaluationId = `dt-runtime-eval-finding1-b-${runId}`;
+  createdEvaluationIds.push(evaluationId);
+  const now = new Date();
+
+  await assert.rejects(() =>
+    evaluationRepo.create({
+      evaluationId,
+      userId: userAId,
+      claimVersionId,
+      evaluationStandardVersionId: foreignStandardVersionId,
+      result: "sufficient",
+      evaluatorType: "human",
+      producerCapabilityId: null,
+      producerCapabilityVersion: null,
+      producerProviderId: null,
+      producerModelId: null,
+      modelReportedConfidence: null,
+      systemAdjustedConfidence: null,
+      supersedesEvaluationId: null,
+      evaluatedAt: now,
+      now,
+      evidenceVersionIds: [evidenceVersionId],
+    }),
+  );
+
+  const row = await evaluationRepo.findEvaluationForUser(userAId, evaluationId);
+  assert.equal(
+    row,
+    null,
+    "an EvaluationStandardVersion owned by a different user must never be accepted — a valid FK proves existence, not ownership",
+  );
+});
+
+test("create(): a same-user EvaluationStandardVersion succeeds, and the existing EvidenceVersion ownership check still rejects a foreign reference (Finding 1, Test D + Test E)", async () => {
+  const claimVersionId = await seedClaimVersion(userAId, `dt-runtime-eval-claim-finding1-d-${runId}`);
+  const evidenceVersionId = await seedEvidenceVersion(userAId, `dt-runtime-eval-evidence-finding1-d-${runId}`);
+  const { versionId: standardVersionId } = await seedStandard(
+    userAId,
+    `dt-runtime-eval-standard-finding1-d-${runId}`,
+    "criteria for Finding 1 same-user StandardVersion test",
+  );
+
+  const evaluationId = `dt-runtime-eval-finding1-d-${runId}`;
+  createdEvaluationIds.push(evaluationId);
+  const now = new Date();
+
+  const evaluation = await evaluationRepo.create({
+    evaluationId,
+    userId: userAId,
+    claimVersionId,
+    evaluationStandardVersionId: standardVersionId,
+    result: "sufficient",
+    evaluatorType: "human",
+    producerCapabilityId: null,
+    producerCapabilityVersion: null,
+    producerProviderId: null,
+    producerModelId: null,
+    modelReportedConfidence: null,
+    systemAdjustedConfidence: null,
+    supersedesEvaluationId: null,
+    evaluatedAt: now,
+    now,
+    evidenceVersionIds: [evidenceVersionId],
+  });
+
+  assert.equal(
+    evaluation.evaluationStandardVersionId,
+    standardVersionId,
+    "an EvaluationStandardVersion owned by the same user must be accepted",
+  );
+
+  // Test E — regression: the pre-existing EvidenceVersion ownership check
+  // (already proven above by the plain cross-user-EvidenceVersion
+  // rollback test) must remain intact after this correction — the new
+  // ClaimVersion/StandardVersion checks are additive, not a replacement.
+  const foreignEvidenceVersionId = await seedEvidenceVersion(userBId, `dt-runtime-eval-foreign-evidence-finding1-d-${runId}`);
+  const regressionEvaluationId = `dt-runtime-eval-finding1-d-regression-${runId}`;
+  createdEvaluationIds.push(regressionEvaluationId);
+  await assert.rejects(() =>
+    evaluationRepo.create({
+      evaluationId: regressionEvaluationId,
+      userId: userAId,
+      claimVersionId,
+      evaluationStandardVersionId: standardVersionId,
+      result: "sufficient",
+      evaluatorType: "human",
+      producerCapabilityId: null,
+      producerCapabilityVersion: null,
+      producerProviderId: null,
+      producerModelId: null,
+      modelReportedConfidence: null,
+      systemAdjustedConfidence: null,
+      supersedesEvaluationId: null,
+      evaluatedAt: new Date(),
+      now: new Date(),
+      evidenceVersionIds: [foreignEvidenceVersionId],
+    }),
+  );
+  const regressionRow = await evaluationRepo.findEvaluationForUser(userAId, regressionEvaluationId);
+  assert.equal(regressionRow, null, "the pre-existing EvidenceVersion ownership check must still reject a foreign reference after this correction");
+});

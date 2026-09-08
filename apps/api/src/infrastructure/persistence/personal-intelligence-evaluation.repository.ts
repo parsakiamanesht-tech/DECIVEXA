@@ -3,7 +3,9 @@ import type { DatabaseClient } from "../../persistence/database";
 import {
   personalIntelligenceEvaluations,
   personalIntelligenceEvaluationEvidenceReferences,
+  personalIntelligenceEvaluationStandardVersions,
 } from "../../persistence/schema/personal-intelligence-evaluation.schema";
+import { personalIntelligenceClaimVersions } from "../../persistence/schema/personal-intelligence.schema";
 import { evidenceVersions } from "../../persistence/schema/evidence.schema";
 import type {
   PersonalIntelligenceEvaluation,
@@ -61,30 +63,70 @@ export class DrizzlePersonalIntelligenceEvaluationRepository
   // 1 authorization: the exact EvidenceVersion set considered must be
   // recoverable; an Evaluation with zero direct EvidenceVersion
   // references is rejected before persistence).
+  //
+  // The Evaluation row's own two cross-references - claimVersionId and
+  // evaluationStandardVersionId - are ownership-verified the same way:
+  // the INSERT sources its row from a SELECT over
+  // personal_intelligence_claim_versions cross-joined with
+  // personal_intelligence_evaluation_standard_versions, matching id AND
+  // userId on each against input.userId (mirrors
+  // DrizzlePersonalIntelligenceRelationshipRepository.create()'s
+  // two-referenced-row ownership check exactly - existence of a
+  // referenced id is never treated as proof of ownership). A mismatch on
+  // either produces zero source rows, so the INSERT inserts nothing and
+  // the whole transaction is rolled back by the thrown error below -
+  // never a partial Evaluation row.
   async create(input: CreateEvaluationInput): Promise<PersonalIntelligenceEvaluation> {
     return this.db.transaction(async (tx) => {
       const [evaluationRow] = await tx
         .insert(personalIntelligenceEvaluations)
-        .values({
-          id: input.evaluationId,
-          userId: input.userId,
-          claimVersionId: input.claimVersionId,
-          evaluationStandardVersionId: input.evaluationStandardVersionId,
-          result: input.result,
-          evaluatorType: input.evaluatorType,
-          producerCapabilityId: input.producerCapabilityId,
-          producerCapabilityVersion: input.producerCapabilityVersion,
-          producerProviderId: input.producerProviderId,
-          producerModelId: input.producerModelId,
-          modelReportedConfidence: input.modelReportedConfidence,
-          systemAdjustedConfidence: input.systemAdjustedConfidence,
-          supersedesEvaluationId: input.supersedesEvaluationId,
-          evaluatedAt: input.evaluatedAt,
-          createdAt: input.now,
-        })
+        .select((qb) =>
+          qb
+            .select({
+              id: sql<string>`${input.evaluationId}`.as("id"),
+              userId: sql<string>`${input.userId}`.as("user_id"),
+              claimVersionId: personalIntelligenceClaimVersions.id,
+              evaluationStandardVersionId: personalIntelligenceEvaluationStandardVersions.id,
+              result: sql<string>`${input.result}`.as("result"),
+              evaluatorType: sql<string>`${input.evaluatorType}`.as("evaluator_type"),
+              producerCapabilityId: sql<string | null>`${input.producerCapabilityId}`.as(
+                "producer_capability_id",
+              ),
+              producerCapabilityVersion: sql<string | null>`${input.producerCapabilityVersion}`.as(
+                "producer_capability_version",
+              ),
+              producerProviderId: sql<string | null>`${input.producerProviderId}`.as("producer_provider_id"),
+              producerModelId: sql<string | null>`${input.producerModelId}`.as("producer_model_id"),
+              modelReportedConfidence: sql<number | null>`${input.modelReportedConfidence}`.as(
+                "model_reported_confidence",
+              ),
+              systemAdjustedConfidence: sql<number | null>`${input.systemAdjustedConfidence}`.as(
+                "system_adjusted_confidence",
+              ),
+              supersedesEvaluationId: sql<string | null>`${input.supersedesEvaluationId}`.as(
+                "supersedes_evaluation_id",
+              ),
+              evaluatedAt: sql<Date>`${input.evaluatedAt}`.as("evaluated_at"),
+              createdAt: sql<Date>`${input.now}`.as("created_at"),
+            })
+            .from(personalIntelligenceClaimVersions)
+            .innerJoin(personalIntelligenceEvaluationStandardVersions, sql`true`)
+            .where(
+              and(
+                eq(personalIntelligenceClaimVersions.id, input.claimVersionId),
+                eq(personalIntelligenceClaimVersions.userId, input.userId),
+                eq(personalIntelligenceEvaluationStandardVersions.id, input.evaluationStandardVersionId),
+                eq(personalIntelligenceEvaluationStandardVersions.userId, input.userId),
+              ),
+            ),
+        )
         .returning();
 
-      if (!evaluationRow) throw new Error("Failed to create personal intelligence evaluation");
+      if (!evaluationRow) {
+        throw new Error(
+          "Cannot create personal intelligence evaluation: the referenced ClaimVersion or EvaluationStandardVersion does not exist or does not belong to the authenticated user",
+        );
+      }
 
       const evidenceIds = distinct(input.evidenceVersionIds);
       if (evidenceIds.length === 0) {
