@@ -306,6 +306,20 @@ Registration"). This Contract preserves:
 - this Contract does not redefine the Bounded Semantic Synthesis
   Contract.
 
+**Update (2026-09-08): Evaluation Standard persistence governance
+reconciled.** §9 of this Contract's description of Evaluation
+Standard identity/version/recoverability, and its Increment 1
+implementation, were reconciled against Bounded Semantic Synthesis
+Contract §12.3's "no first-class entity" prohibition via Founder
+Decision **FD-EVAL-STANDARD-01** (Bounded Semantic Synthesis Contract
+§13), which narrowly permits Evaluation Standard's bounded persistence
+and versioning for provenance/recoverability while preserving every
+other BSS boundary — Evaluation Standard remains an input/criterion to
+Evaluation, never a Semantic Conclusion, BSS output, or
+semantic-synthesis artifact. This Contract still does not redefine the
+Bounded Semantic Synthesis Contract; FD-EVAL-STANDARD-01 is registered
+there, not here.
+
 ## 14. Decision 7 / Cross-Claim Boundary
 
 - Cross-Claim Evaluation is deferred.
@@ -323,8 +337,19 @@ own governed boundary.
 
 ## 15. Current Implementation Reality
 
-**Verified/implemented (pre-existing, confirmed against the current
-repository state at the time of this Contract's registration):**
+**Historical note.** The two lists below originally reflected the
+repository state *at the time of this Contract's registration*
+(2026-09-08, commit `68b7337`) — before Increment 1 existed. Increment
+1 ("Evaluation & Evaluation Standard Foundation," commit `ef0004a`)
+and its Finding 1 ownership correction (commit `af2b5d4`) were
+implemented afterward, under a separate Founder implementation
+authorization, and Evaluation Standard's persistence was subsequently
+reconciled against Bounded Semantic Synthesis Contract §12.3 via
+Founder Decision FD-EVAL-STANDARD-01 (§13 there). The lists below are
+updated accordingly rather than left to silently contradict that
+authorization and reconciliation.
+
+**Verified/implemented (as of this update):**
 
 - EvidenceVersion lineage;
 - ClaimVersion lineage;
@@ -333,24 +358,34 @@ repository state at the time of this Contract's registration):**
 - the existing Inference provenance schema-level structures
   (producer capability/provider/model identity, mandatory evidence
   grounding, append-only lifecycle events) previously verified in this
-  repository's Personal Intelligence Inference schema.
+  repository's Personal Intelligence Inference schema;
+- **an Evaluation entity** (`personal_intelligence_evaluations`),
+  including its EvidenceVersion-set and ClaimVersion lineage, both
+  ownership-verified;
+- **Evaluation persistence**, write-once with correction/supersession
+  via `supersedesEvaluationId`;
+- **Evaluation Standard persistence/versioning**
+  (`personal_intelligence_evaluation_standards` /
+  `personal_intelligence_evaluation_standard_versions`), narrowly
+  authorized per FD-EVAL-STANDARD-01;
+- **Evaluation → Standard lineage** (`evaluationStandardVersionId`,
+  ownership-verified);
+- **Evaluation-specific provenance persistence** (passive AI-provenance
+  fields; confidence kept distinct from Evidential Sufficiency).
 
 **Not implemented / not authorized:**
 
-- an Evaluation entity;
-- Evaluation persistence;
-- Evaluation Standard persistence/versioning;
 - Semantic Conclusion persistence;
-- Evaluation → Standard lineage;
 - Evaluation → Semantic Conclusion lineage;
-- Evaluation-specific provenance persistence;
 - cross-Claim Evaluation;
 - Decision 7 implementation.
 
 This Contract does not overstate implementation. Every item in the
-first list already exists; every item in the second list is a future
-architectural requirement this Contract defines, not a present
-capability.
+first list either already existed at this Contract's original
+registration or was implemented and separately Founder-authorized
+afterward, as documented above; every item in the second list remains
+a future architectural requirement this Contract defines, not a
+present capability.
 
 ## 16. Governance Authority
 

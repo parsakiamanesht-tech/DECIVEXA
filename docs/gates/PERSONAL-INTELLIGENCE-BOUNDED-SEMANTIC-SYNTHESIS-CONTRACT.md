@@ -220,6 +220,17 @@ standalone architectural component. It may be represented conceptually
 as a parameter/bundle of evaluative criteria. No entity identity or
 lifecycle is authorized.
 
+**Narrowed by FD-EVAL-STANDARD-01 (§13, 2026-09-08).** This
+prohibition is narrowed — not removed — to permit bounded persistence
+and independent versioning of Evaluation Standard solely for
+evaluation provenance, historical recoverability, reproducibility,
+auditability, and exact reconstruction of the standard applied to a
+given Evaluation. This narrowing does not authorize Evaluation
+Standard as an epistemic axis, a Semantic Conclusion, a BSS output, an
+independent semantic-synthesis artifact, or an automatic runtime
+engine — see §13 for the full, controlling statement of this
+narrowing.
+
 **12.4 Not Derivation Trace Metadata.** Evaluation Standard must not be
 described as merely descriptive metadata. Derivation Trace records and
 reconstructs how an evaluation was produced; Evaluation Standard is one
@@ -302,22 +313,138 @@ of proposition. Also not authorized: Goal OS implementation, Decision
 Engine implementation, Memory expansion, inference generation, a
 general Understanding Engine, a semantic synthesis engine, a
 Sufficiency engine, an Evaluation engine, new epistemic infrastructure,
-or any schema/API/service implementation.
+or any schema/API/service implementation, **except to the narrow
+extent FD-EVAL-STANDARD-01 (§13) separately and explicitly permits
+bounded Evaluation Standard persistence/versioning for provenance and
+recoverability — no other schema/API/service implementation is
+authorized by that narrowing.**
 
 **12.12 Critical Boundary.** This section preserves, explicitly:
 semantic recognition ≠ implementation authorization; Evaluation
-Standard as semantic input ≠ Evaluation Standard as first-class entity;
-Sufficiency as relational evaluation ≠ persisted epistemic axis;
-Derivation Trace records the evaluation lineage — it does not thereby
-make Evaluation Standard mere metadata.
+Standard as semantic input ≠ Evaluation Standard as first-class entity
+**except as narrowly permitted by FD-EVAL-STANDARD-01, §13, for
+provenance/recoverability persistence only**; Sufficiency as
+relational evaluation ≠ persisted epistemic axis; Derivation Trace
+records the evaluation lineage — it does not thereby make Evaluation
+Standard mere metadata.
 
-## 13. Final Determination
+## 13. FD-EVAL-STANDARD-01 — Evaluation Standard Persistence & Governance Boundary (Amendment, 2026-09-08)
+
+### 13.1 Governance History (Historical Transparency)
+
+This section records a governance evolution, not a rewrite of history.
+The sequence of Founder-approved decisions concerning Evaluation
+Standard is, in order:
+
+1. This Contract's base canonicalization (2026-09-04) did not discuss
+   Evaluation Standard at all.
+2. §12 (Amendment, 2026-09-05) formally recognized Evaluation Standard
+   as a semantic input to Sufficiency evaluation, while explicitly
+   stating, in §12.3/§12.11/§12.12 and the (then-)§13 Final
+   Determination, that no independent entity identity or lifecycle for
+   Evaluation Standard was authorized.
+3. Separately, the Personal Intelligence Derivation Trace / Provenance
+   Architecture Contract (FD-DT-01 through FD-DT-07,
+   `docs/gates/PERSONAL-INTELLIGENCE-DERIVATION-TRACE-PROVENANCE-ARCHITECTURE-CONTRACT.md`)
+   was registered (2026-09-08), describing the identity/version/
+   recoverability properties Evaluation Standard would need **if and
+   when** such persistence were separately authorized — itself taking
+   no position on, and not overriding, §12.3's prohibition.
+4. "Derivation Trace / Provenance — Increment 1: Evaluation &
+   Evaluation Standard Foundation" was then implemented and registered
+   (commit `ef0004a`, 2026-09-08), building Evaluation Standard as a
+   persisted, identity/version-bearing entity
+   (`personal_intelligence_evaluation_standards` /
+   `personal_intelligence_evaluation_standard_versions`) under a
+   Founder authorization given in that implementation gate — without,
+   at that time, an explicit amendment reconciling it against §12.3.
+5. A subsequent read-only Post-Increment 1 Semantic Impact Audit
+   identified this as an unreconciled governance conflict ("Finding
+   2"). The Founder reviewed the resulting Governance Decision Brief
+   and approved **Option C** — reconciliation via a narrowed boundary,
+   rather than reversing Increment 1 or leaving §12.3 unqualified.
+6. This section, **FD-EVAL-STANDARD-01**, canonicalizes that Option C
+   decision. It does not conceal, erase, or retroactively deny that
+   §12.3's original, broader prohibition existed and governed the
+   period between 2026-09-05 and this amendment.
+
+### 13.2 Canonical Decision
+
+**Decision ID:** `FD-EVAL-STANDARD-01`
+**Title:** Evaluation Standard Persistence & Governance Boundary
+**Status:** FOUNDER-APPROVED ARCHITECTURAL DECISION
+
+> Evaluation Standard may be persisted and versioned when required to
+> preserve evaluation provenance, historical recoverability,
+> reproducibility, auditability, and the exact standard applied to an
+> Evaluation. Such persistence is a provenance/recoverability
+> mechanism and does not elevate Evaluation Standard into an
+> epistemic axis, a Semantic Conclusion, a BSS output, an independent
+> semantic-synthesis artifact, or an automatic runtime engine.
+> Evaluation Standard remains an input/criterion to Evaluation.
+
+This decision narrows §12.3's (and, correspondingly, §12.11's and
+§12.12's) prohibition on Evaluation Standard entity identity/lifecycle
+**only to the extent necessary** to permit the bounded persistence and
+versioning described above. Every other boundary those sections
+establish — and every other boundary preserved elsewhere in this
+Contract (§10, §12.11) — remains in force, undiminished.
+
+### 13.3 Architectural Consequence
+
+The existing, already-implemented Evaluation Standard persistence
+(`personal_intelligence_evaluation_standards` and
+`personal_intelligence_evaluation_standard_versions`, per Increment 1)
+is recognized as valid under this decision, provided it remains
+bounded by §13.4 below. **No rollback or restructuring of that
+implementation is required, authorized, or implied as a consequence of
+this decision.**
+
+### 13.4 Non-Authorization
+
+FD-EVAL-STANDARD-01 does not authorize, and must never be read to
+authorize:
+
+1. promoting Evaluation Standard into an epistemic axis;
+2. treating Evaluation Standard as a Semantic Conclusion;
+3. making Evaluation Standard a BSS output;
+4. a separate Evaluation Standard semantic-synthesis layer;
+5. an automatic Evaluation Standard runtime engine;
+6. reopening or expanding any previously closed AI, Context, BSS,
+   Cross-Claim, or Decision 7 boundary;
+7. Semantic Conclusion implementation;
+8. BSS implementation;
+9. AI generation or execution;
+10. Context Runtime changes;
+11. Cross-Claim evaluation;
+12. Decision 7 implementation;
+13. Inference redesign;
+14. Increment 2, or any implementation beyond what Increment 1 and its
+    Finding 1 ownership correction already registered.
+
+Those remain separately governed and require their own explicit,
+future Founder authorization.
+
+### 13.5 Recoverability
+
+This decision preserves the Derivation Trace Recoverability Guarantee
+(FD-DT-01). A historical Evaluation must remain capable of
+reconstructing: the ClaimVersion evaluated; the exact EvidenceVersion
+set considered; the EvaluationStandardVersion applied; the material
+criteria of that Standard version; the Evaluation result; relevant
+correction/supersession history; and any other provenance required by
+the applicable Derivation Trace contract.
+
+## 14. Final Determination
 
 **ROUND-12 BOUNDED SEMANTIC SYNTHESIS CONTRACT — CANONICALIZED, WITH
-EVALUATION STANDARD SEMANTIC RECOGNITION PER §12.
-CONCEPTUAL/PRODUCT/GOVERNANCE CONTRACT ONLY. IMPLEMENTATION NOT
+EVALUATION STANDARD SEMANTIC RECOGNITION PER §12, AS NARROWED BY
+FD-EVAL-STANDARD-01 (§13). CONCEPTUAL/PRODUCT/GOVERNANCE CONTRACT
+ONLY, EXCEPT FOR THE BOUNDED EVALUATION STANDARD PERSISTENCE
+EXPLICITLY PERMITTED BY §13. IMPLEMENTATION IS NOT OTHERWISE
 AUTHORIZED.** No schema, migration, code, test, API, AI capability,
-Pattern entity, Observation/Event entity, Evaluation Standard entity,
-or evaluation engine is created, modified, or implied as approved by
-this record. Decision 7, Gate 7, and the Occurrence/Observation
-distinction remain exactly as previously and separately registered.
+Pattern entity, Observation/Event entity, or evaluation engine is
+created, modified, or implied as approved by this record, beyond the
+Evaluation Standard persistence §13 explicitly and narrowly permits.
+Decision 7, Gate 7, and the Occurrence/Observation distinction remain
+exactly as previously and separately registered.
